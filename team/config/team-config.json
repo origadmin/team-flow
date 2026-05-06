@@ -1,0 +1,173 @@
+{
+  "version": "7.0",
+  "updated": "2026-04-25",
+  "_comment": "workspace 路径使用相对路径，相对于 _team 目录",
+  "_comment_subagent": "subagent_type 映射到 Trae Task 工具的 subagent_type 参数",
+  "_comment_routing": "routingRules 定义关键词/项目类型到角色的映射，供多 Agent 工具（trae/Gemini CLI 等）使用",
+  "teams": {
+    "app-dev": {
+      "name": "应用开发团队",
+      "description": "负责 orig-cms-ee 等应用项目开发",
+      "standards": "workflows/output-standards.md",
+      "members": [
+        {
+          "id": "triage",
+          "name": "分发工具",
+          "subagent_type": "self",
+          "skills": ["prompts/triage.md"],
+          "standards": ["workflows/shared.md", "workflows/roles/triage-standards.md"]
+        },
+        {
+          "id": "tech-lead",
+          "name": "技术总监",
+          "subagent_type": "tech-lead-architect",
+          "skills": ["prompts/tech-lead.md"],
+          "workspace": "./workspace/tech-lead",
+          "standards": ["workflows/shared.md", "workflows/roles/analysis-standards.md"]
+        },
+        {
+          "id": "dev",
+          "name": "开发工程师（统一）",
+          "subagent_type": "developer-engineer",
+          "skills": ["prompts/dev.md"],
+          "workspace": "./workspace/dev",
+          "routingRules": [
+            {
+              "type": "keyword",
+              "patterns": ["后端", "API", "gRPC", "数据库", "微服务", "Go", "业务逻辑"],
+              "techStack": "go-kratos"
+            },
+            {
+              "type": "keyword",
+              "patterns": ["前端", "React", "组件", "UI", "页面", "前端开发"],
+              "techStack": "react"
+            },
+            {
+              "type": "keyword",
+              "patterns": ["Android", "Kotlin", "移动端", "App", "原生开发"],
+              "techStack": "android"
+            },
+            {
+              "type": "keyword",
+              "patterns": ["iOS", "Swift", "移动端", "App", "原生开发"],
+              "techStack": "ios"
+            }
+          ],
+          "standards": ["workflows/shared.md", "workflows/roles/development-standards.md", "workflows/roles/bugfix-standards.md"]
+        },
+        {
+          "id": "bugfix",
+          "name": "Bug 修复专家",
+          "subagent_type": "bugfix-expert",
+          "skills": ["prompts/bugfix.md"],
+          "standards": ["workflows/shared.md", "workflows/roles/bugfix-standards.md"]
+        },
+        {
+          "id": "qa-engineer",
+          "name": "测试工程师",
+          "subagent_type": "developer-engineer",
+          "skills": ["prompts/qa-engineer.md"],
+          "workspace": "./workspace/qa-engineer",
+          "standards": ["workflows/shared.md", "workflows/roles/test-standards.md"]
+        },
+        {
+          "id": "devops",
+          "name": "运维工程师",
+          "subagent_type": "devops-engineer",
+          "skills": ["prompts/devops.md"],
+          "workspace": "./workspace/devops",
+          "standards": ["workflows/shared.md"]
+        },
+        {
+          "id": "pm",
+          "name": "产品经理",
+          "subagent_type": "pm-documenter",
+          "skills": ["prompts/pm.md"],
+          "workspace": "./workspace/pm",
+          "standards": ["workflows/shared.md", "workflows/roles/requirements-standards.md"]
+        },
+        {
+          "id": "analysis",
+          "name": "分析专家",
+          "subagent_type": "analysis-expert",
+          "skills": ["prompts/analysis.md"],
+          "standards": ["workflows/shared.md", "workflows/roles/analysis-standards.md"]
+        },
+        {
+          "id": "ui-designer",
+          "name": "UI 设计师",
+          "subagent_type": "ui-designer",
+          "skills": ["prompts/ui-designer.md"],
+          "standards": ["workflows/shared.md", "workflows/roles/ui-standards.md"]
+        }
+      ],
+      "workflow": "workflows/shared.md",
+      "standards": "workflows/output-standards.md"
+    },
+    "framework-dev": {
+      "name": "框架开发团队",
+      "description": "负责 toolkits/runtime/contrib 框架模块开发",
+      "standards": "workflows/output-standards.md",
+      "members": [
+        {
+          "id": "framework-architect",
+          "name": "框架架构师",
+          "subagent_type": "tech-lead-architect",
+          "skills": ["prompts/framework-architect.md"],
+          "workspace": "./workspace/framework-architect",
+          "modules": ["toolkits", "runtime", "contrib"],
+          "standards": ["workflows/shared.md", "workflows/roles/development-standards.md"]
+        },
+        {
+          "id": "dev",
+          "name": "开发工程师（框架）",
+          "subagent_type": "developer-engineer",
+          "skills": ["prompts/dev.md"],
+          "workspace": "./workspace/dev",
+          "routingRules": [
+            {
+              "type": "keyword",
+              "patterns": ["toolkits", "cache", "codec", "crypto", "metrics"],
+              "techStack": "go-toolkits"
+            },
+            {
+              "type": "keyword",
+              "patterns": ["runtime", "DI", "依赖注入", "Wire", "go-kratos"],
+              "techStack": "go-runtime"
+            },
+            {
+              "type": "keyword",
+              "patterns": ["contrib", "服务发现", "Consul", "Etcd", "消息队列"],
+              "techStack": "go-contrib"
+            }
+          ],
+          "standards": ["workflows/shared.md", "workflows/roles/development-standards.md"]
+        }
+      ],
+      "workflow": "workflows/framework-workflow.md",
+      "standards": "workflows/output-standards.md"
+    }
+  },
+  "common": {
+    "codeStandards": {
+      "language": "Go/TypeScript",
+      "noChineseComments": true,
+      "formatter": ["gofmt", "prettier"],
+      "linter": ["golangci-lint", "eslint"],
+      "testCoverage": 80
+    },
+    "documentStructure": {
+      "requirements": "docs/requirements/{feature}/",
+      "design": "docs/design/{feature}/",
+      "test": "docs/test/{feature}/",
+      "release": "docs/release/v{version}/",
+      "meta": "docs/meta/"
+    },
+    "tools": {
+      "proto": "buf",
+      "ci": "GitHub Actions",
+      "container": "Docker",
+      "orchestration": "Kubernetes"
+    }
+  }
+}

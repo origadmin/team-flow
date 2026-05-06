@@ -1,0 +1,169 @@
+{
+  "version": "1.0",
+  "updated": "2026-04-16",
+  "description": "BDD+TDD 混合测试策略配置",
+  
+  "testPyramid": {
+    "unit": {
+      "percentage": "50-70%",
+      "coverageTarget": 80,
+      "executionTime": "<10s",
+      "owner": ["backend-dev", "frontend-dev"],
+      "tools": {
+        "backend": ["go test", "testify", "ginkgo"],
+        "frontend": ["jest", "testing-library"]
+      },
+      "principles": [
+        "快速反馈（秒级执行）",
+        "无外部依赖（DB/网络使用 Mock）",
+        "覆盖正常+边界+异常",
+        "红-绿-重构循环"
+      ]
+    },
+    "integration": {
+      "percentage": "20-30%",
+      "coverageTarget": 70,
+      "executionTime": "<2min",
+      "owner": ["backend-dev", "frontend-dev", "qa-engineer"],
+      "tools": {
+        "backend": ["testcontainers", "mockery"],
+        "frontend": ["msw", "api-contract"]
+      },
+      "principles": [
+        "API 契约验证",
+        "服务间交互测试",
+        "使用 Testcontainers 隔离环境",
+        "Mock Server (MSW) 前后端分离"
+      ]
+    },
+    "e2e": {
+      "percentage": "10-20%",
+      "coverageTarget": 100,
+      "executionTime": "<10min",
+      "owner": ["qa-engineer"],
+      "tools": ["cypress", "playwright"],
+      "principles": [
+        "关键用户流程覆盖",
+        "Gherkin 场景驱动",
+        "失败自动重试（3次）",
+        "稳定性 ≥ 95%"
+      ]
+    }
+  },
+  
+  "bdd": {
+    "enabled": true,
+    "gherkinSyntax": true,
+    "participants": {
+      "pm": {
+        "responsibilities": [
+          "编写用户故事",
+          "定义验收标准（Acceptance Criteria）",
+          "审查 Gherkin 场景完整性",
+          "最终验收签字"
+        ]
+      },
+      "qa-engineer": {
+        "responsibilities": [
+          "编写 Gherkin 场景文件",
+          "实现步骤定义（Step Definitions）",
+          "执行 E2E 测试",
+          "输出测试报告和闭环报告"
+        ]
+      },
+      "backend-dev": {
+        "responsibilities": [
+          "审查场景技术可行性",
+          "补充技术细节（API/数据结构）",
+          "提供测试数据准备接口"
+        ]
+      },
+      "frontend-dev": {
+        "responsibilities": [
+          "审查 UI 交互逻辑",
+          "补充前端技术细节",
+          "配合 E2E 测试调整选择器"
+        ]
+      }
+    },
+    "tools": {
+      "featureFiles": "e2e/features/*.feature",
+      "stepDefinitions": "e2e/steps/*.ts",
+      "report": "e2e/reports/",
+      "screenshots": "e2e/screenshots/"
+    },
+    "gherkinKeywords": {
+      "Feature": "功能名称和描述",
+      "Background": "前置条件（每个场景前执行）",
+      "Scenario": "具体场景",
+      "Given": "前置状态",
+      "When": "用户行为",
+      "Then": "预期结果",
+      "And": "连接多个步骤"
+    }
+  },
+  
+  "tdd": {
+    "enabled": true,
+    "enforced": true,
+    "redGreenRefactor": true,
+    "owners": {
+      "backend-dev": {
+        "coverageTarget": 80,
+        "minimumCoverage": 70,
+        "tools": ["go test", "testify", "ginkgo"],
+        "workflow": [
+          "1. 【红】编写失败的测试（明确期望行为）",
+          "2. 【绿】最小实现（只为通过测试）",
+          "3. 【重构】优化代码（保持测试通过）",
+          "4. 重复循环"
+        ]
+      },
+      "frontend-dev": {
+        "coverageTarget": 70,
+        "minimumCoverage": 60,
+        "tools": ["jest", "testing-library"],
+        "workflow": [
+          "1. 【红】编写组件测试（关注用户行为）",
+          "2. 【绿】实现组件（最小实现）",
+          "3. 【重构】优化组件（提取复用逻辑）",
+          "4. 重复循环"
+        ]
+      }
+    }
+  },
+  
+  "qualityGates": {
+    "phase2": {
+      "name": "架构门禁",
+      "checker": ["tech-lead", "pm"],
+      "checks": [
+        "技术方案已评审",
+        "ADR 已撰写（如需要）",
+        "Proto 接口定义已冻结",
+        "PM 签字确认"
+      ]
+    },
+    "phase4": {
+      "name": "质量门禁",
+      "checker": ["qa-engineer"],
+      "checks": [
+        "Code Review 通过",
+        "单元测试覆盖率 ≥ 目标",
+        "API 测试用例 100% 执行通过",
+        "E2E 测试关键流程 100% 通过",
+        "无 Major 以上 Bug 未关闭"
+      ]
+    },
+    "phase5": {
+      "name": "验收门禁",
+      "checker": ["pm"],
+      "checks": [
+        "功能对照设计文档 100% 闭环",
+        "非功能需求（性能/安全）达标",
+        "PM 验收签字",
+        "PM 唯一放行"
+      ]
+    }
+  }
+}

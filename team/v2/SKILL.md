@@ -46,40 +46,58 @@ type {PROJECT_PATH}/.team/ai-context.md
 ```
 _team/v2/
 ├── SKILL.md              ← You are here
+├── BOUNDARY.md           # Layer architecture definition
 ├── prompts/              # Role execution rules (v2, beads-native)
 │   ├── triage.md
 │   ├── dev.md
-│   ├── dev-backend.md    # Backend Dev 专属规则（从 v1 迁移）
-│   ├── dev-frontend.md   # Frontend Dev 专属规则（从 v1 迁移）
-│   ├── bugfix.md         # Bugfix 专属规则（从 v1 迁移）
+│   ├── dev-backend.md
+│   ├── dev-frontend.md
+│   ├── bugfix.md
 │   ├── tech-lead.md
 │   ├── qa-engineer.md
-│   └── pm.md
+│   ├── pm.md
+│   ├── analysis.md       # Analysis Expert (v2 补足)
+│   ├── devops.md         # DevOps Engineer (v2 补足)
+│   ├── ui-designer.md    # UI Designer (v2 补足)
+│   └── framework-architect.md  # Framework Architect (v2 补足)
 ├── workflows/            # Shared workflows + role standards
 │   ├── shared.md
-│   └── roles/
-│       ├── triage-standards.md
-│       ├── development-standards.md
-│       ├── bugfix-standards.md
-│       ├── devtestops.md
-│       ├── test-levels.md
-│       ├── specialized-tests.md          # 后端 8 类专项
-│       └── frontend-specialized-tests.md  # 前端 10 类专项
-├── templates/            # Document templates（从 v1 迁移 + beads 适配）
+│   ├── framework-workflow.md    # Framework dev workflow (v2 补足)
+│   ├── pre-flight.md            # Pre-flight checks (v2 补足)
+│   ├── roles/
+│   │   ├── triage-standards.md
+│   │   ├── development-standards.md
+│   │   ├── bugfix-standards.md
+│   │   ├── devtestops.md
+│   │   ├── test-levels.md
+│   │   ├── specialized-tests.md
+│   │   ├── frontend-specialized-tests.md
+│   │   ├── analysis-standards.md      # (v2 补足)
+│   │   ├── architecture-standards.md  # (v2 补足)
+│   │   ├── devops-standards.md        # (v2 补足)
+│   │   ├── ui-standards.md            # (v2 补足)
+│   │   ├── review-standards.md        # (v2 补足)
+│   │   ├── requirements-standards.md  # (v2 补足)
+│   │   ├── test-standards.md          # (v2 补足)
+│   │   └── checklist.md               # (v2 补足)
+│   └── meta/
+│       └── TEAM_ROLES.md              # (v2 补足)
+├── templates/            # Document templates
 │   ├── README.md
-│   ├── feature-test-template.md           # 后端 Feature 测试覆盖
-│   ├── bug-test-template.md               # 后端 Bug 复现测试
-│   ├── frontend-feature-test-template.md  # 前端 Feature 测试覆盖
-│   ├── frontend-bug-test-template.md      # 前端 Bug 复现测试
-│   ├── scope-template.md                  # 变更报告
-│   ├── test-report-template.md            # 测试报告
+│   ├── feature-test-template.md
+│   ├── bug-test-template.md
+│   ├── frontend-feature-test-template.md
+│   ├── frontend-bug-test-template.md
+│   ├── scope-template.md
+│   ├── test-report-template.md
 │   ├── closed-loop-verification-template.md
 │   ├── gherkin-feature-template.md
 │   ├── architecture-template.md
 │   ├── prd-template.md
 │   ├── ui-design-template.md
 │   ├── api-issue-template.md
-│   └── user-story-template.md
+│   ├── user-story-template.md
+│   └── bug-index-template.md
 ├── scripts/              # Automation
 │   ├── migrate-tasks.ps1
 │   └── export-task-pool.ps1
@@ -131,6 +149,190 @@ _docs/.../lessons/ = 项目经验教训（Dev/Bugfix 读取）
 ```
 
 **项目问题 → 在项目层解决，绝不在框架层打补丁**
+
+## Three-Layer Gates
+
+### Layer 1: Entry Gate (Before Starting)
+
+```
+Role triggered
+    │
+    ├── Issue exists in beads? → bd ready --json → continue
+    │   └── Not found? → ⛔ Reject, suggest Triage create via bd create
+    │
+    ├── Issue type matches role? → continue
+    │   └── Mismatch? → ⛔ Hand off to correct role
+    │
+    └── Required docs loaded? → continue
+        └── Missing? → ⛔ Load before proceeding
+```
+
+### Layer 2: Phase Gate (Between Phases)
+
+```
+Phase transition
+    │
+    ├── Current phase deliverables complete? → continue
+    │   └── Incomplete? → ⛔ Complete before transitioning
+    │
+    ├── Tests passing? → continue
+    │   └── Failing? → ⛔ Fix before proceeding
+    │
+    └── beads issue updated? → continue
+        └── Not updated? → ⛔ bd update before proceeding
+```
+
+### Layer 3: Completion Gate (Before Closing)
+
+```
+Task complete
+    │
+    ├── All deliverables produced? → continue
+    │   └── Missing? → ⛔ Produce before closing
+    │
+    ├── All tests passing? → continue
+    │   └── Failing? → ⛔ Fix before closing
+    │
+    ├── No regressions? → continue
+    │   └── Regressions found? → ⛔ Fix or document known issues
+    │
+    └── beads issue closable? → bd close
+        └── Not ready? → bd update --notes with remaining items
+```
+
+### Feature Completion Checklist (19 items)
+
+```
+- [ ] Code implemented per SPEC.md requirements
+- [ ] Unit tests written and passing (TDD red→green)
+- [ ] Integration tests passing (if applicable)
+- [ ] No lint/typecheck errors
+- [ ] No regressions in existing tests
+- [ ] API contract unchanged or backward-compatible
+- [ ] Error handling covers edge cases
+- [ ] Logging/observability added (if applicable)
+- [ ] Configuration documented (if new config introduced)
+- [ ] Migration script provided (if DB schema changed)
+- [ ] Frontend: No duplicate rendering (铁律8)
+- [ ] Frontend: Responsive rules verified
+- [ ] Frontend: Accessibility checked
+- [ ] Documentation updated (if applicable)
+- [ ] SCOPE.md written
+- [ ] beads issue updated with deliverables
+- [ ] Code reviewed (self-review or peer)
+- [ ] Pre-modification checklist completed (铁律1-2)
+- [ ] Impact radius verified (flow graph impact or Grep)
+```
+
+### Bugfix Completion Checklist (18 items)
+
+```
+- [ ] Root cause identified (not just symptom)
+- [ ] Data flow traced from source to sink (铁律9)
+- [ ] Fix targets root cause, not symptom
+- [ ] Unit test reproduces the bug (TDD red→green)
+- [ ] Integration test verifies end-to-end (if applicable)
+- [ ] No regressions in existing tests
+- [ ] No new lint/typecheck errors
+- [ ] API contract unchanged or backward-compatible
+- [ ] Error message is actionable
+- [ ] Frontend: Visual issue confirmed before fix (铁律7)
+- [ ] Frontend: No duplicate rendering after fix (铁律8)
+- [ ] Frontend: MSW mock updated (if API changed)
+- [ ] Real scenario verified (not just mock) (铁律10)
+- [ ] RCA.md written (for P0/P1 bugs)
+- [ ] SCOPE.md written
+- [ ] beads issue updated with root cause and fix
+- [ ] R-iteration count ≤ 4 (if >4, pause for user confirmation)
+- [ ] Impact radius verified (flow graph impact or Grep)
+```
+
+## Context Checkpoint
+
+> **Every conversation turn must output the following context block.**
+
+```
+[Task Context]
+  Task: {beads issue ID + title}
+  Phase: {ready|analyze|design|implement|verify|review}
+  Required Docs: {list files loaded}
+  Toolchain: {go|bun|python} {version}
+  Mode: {v1-compat|v2-native}
+[/Task Context]
+```
+
+This ensures AI maintains context across turns and prevents task drift.
+
+## Agent Mapping
+
+| Role | subagent_type | Trigger Keywords | Prompt File |
+|------|--------------|-----------------|-------------|
+| Triage | (main agent) | all | prompts/triage.md |
+| Tech Lead | tech-lead-architect | 实现/新增/开发/支持/设计/功能 | prompts/tech-lead.md |
+| Dev (Backend) | developer-engineer | 后端/API/数据库/Go | prompts/dev-backend.md |
+| Dev (Frontend) | developer-engineer | 前端/React/组件/页面 | prompts/dev-frontend.md |
+| Bugfix | bugfix-expert | Bug/报错/崩溃/异常/问题/修复 | prompts/bugfix.md |
+| QA | qa-engineer | 测试/验证/质量 | prompts/qa-engineer.md |
+| PM | pm-documenter | 需求/PRD/产品/验收 | prompts/pm.md |
+| Analysis | analysis-expert | 调研/分析/对比/评估 | prompts/analysis.md |
+| DevOps | devops-engineer | 部署/CI/CD/Docker/K8s/运维 | prompts/devops.md |
+| UI Designer | ui-designer | UI/界面/设计稿/组件/样式 | prompts/ui-designer.md |
+| Framework Architect | tech-lead-architect | 框架/架构师/模块设计 | prompts/framework-architect.md |
+
+## MILESTONES Sync
+
+| _team Status | beads Status | Meaning |
+|-------------|-------------|---------|
+| Todo | open | Not started |
+| Doing | in_progress | In progress |
+| Review | in_progress (notes: "awaiting review") | Awaiting confirmation |
+| Archived | closed | Completed |
+| Blocked Bug | open (labels: ["blocked"]) | Blocked by bug |
+| Change Evaluating | open (labels: ["evaluating"]) | Change under evaluation |
+
+## Required Config Files per Role
+
+| Role | Must Load |
+|------|-----------|
+| Triage | shared.md, triage-standards.md |
+| Tech Lead | shared.md, development-standards.md, architecture-standards.md |
+| Dev Backend | shared.md, development-standards.md, specialized-tests.md |
+| Dev Frontend | shared.md, development-standards.md, frontend-specialized-tests.md |
+| Bugfix | shared.md, bugfix-standards.md, bug-test-template.md |
+| QA | shared.md, test-levels.md, test-standards.md |
+| PM | shared.md, requirements-standards.md, prd-template.md |
+| Analysis | shared.md, analysis-standards.md |
+| DevOps | shared.md, devops-standards.md |
+| UI Designer | shared.md, ui-standards.md, ui-design-template.md |
+| Framework Architect | shared.md, architecture-standards.md, framework-workflow.md |
+
+## Pre-Modification Checklist (铁律1-2)
+
+Before modifying any existing code file:
+
+1. **Read the complete file first** — Never modify based on partial view
+2. **Search all references** — `Grep` for exported symbols before changing interfaces
+3. **Run local tests** — Only current module tests during TDD cycle
+4. **Check impact radius** — `flow graph impact [files]` or recursive `Grep`
+5. **Verify no breaking changes** — If interface changed, provide compatibility layer
+
+## Bug Post-Verification (铁律7-10)
+
+After bugfix-expert returns, Triage must verify:
+
+1. **Phenomenon confirmed first** — Check rendering code before analyzing data layer
+2. **Data flow traced** — From source to sink, not just symptom
+3. **Real scenario tested** — HTTP request or page-level, not just mock
+4. **No duplicate rendering** — Check UI for same data rendered twice
+5. **R-iteration ≤ 4** — If >4 rounds, pause for user direction
+6. **Mock test ≠ functional** — Mock passing doesn't mean feature works
+
+## HARD CONSTRAINTS
+
+- **Delete Permission: DISABLED** — Never delete files unless explicitly asked
+- **Framework ≠ Project** — Project problems solved at project layer, never patch framework
+- **No secrets in code** — Never expose or log secrets/keys
+- **NEVER commit unless user asks** — Explicit confirmation required
 
 ## Entry Point for AI
 
