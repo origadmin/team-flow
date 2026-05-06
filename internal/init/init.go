@@ -66,12 +66,19 @@ pipeline: bun run test | bun run build
 		}
 
 		// 复制框架文件
-		frameworkSrc := filepath.Join("framework", version)
-		frameworkDst := filepath.Join(projectPath, "framework", "_team")
+		// team/ 目录包含 _team 框架文件（v1/, v2/, prompts/, workflows/, templates/）
+		teamSrc := "team"
+		teamDst := filepath.Join(projectPath, "framework", "_team")
 		
-		// 这里简化，实际应该嵌入或下载框架文件
-		fmt.Printf("框架文件应该放在: %s\n", frameworkDst)
-		fmt.Println("⚠️  请手动从仓库复制 framework/ 目录到项目")
+		// 检查 team/ 目录是否存在
+		if _, err := os.Stat(teamSrc); os.IsNotExist(err) {
+			return fmt.Errorf("team/ 目录不存在，无法复制框架文件")
+		}
+		
+		fmt.Printf("框架文件源: %s\n", teamSrc)
+		fmt.Printf("框架文件目标: %s\n", teamDst)
+		fmt.Println("⚠️  请手动复制 team/ 目录内容到项目的 framework/_team/")
+		fmt.Println("   或运行: Copy-Item -Path team/* -Destination framework/_team/ -Recurse")
 
 		fmt.Println("✅ 初始化完成!")
 		fmt.Println("下一步:")

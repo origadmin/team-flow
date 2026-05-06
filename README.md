@@ -47,7 +47,7 @@ flow init --v1
 初始化会：
 - 创建 `.team/` 目录
 - 生成 `.team/project.md` 配置模板
-- 复制 `framework/_team/` 框架文件
+- 提示复制 `team/` 框架文件到项目的 `framework/_team/`
 
 ### 2. 查看状态
 
@@ -105,24 +105,27 @@ flow editor --port 8080 --host 0.0.0.0
 ## 📁 项目结构
 
 ```
-team-flow/
-├── cmd/
-│   └── flow/              ← CLI 入口
-│       └── main.go
-├── internal/
-│   ├── init/              ← 初始化逻辑
-│   ├── migrate/           ← 迁移逻辑
-│   ├── editor/            ← Web 编辑器
-│   └── version/           ← 版本信息
-├── framework/             ← _team 框架文件
-│   ├── v1/               ← v1 体系
-│   ├── v2/               ← v2 体系（beads-native）
-│   ├── prompts/           ← 角色规则
-│   ├── workflows/         ← 工作流规范
-│   └── templates/         ← 文档模板
+team-flow/              ← 项目根目录
+├── cmd/flow/            ← FLOW: CLI 入口
+│   └── main.go
+├── internal/            ← FLOW: 内部逻辑
+│   ├── init/           ← flow init 命令
+│   ├── migrate/        ← flow migrate 命令
+│   ├── editor/         ← flow editor (Web UI)
+│   └── version/        ← 版本信息
+├── team/                ← TEAM: _team 框架文件（用于分发）
+│   ├── v1/            ← v1 体系（task-pool）
+│   ├── v2/            ← v2 体系（beads-native）
+│   ├── prompts/        ← 角色规则文件
+│   ├── workflows/      ← 工作流规范
+│   └── templates/      ← 文档模板
 ├── go.mod
 └── README.md
 ```
+
+**命名说明**：
+- `team/` = `_team` 框架的文件（team 部分）
+- 其他 = `flow` 工具本身的代码（flow 部分）
 
 ## 🔧 开发
 
