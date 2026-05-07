@@ -1,5 +1,4 @@
 # Binaries
-flow
 *.exe
 *.exe~
 *.dll
@@ -30,3 +29,8 @@ tmp/
 
 # framework/ 中的临时文件
 framework/**/.DS_Store
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+*.db
+.beads-credential-key
