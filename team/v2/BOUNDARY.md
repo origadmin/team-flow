@@ -1,4 +1,4 @@
-# Layer Boundary — _team v2
+# Layer Boundary — team-flow v2
 
 > **Purpose**: Define what goes where, preventing cross-layer contamination
 
@@ -7,7 +7,7 @@
 ### Layer 0: Framework Core (Read-Only)
 
 ```
-_team/v2/
+{TEAM_PATH}/v2/
 ├── SKILL.md              ← Entry point
 ├── prompts/*.md          ← Role execution rules (framework-standard)
 ├── workflows/*.md        ← Shared workflows (framework-standard)
@@ -23,7 +23,7 @@ _team/v2/
 ### Layer 1: Project Config (Project-Scoped)
 
 ```
-projects/orig-cms/.team/
+{PROJECT_PATH}/.team/
 ├── SKILL.md              ← Points to framework + project overrides
 ├── project.md            ← Project metadata (paths, team, status)
 ├── ai-context.md         ← Current session focus, recent decisions
@@ -39,7 +39,7 @@ projects/orig-cms/.team/
 ### Layer 2: Project Data (Project-Scoped, Read-Only for AI)
 
 ```
-projects/orig-cms/_docs/orig-cms/
+{PROJECT_PATH}/{DOCS_INTERNAL}/
 ├── requirements/{ID}/       ← 需求文档（SPEC.md + AC.md + R1-R5）
 │   ├── F014-unified-pagination/
 │   │   ├── SPEC.md          ← 功能规格
@@ -102,7 +102,7 @@ projects/orig-cms/_docs/orig-cms/
 
 ### beads → 文档映射规则
 
-| beads 类型 | _team ID 格式 | 文档目录 | Phase → 产出物 |
+| beads 类型 | task ID 格式 | 文档目录 | Phase → 产出物 |
 |-----------|--------------|---------|---------------|
 | feature | F{xxx} | `requirements/F{xxx}-{name}/` | phase:analyze → SPEC.md + AC.md |
 | | | | phase:design → R1_DATA_MODEL + R2_STATE_MACHINE + R3_API_CONTRACT |
@@ -143,11 +143,11 @@ projects/orig-cms/_docs/orig-cms/
 **ID 查找规则**:
 
 ```bash
-# 从 beads ID 查找 _team ID
+# 从 beads ID 查找 task ID
 bd show <beads-id> --json | jq '.externalRef'
 # → "F014"
 
-# 从 _team ID 查找 beads ID
+# 从 task ID 查找 beads ID
 bd list --json | jq '.[] | select(.externalRef == "F014") | .id'
 # → "cms-xxx"
 
@@ -155,19 +155,19 @@ bd list --json | jq '.[] | select(.externalRef == "F014") | .id'
 bd show <beads-id> --json | jq '[.events[] | select(.event_type == "reopened")] | length + 1'
 # → 2 (表示当前是 R2)
 
-# 从 _team ID 定位文档目录
-# F014 → _docs/.../requirements/F014-unified-pagination/
-# B001 → _docs/.../reports/bugs/B001/  (目录不带 R 后缀)
-# A008 → _docs/.../reports/analysis/A008-quality-check-enhancement.md
+# 从 task ID 定位文档目录
+# F014 → {DOCS_INTERNAL}/requirements/F014-unified-pagination/
+# B001 → {DOCS_INTERNAL}/reports/bugs/B001/  (目录不带 R 后缀)
+# A008 → {DOCS_INTERNAL}/reports/analysis/A008-quality-check-enhancement.md
 ```
 
 ### Layer 3: Beads Database (Single Source of Truth)
 
 ```
-projects/orig-cms/.beads/
+{PROJECT_PATH}/.beads/
 ├── *.db                  ← SQLite/Dolt database
 ├── issues.jsonl          ← Issue export
-└── task-pool-mapping.json ← _team ID ↔ beads ID mapping
+└── task-pool-mapping.json ← task ID ↔ beads ID mapping
 ```
 
 **Rules**:
@@ -179,7 +179,7 @@ projects/orig-cms/.beads/
 ### Layer 4: Implementation (AI workspace)
 
 ```
-projects/orig-cms/
+{PROJECT_PATH}/
 ├── cmd/                  ← Application code
 ├── internal/
 ├── ent/schema/
@@ -205,14 +205,14 @@ projects/orig-cms/
 ## Forbidden Actions
 
 ❌ **NEVER**:
-- Write to `_team/v2/` (framework layer)
+- Write to `{TEAM_PATH}/v2/` (framework layer)
 - Edit `.beads/*.db` directly
 - Edit `.beads/issues.jsonl` directly
 - Create task state outside beads
 - Mix project configs across projects
 - Dump deliverable content (root cause analysis, design decisions, test results) into beads notes or task-pool-export.md — **always write to independent deliverable files**
 - Add "Task Details" / "Deliverable Tracking" / "Current Status" sections to task-pool-export.md
-- Modify `_team/` rules to solve project-specific problems — project constraints go to `.team/project.md §CONSTRAINTS` and `_docs/.../lessons/`
+- Modify `{TEAM_PATH}/` rules to solve project-specific problems — project constraints go to `.team/project.md §CONSTRAINTS` and `{DOCS_INTERNAL}/lessons/`
 
 ## Permitted Actions
 
@@ -228,7 +228,7 @@ projects/orig-cms/
 
 When starting a session, AI loads:
 
-1. **L0**: `_team/v2/SKILL.md` (rules + structure)
+1. **L0**: `{TEAM_PATH}/v2/SKILL.md` (rules + structure)
 2. **L1**: `.team/project.md` (project paths + team)
 3. **L1**: `.team/ai-context.md` (recent focus)
 4. **L3**: `bd ready --json` (available tasks)
@@ -236,26 +236,26 @@ When starting a session, AI loads:
 Example CLAUDE.md:
 
 ```markdown
-# CLAUDE.md — orig-cms project
+# CLAUDE.md — {project-name} project
 
-Load _team rules: {TEAM_PATH}/v2/SKILL.md
+Load team-flow rules: {TEAM_PATH}/v2/SKILL.md
 Project config: .team/project.md
 Session context: .team/ai-context.md
 ```
 
 ## Migration from v1
 
-If migrating from `_team` (v1):
+If migrating from team-flow v1:
 
 ```bash
 # 1. Archive v1 (don't delete)
-mv _team _team_v1_archive
+mv _team _team_v1_archive  # (legacy command)
 
 # 2. Point project to v2
-echo "Load _team rules: {TEAM_PATH}/v2/SKILL.md" > projects/orig-cms/CLAUDE.md
+echo "Load team-flow rules: {TEAM_PATH}/v2/SKILL.md" > {PROJECT_PATH}/CLAUDE.md
 
 # 3. Migrate tasks to beads
-.\_team\v2\scripts\migrate-tasks.ps1 -ProjectPath projects/orig-cms
+{TEAM_PATH}/v2/scripts/migrate-tasks.ps1 -ProjectPath {PROJECT_PATH}
 
 # 4. Update agent prompts to use bd CLI
 ```

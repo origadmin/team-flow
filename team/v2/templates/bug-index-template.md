@@ -7,7 +7,7 @@
 | 字段 | 值 |
 |------|-----|
 | Issue ID | cms-xxx |
-| _team ID | B{xxx} |
+| task ID | B{xxx} |
 | Current R | R{n} |
 
 ## 迭代历史

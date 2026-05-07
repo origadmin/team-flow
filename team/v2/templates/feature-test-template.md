@@ -5,7 +5,7 @@
 | 字段 | 值 |
 |------|-----|
 | Issue ID | cms-xxx |
-| _team ID | F{xxx} |
+| task ID | F{xxx} |
 | Phase | phase:implement → phase:verify |
 | Subsystem | subsystem:backend |
 
@@ -150,7 +150,7 @@
 |------|------|
 | 需求文档 | `_docs/.../requirements/Fxxx/SPEC.md` |
 | 接口契约 | `_docs/.../requirements/Fxxx/R3_API_CONTRACT.md` |
-| 测试代码目录 | `projects/orig-cms/tests/features/F{xxx}-{short-name}/` |
+| 测试代码目录 | `{PROJECT_PATH}/tests/features/F{xxx}-{short-name}/` |
 
 ---
 

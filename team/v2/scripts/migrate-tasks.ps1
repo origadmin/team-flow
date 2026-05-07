@@ -18,9 +18,9 @@ if ($Help) {
 Migrate tasks from .team/task-pool.md to beads.
 
 Usage:
-  ./migrate-tasks.ps1 -ProjectPath projects/orig-cms
-  ./migrate-tasks.ps1 -ProjectPath projects/orig-cms -DryRun
-  ./migrate-tasks.ps1 -ProjectPath projects/orig-cms -Force
+  ./migrate-tasks.ps1 -ProjectPath {PROJECT_PATH}
+  ./migrate-tasks.ps1 -ProjectPath {PROJECT_PATH} -DryRun
+  ./migrate-tasks.ps1 -ProjectPath {PROJECT_PATH} -Force
 
 Parameters:
   -ProjectPath  Path to project directory (required)

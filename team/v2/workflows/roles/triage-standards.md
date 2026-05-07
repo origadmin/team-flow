@@ -1,4 +1,4 @@
-# Triage Standards — _team v2
+# Triage Standards — team-flow v2
 
 > **Version**: v2.0 | **Role**: Triage Agent
 > **Last updated**: 2026-05-02

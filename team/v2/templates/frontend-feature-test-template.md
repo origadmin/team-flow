@@ -5,7 +5,7 @@
 | 字段 | 值 |
 |------|-----|
 | Issue ID | cms-xxx |
-| _team ID | F{xxx} |
+| task ID | F{xxx} |
 | Phase | phase:implement → phase:verify |
 | Subsystem | subsystem:frontend |
 
@@ -140,8 +140,8 @@ export const handlers = [
 |------|------|
 | Requirement | `_docs/.../requirements/Fxxx/SPEC.md` |
 | API Contract | `_docs/.../requirements/Fxxx/R3_API_CONTRACT.md` |
-| Test code | `projects/orig-cms/web/tests/features/F{xxx}-{short-name}/` |
-| MSW handlers | `projects/orig-cms/web/tests/mocks/handlers.ts` |
+| Test code | `{PROJECT_PATH}/web/tests/features/F{xxx}-{short-name}/` |
+| MSW handlers | `{PROJECT_PATH}/web/tests/mocks/handlers.ts` |
 
 ---
 

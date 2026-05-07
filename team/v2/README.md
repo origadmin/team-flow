@@ -1,4 +1,4 @@
-# _team v2 — Beads-Native Task Management
+# team-flow v2 — Beads-Native Task Management
 
 > **Status**: Ready for testing | **Version**: v2.0 | **Date**: 2026-05-02
 
@@ -41,13 +41,13 @@ bd init --prefix <proj>
 Update your project's CLAUDE.md:
 
 ```markdown
-Load _team rules: {TEAM_PATH}/v2/SKILL.md
+Load team-flow rules: {TEAM_PATH}/v2/SKILL.md
 ```
 
 ### 3. Migrate existing tasks (if any)
 
 ```powershell
-.\_team\v2\scripts\migrate-tasks.ps1 -ProjectPath projects/your-project
+{TEAM_PATH}/v2/scripts/migrate-tasks.ps1 -ProjectPath projects/your-project
 ```
 
 ### 4. Start using beads
@@ -69,7 +69,7 @@ bd close <id> --reason "Fixed in commit abc123"
 ## Directory Structure
 
 ```
-_team/v2/
+{TEAM_PATH}/v2/
 ├── README.md              ← You are here
 ├── SKILL.md               ← Entry point for AI
 ├── BOUNDARY.md             ← Layer boundaries
@@ -136,7 +136,7 @@ phase:review     → Waiting for confirmation
 
 ## Integration with Existing Tools
 
-- **_team v1**: Archive as `_team_v1_archive/`, keep for reference
+- **team-flow v1**: Archive as `_team_v1_archive/`, keep for reference # (legacy command)
 - **CLAUDE.md**: Point to v2 SKILL.md
 - **beads database**: `.beads/` in project root
 - **Dolt**: Git-native version control, syncs with beads

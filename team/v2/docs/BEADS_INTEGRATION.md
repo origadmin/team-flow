@@ -1,14 +1,14 @@
-# beads Integration Guide — _team v2
+# beads Integration Guide — team-flow v2
 
 > **Version**: v2.0 | **Date**: 2026-05-02
 
 ## Overview
 
-beads (bd CLI) is the single source of truth for task management in _team v2. This document maps beads concepts to _team v1 equivalents and defines the new workflow.
+beads (bd CLI) is the single source of truth for task management in team-flow v2. This document maps beads concepts to team-flow v1 equivalents and defines the new workflow.
 
 ## Concept Mapping
 
-| _team v1 Concept | beads Equivalent | Notes |
+| team-flow v1 Concept | beads Equivalent | Notes |
 |------------------|------------------|-------|
 | task-pool.md | beads `.beads/` database | Source of truth |
 | F/B/C/A-NNN ID | `external_ref` field | Stored in beads issue metadata |
@@ -58,7 +58,7 @@ subsystem:testing
 
 ## Type Mapping
 
-| _team Type | beads Type | Priority Default |
+| task Type | beads Type | Priority Default |
 |------------|------------|-------------------|
 | Bug | bug | P0/P1 |
 | Feature | feature | P1/P2 |
@@ -68,13 +68,13 @@ subsystem:testing
 
 ## ID Cross-Reference
 
-_team legacy IDs (F001, B061, etc.) are stored in beads' `external_ref` field:
+task legacy IDs (F001, B061, etc.) are stored in beads' `external_ref` field:
 
 ```bash
-# Create with _team ID reference
+# Create with task ID reference
 bd create "Feature: X" -t feature --external-ref "F014" -p 1 --json
 
-# Find by _team ID
+# Find by task ID
 bd list --json | jq '.[] | select(.externalRef == "F014")'
 
 # Update mapping
@@ -186,10 +186,10 @@ Standard metadata fields stored via `--set-metadata`:
 
 ```json
 {
-  "team_id": "F014",           // Original _team ID
+  "team_id": "F014",           // Original task ID
   "subsystem": "backend",      // Category
   "original_deps": "A001,B062", // Dependencies for export
-  "doc_path": "_docs/orig-cms/requirements/F014/", // Document location
+  "doc_path": "{DOCS_INTERNAL}/requirements/F014/", // Document location
   "milestone": "M1"            // Milestone reference
 }
 ```
@@ -198,7 +198,7 @@ Standard metadata fields stored via `--set-metadata`:
 # Set metadata
 bd update cms-xxx --set-metadata team_id=F014
 bd update cms-xxx --set-metadata subsystem=backend
-bd update cms-xxx --set-metadata doc_path="_docs/orig-cms/requirements/F014/"
+bd update cms-xxx --set-metadata doc_path="{DOCS_INTERNAL}/requirements/F014/"
 ```
 
 ## Dolt Integration (Git-native)

@@ -5,7 +5,7 @@
 | 字段 | 值 |
 |------|-----|
 | Issue ID | cms-xxx |
-| _team ID | B{xxx} |
+| task ID | B{xxx} |
 | Phase | phase:implement → phase:verify |
 | Subsystem | subsystem:frontend |
 | R 迭代 | R{n}（由 beads EventReopened 自动追踪，首次=R1） |
@@ -156,8 +156,8 @@
 | Type | Path |
 |------|------|
 | Bug report | `_docs/.../reports/bugs/Bxxx-Rx/RCA.md` |
-| Test code | `projects/orig-cms/web/tests/bugs/B{xxx}-{short-name}/` |
-| MSW handlers | `projects/orig-cms/web/tests/mocks/handlers.ts` |
+| Test code | `{PROJECT_PATH}/web/tests/bugs/B{xxx}-{short-name}/` |
+| MSW handlers | `{PROJECT_PATH}/web/tests/mocks/handlers.ts` |
 
 ---
 

@@ -1,19 +1,68 @@
-# _team v2 SKILL.md — Entry Point
+# team-flow v2 SKILL.md — Entry Point
 
 > **Version**: v2.0 | **Date**: 2026-05-02
 > **Core change**: Triage + Task Management → 100% beads
 
+## Status Line (MANDATORY — Highest Priority)
+
+Every AI response MUST start with a status line. This is the FIRST thing output, before any other content.
+
+```
+[Role: {role} | TaskPool: {status} | Phase: {phase} | Asset: {asset}]
+```
+
+| Field | Values | Description |
+|-------|--------|-------------|
+| Role | Triage / TechLead / Dev / QA / PM / DevOps / Analysis / UIDesigner | Current active role |
+| TaskPool | beads issue ID (e.g., `cms-42`) or ❌unread | Current task being worked on |
+| Phase | ready / analyze / design / implement / verify / review / -(N/A) | Current phase of the task |
+| Asset | directory path (e.g., `F014-user-profile/`) or -(N/A) | Current asset directory |
+
+**Example**:
+```
+[Role: Triage | TaskPool: ❌unread | Phase: -(N/A) | Asset: -(N/A)]
+→ First action: read .team/version, then bd ready
+
+[Role: Dev | TaskPool: cms-42 | Phase: implement | Asset: F014-user-profile/]
+→ Continue implementation of F014
+```
+
+**Why**: Without this, there is no way to verify the AI is following the correct role and phase. This is the most critical compliance check.
+
 ## Overview
 
-_team v2 is the beads-native evolution of _team. Triage uses `bd` CLI exclusively for all task creation, tracking, and status updates. The `task-pool.md` file becomes a read-only export for human-readable reference and AI context injection.
+team-flow v2 is the beads-native evolution of team-flow. Triage uses `bd` CLI exclusively for all task creation, tracking, and status updates. The `task-pool.md` file becomes a read-only export for human-readable reference and AI context injection.
 
 ## Path Variables
 
 ```yaml
-{TEAM_PATH}:     framework/_team/v2/          # This directory (framework-relative)
-{PROJECT_PATH}:  projects/orig-cms/           # Current project
-{BEADS_DB}:      projects/orig-cms/.beads/   # beads data directory
-{DOCS_INTERNAL}:framework/_docs/orig-cms/  # Internal project docs
+{TEAM_PATH}:     .trae/skills/team-flow/       # Skill installation path (IDE-relative)
+{PROJECT_PATH}:  {project-path}/            # Current project
+{BEADS_DB}:      {PROJECT_PATH}/.beads/     # beads data directory
+{DOCS_PATH}:     (read from .team/project.md docs_path, fallback: _docs/{project-name}/ or .team/docs/)
+{VERSION}:       .team/version                 # Read for active version (v1 or v2)
+```
+
+## Human-Readable Export
+
+beads is AI-managed. Humans need readable exports.
+
+**Configuration** (in `.team/project.md`):
+```yaml
+## Paths
+docs_path: _docs/{project-name}/    # User-configurable
+```
+
+**Export rules**:
+1. Triage exports task status to `{DOCS_PATH}/task-pool.md` after every status change
+2. CLI command: `flow export` — manual export anytime
+3. If `docs_path` not configured: fallback to `.team/docs/`
+
+**Resolution order**:
+```
+1. .team/project.md → docs_path value
+2. _docs/{project-name}/           (default convention)
+3. .team/docs/                     (minimal fallback)
 ```
 
 ## Quick Start (First Session)
@@ -44,7 +93,7 @@ type {PROJECT_PATH}/.team/ai-context.md
 ## Directory Structure
 
 ```
-_team/v2/
+{TEAM_PATH}/
 ├── SKILL.md              ← You are here
 ├── BOUNDARY.md           # Layer architecture definition
 ├── prompts/              # Role execution rules (v2, beads-native)
@@ -109,6 +158,115 @@ _team/v2/
 
 ## Critical Rules
 
+### Efficiency Rules
+
+1. **Hot start**: Load `{TEAM_PATH}/prompts/triage.md` for classification or execution.
+2. **No redundant checks**: Unless `.team/` is missing or user requests, do not re-run "version check" or "project init" logic.
+3. **Heartbeat**: Role response first line: `[Role: {role} | TaskPool: {status} | Phase: {phase} | Asset: {status}]`
+   - Role: Triage / Dev / QA / `-` (no role loaded)
+   - TaskPool: `bd ready` / `task-pool` / `-(N/A)`
+   - Phase: `Phase N` / `blocked` / `-(N/A)`
+   - Asset: `ok` / `missing` / `-(N/A)`
+4. **No-role guard**: When `Role: -`, only clarification answers allowed, no project modifications.
+
+### Dispatch Guard (same priority as Regression Guard)
+
+> **AI bypassing dispatch is the most common behavioral deviation. Triage must dispatch, never execute directly.**
+
+#### Rule 1: Must dispatch after classification
+- After intent recognition, **must use Task tool to start sub-agent**
+- Never do it yourself after classification (read code, modify code, debug, write design docs)
+- Only exception: clarification questions can be answered directly
+
+#### Rule 2: Self-check before action
+- Before any action, **must ask yourself**:
+  ```
+  Is this Triage's responsibility or sub-agent's?
+  Triage: intent recognition, task creation, start sub-agent, update status, report results
+  Sub-agent: read code, modify code, debug, design, analyze, deploy
+  ```
+- If sub-agent responsibility -> **stop, use Task tool to dispatch**
+
+#### Rule 3: No "just doing it quickly"
+- Even simple tasks **must be dispatched to sub-agent**
+- "Just doing it" is overreach, not efficiency
+- Simple tasks -> sub-agent executes faster (has dedicated prompts and tools)
+
+#### Rule 4: Classification report + dispatch is atomic
+- After classification report, **immediately start sub-agent**, do not wait for user confirmation
+- Classification report and Task call must be in the same response
+
+### Regression Guard (highest priority)
+
+> **AI breaking existing functionality is the most frequent issue. These rules have priority over all development instructions.**
+
+#### Rule 1: Must read before modifying
+- Before modifying any existing code file, **must read the complete file first**
+- Never modify based on partial view or diff range only
+
+#### Rule 2: Must search before changing exported symbols
+- Before changing exported function/method/interface/type, **must search all reference points**
+- Command: `grep -r "SymbolName" --include="*.go"` or equivalent
+- Changing exported symbols without searching references -> forbidden
+
+#### Rule 3: Layered testing - local first, then full
+- **During TDD cycle**: only run current module tests
+  - Backend: `go test ./internal/features/xxx/...`
+  - Frontend: `bun run test -- --testPathPattern="xxx"`
+- **After modification (regression verification)**: run full tests
+  - Backend: `go test ./...`
+  - Frontend: `bun run test`
+- **Zero regression tolerance**: any previously passing test fails -> stop, fix or rollback
+- **High-frequency modification**: after every N local tests, run full suite (recommended N=3)
+
+```
+Development flow:
+  TDD red->green->refactor: local tests (seconds)
+       ↓ repeat N times
+  Periodic regression:     full tests (minutes)
+       ↓
+  Completion gate:         full tests (must pass)
+       ↓
+  Frontend extra:         bun run typecheck (must pass)
+```
+
+#### Rule 4: Breaking changes must be compatible
+- Changing interface signatures, deleting methods, modifying return value structures = Breaking Change
+- Breaking changes must provide compatibility solution (new function / versioned interface / deprecation marker)
+- Never change interface without updating all callers
+
+#### Rule 5: Add tests before modifying untested code
+- Before modifying existing code without test coverage, **add tests first**
+- Only modify after tests pass
+
+#### Rule 6: TanStack Router parent routes with child routes must use Outlet
+- When a route has child routes, parent **must render `<Outlet/>`**, otherwise child route URL matches but page doesn't switch
+- Correct: `xxx/route.tsx` -> `<Outlet/>` + `xxx/index.tsx` -> list component
+- Wrong: `xxx.tsx` -> render component directly (child routes cannot display)
+- Always check for child routes when creating new routes
+
+#### Rule 7: Phenomenon first - Bug investigation must confirm phenomenon first
+- When user reports visual/interaction issues, **must check rendering code to confirm phenomenon first**, never skip to data layer
+- Investigation order: **Rendering layer -> API layer -> Business layer -> Data layer** (top-down)
+- Never assume the problem is in the data layer without confirming the phenomenon
+
+#### Rule 8: UI code self-check - must check for duplicate rendering
+- After writing UI components, **must check if same data is rendered multiple times**
+- **Compilation passing != logic correct**, UI code must be manually reviewed
+- Check method: `grep "formatDate\|formatDuration\|t('"` target file, confirm each data rendered once
+
+#### Rule 9: Data flow tracing - Bug fixes must trace runtime data flow
+- For bugs involving API/permissions/state/interaction, **must trace complete data flow from source to sink**, never "guess where the problem is and fix there"
+- Trace steps: define start/end -> list each step -> verify each step to find breakpoint -> fix breakpoint -> verify complete chain
+- **Compilation passing != fix complete**, mock test passing != functionality available
+- Detailed spec: `{TEAM_PATH}/workflows/roles/bugfix-standards.md`
+
+#### Rule 10: Real scenario verification - mock test passing != functionality available
+- For bugs involving API/permissions/state/interaction, **must perform real scenario verification** (HTTP request / page-level), not just mock tests
+- Backend bugs: at minimum use httptest to send real HTTP requests, not just test UseCase
+- Frontend bugs: at minimum verify page renders normally + core interactions work, not just test components
+- R-iteration > 4 must force pause, ask user to confirm fix direction
+
 ### v2 Task Lifecycle
 
 ```
@@ -123,8 +281,8 @@ bd close <id> --reason "Done" --json
 
 ### ID Mapping
 
-- _team ID (F001, B061, etc.) lives in the `external-ref` field of the beads issue
-- Use `bd list --json | ConvertFrom-Json | Where-Object { $_.externalRef -match 'F001' }` to find by _team ID
+- task ID (F001, B061, etc.) lives in the `external-ref` field of the beads issue
+- Use `bd list --json | ConvertFrom-Json | Where-Object { $_.externalRef -match 'F001' }` to find by task ID
 - Export: `bd list --json` includes `externalRef` for cross-reference
 
 ### DO NOT
@@ -132,16 +290,16 @@ bd close <id> --reason "Done" --json
 - ❌ Edit task-pool.md manually during task operations
 - ❌ Create tasks in task-pool.md that aren't also in beads
 - ❌ Skip `bd dolt push` after significant status changes
-- ❌ Write to `_team/v1/` (framework-original, read-only reference)
+- ❌ Write to `{TEAM_PATH}/v1/` (framework-original, read-only reference)
 - ❌ Dump deliverable content into beads notes — write to independent files (RCA.md, SPEC.md, etc.)
-- ❌ Modify `_team/` rules to solve project-specific problems — use `.team/project.md §CONSTRAINTS` and `_docs/.../lessons/` instead
+- ❌ Modify `{TEAM_PATH}/` rules to solve project-specific problems — use `.team/project.md §CONSTRAINTS` and `_docs/.../lessons/` instead
 
 ### Core Principle: Framework ≠ Project
 
-> **v1 教训**: AI 在修复项目问题时，把项目规则写入了 `_team/`（框架层），等于篡改了 AI 的大脑来适应项目问题。
+> **v1 教训: AI 在修复项目问题时，把项目规则写入了 `{TEAM_PATH}/`（框架层），等于篡改了 AI 的大脑来适应项目问题。
 
 ```
-_team/           = AI 框架规则（跨项目共享，只读）
+{TEAM_PATH}/        = AI 框架规则（跨项目共享，只读）
                    → 只有开发 AI SKILL 本身时才能修改
 
 .team/project.md = 项目约束（Triage 读取并遵守）
@@ -281,7 +439,7 @@ This ensures AI maintains context across turns and prevents task drift.
 
 ## MILESTONES Sync
 
-| _team Status | beads Status | Meaning |
+| task Status | beads Status | Meaning |
 |-------------|-------------|---------|
 | Todo | open | Not started |
 | Doing | in_progress | In progress |
@@ -306,33 +464,39 @@ This ensures AI maintains context across turns and prevents task drift.
 | UI Designer | shared.md, ui-standards.md, ui-design-template.md |
 | Framework Architect | shared.md, architecture-standards.md, framework-workflow.md |
 
-## Pre-Modification Checklist (铁律1-2)
-
-Before modifying any existing code file:
-
-1. **Read the complete file first** — Never modify based on partial view
-2. **Search all references** — `Grep` for exported symbols before changing interfaces
-3. **Run local tests** — Only current module tests during TDD cycle
-4. **Check impact radius** — `flow graph impact [files]` or recursive `Grep`
-5. **Verify no breaking changes** — If interface changed, provide compatibility layer
-
-## Bug Post-Verification (铁律7-10)
-
-After bugfix-expert returns, Triage must verify:
-
-1. **Phenomenon confirmed first** — Check rendering code before analyzing data layer
-2. **Data flow traced** — From source to sink, not just symptom
-3. **Real scenario tested** — HTTP request or page-level, not just mock
-4. **No duplicate rendering** — Check UI for same data rendered twice
-5. **R-iteration ≤ 4** — If >4 rounds, pause for user direction
-6. **Mock test ≠ functional** — Mock passing doesn't mean feature works
-
 ## HARD CONSTRAINTS
 
 - **Delete Permission: DISABLED** — Never delete files unless explicitly asked
 - **Framework ≠ Project** — Project problems solved at project layer, never patch framework
 - **No secrets in code** — Never expose or log secrets/keys
 - **NEVER commit unless user asks** — Explicit confirmation required
+- **NEVER use PowerShell Set-Content / Out-File** — these add UTF-8 BOM, corrupting source files
+  - Use Write tool (built-in, guarantees UTF-8 without BOM)
+  - Use SearchReplace tool (built-in, precise replacement)
+  - If must use command line: `[System.IO.File]::WriteAllText('path', $content, [System.Text.UTF8Encoding]::new($false))`
+
+## Sub-agent Prompt Template
+
+```
+You are {role_name}, executing task {task_id}: {task_description}
+
+Rules: {TEAM_PATH}/prompts/{role}.md
+Shared protocol: {TEAM_PATH}/workflows/shared.md
+Task tracking: bd CLI (v2) or task-pool.md (v1)
+Docs: {DOCS_INTERNAL}
+
+After completion:
+1. bd update <id> --notes "COMPLETED: ... IN PROGRESS: ..." (v2)
+   or update task-pool.md status (v1)
+2. Set suggested next role
+3. Report deliverables list
+```
+
+## Core Protocol
+
+- Shared protocol: `{TEAM_PATH}/workflows/shared.md`
+- Triage rules: `{TEAM_PATH}/prompts/triage.md`
+- Entry point: `{TEAM_PATH}/SKILL.md`
 
 ## Entry Point for AI
 

@@ -148,7 +148,7 @@ foreach ($Prio in ($Priority | Sort-Object)) {
 $OutputContent += "---"
 $OutputContent += ""
 $OutputContent += "<!-- Run: $Cmd -->"
-$OutputContent += "<!-- Script: _team/v2/scripts/export-task-pool.ps1 -->"
+$OutputContent += "<!-- Script: {TEAM_PATH}/scripts/export-task-pool.ps1 -->"
 
 # Write output
 $OutputDir = Split-Path $Output -Parent

@@ -1,11 +1,11 @@
-# Migration Guide: _team v1 → v2
+# Migration Guide: team-flow v1 → v2
 
 > **Version**: v2.0 | **Date**: 2026-05-02
 > **Scope**: Triage workflow, Task pool management, Multi-agent coordination
 
 ## Executive Summary
 
-_team v2 replaces task-pool.md as the source of truth with beads (bd CLI), eliminating:
+team-flow v2 replaces task-pool.md as the source of truth with beads (bd CLI), eliminating:
 - Git merge conflicts from concurrent edits
 - Manual sync overhead between agents
 - Inconsistent task state tracking
@@ -30,7 +30,7 @@ Run v1 and v2 in parallel for 1-2 weeks before switching fully.
 #### 1.1 Initialize beads in project
 
 ```bash
-cd projects/orig-cms
+cd {PROJECT_PATH}
 bd init --prefix cms
 ```
 
@@ -40,16 +40,16 @@ Use the migration script:
 
 ```powershell
 # From framework root
-.\_team\v2\scripts\migrate-tasks.ps1 -ProjectPath "projects/orig-cms" -DryRun
+{TEAM_PATH}/v2/scripts/migrate-tasks.ps1 -ProjectPath "{PROJECT_PATH}" -DryRun
 
 # Review output, then run for real
-.\_team\v2\scripts\migrate-tasks.ps1 -ProjectPath "projects/orig-cms"
+{TEAM_PATH}/v2/scripts/migrate-tasks.ps1 -ProjectPath "{PROJECT_PATH}"
 ```
 
 Migration script will:
 - Read `.team/task-pool.md`
 - Create beads issue for each row
-- Store _team ID in `external_ref` field
+- Store task ID in `external_ref` field
 - Add phase/subsystem labels
 - Generate mapping file `.beads/task-pool-mapping.json`
 
@@ -69,8 +69,8 @@ bd list --json | jq '.[] | select(.externalRef == "F014")'
 Point to v2 SKILL.md:
 
 ```markdown
-<!-- In projects/orig-cms/CLAUDE.md -->
-Load _team rules: {TEAM_PATH}/v2/SKILL.md
+<!-- In {PROJECT_PATH}/CLAUDE.md -->
+Load team-flow rules: {TEAM_PATH}/v2/SKILL.md
 ```
 
 ### Phase 2: Full Cutover
@@ -83,8 +83,8 @@ Update all agent prompts to use `bd` commands instead of file edits.
 
 ```bash
 # Keep v1 for reference (read-only)
-mv _team _team_v1_archive
-ln -s _team_v1_archive _team  # Symlink for compatibility
+mv _team _team_v1_archive  # (legacy command)
+ln -s _team_v1_archive _team  # Symlink for compatibility (legacy command)
 ```
 
 #### 2.3 Update all SKILL.md references
@@ -161,7 +161,7 @@ bun install -g beads
 Solution: Initialize beads in project
 
 ```bash
-cd projects/orig-cms
+cd {PROJECT_PATH}
 bd init --prefix cms
 ```
 
@@ -180,7 +180,7 @@ dolt remote add origin <remote-url>
 Solution: Run migration script with `--force` to recreate mapping
 
 ```powershell
-.\_team\v2\scripts\migrate-tasks.ps1 -ProjectPath "projects/orig-cms" -Force
+{TEAM_PATH}/v2/scripts/migrate-tasks.ps1 -ProjectPath "{PROJECT_PATH}" -Force
 ```
 
 ### Issue: "Phase labels not showing"
@@ -197,7 +197,7 @@ If v2 causes issues, rollback to v1:
 
 1. Stop all v2 agents
 2. Restore task-pool.md from git history
-3. Update CLAUDE.md to point to `_team_v1_archive/SKILL.md`
+3. Update CLAUDE.md to point to `{TEAM_PATH}_v1_archive/SKILL.md`
 4. Investigate issue in v2, fix, re-deploy
 
 ## Checklist
@@ -214,5 +214,5 @@ If v2 causes issues, rollback to v1:
 ## Training Resources
 
 - beads CLI reference: `bd --help`, `bd <command> --help`
-- _team v2 docs: `{TEAM_PATH}/v2/docs/`
+- team-flow v2 docs: `{TEAM_PATH}/v2/docs/`
 - Integration guide: `BEADS_INTEGRATION.md`

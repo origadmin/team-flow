@@ -5,7 +5,7 @@
 | 字段 | 值 |
 |------|-----|
 | Issue ID | cms-xxx |
-| _team ID | B{xxx} |
+| task ID | B{xxx} |
 | Phase | phase:implement → phase:verify |
 | Subsystem | subsystem:backend |
 | R 迭代 | R{n}（由 beads EventReopened 自动追踪，首次=R1） |
@@ -144,7 +144,7 @@
 | 类型 | 路径 |
 |------|------|
 | Bug 报告 | `_docs/.../reports/bugs/Bxxx-Rx/RCA.md` |
-| 测试代码目录 | `projects/orig-cms/tests/bugs/B{xxx}-{short-name}/` |
+| 测试代码目录 | `{PROJECT_PATH}/tests/bugs/B{xxx}-{short-name}/` |
 
 ---
 
