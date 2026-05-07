@@ -4,12 +4,14 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/origadmin/team-flow/internal/doctorcmd"
+	"github.com/origadmin/team-flow/internal/boot"
+	"github.com/origadmin/team-flow/internal/doctor"
 	"github.com/origadmin/team-flow/internal/editor"
-	"github.com/origadmin/team-flow/internal/graphcmd"
-	"github.com/origadmin/team-flow/internal/initcmd"
-	"github.com/origadmin/team-flow/internal/migratecmd"
-	"github.com/origadmin/team-flow/internal/statuscmd"
+	"github.com/origadmin/team-flow/internal/export"
+	"github.com/origadmin/team-flow/internal/graph"
+	"github.com/origadmin/team-flow/internal/migrate"
+	"github.com/origadmin/team-flow/internal/status"
+	"github.com/origadmin/team-flow/internal/ver"
 	"github.com/origadmin/team-flow/internal/version"
 	"github.com/spf13/cobra"
 )
@@ -29,12 +31,14 @@ func init() {
 }
 
 func main() {
-	rootCmd.AddCommand(initcmd.Cmd)
-	rootCmd.AddCommand(doctorcmd.Cmd)
-	rootCmd.AddCommand(migratecmd.Cmd)
-	rootCmd.AddCommand(statuscmd.Cmd)
+	rootCmd.AddCommand(boot.Cmd)
+	rootCmd.AddCommand(doctor.Cmd)
+	rootCmd.AddCommand(migrate.Cmd)
+	rootCmd.AddCommand(export.Cmd)
+	rootCmd.AddCommand(status.Cmd)
 	rootCmd.AddCommand(editor.Cmd)
-	rootCmd.AddCommand(graphcmd.Cmd)
+	rootCmd.AddCommand(graph.Cmd)
+	rootCmd.AddCommand(ver.Cmd)
 
 	rootCmd.AddCommand(&cobra.Command{
 		Use:   "version",
