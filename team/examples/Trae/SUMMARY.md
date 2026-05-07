@@ -1,4 +1,4 @@
-# _team Framework v6.0 → Trae Agent Prompt 生成总结
+# team-flow Framework v6.0 → Trae Agent Prompt 生成总结
 
 > 生成日期: 2026-04-25 | 版本: v6.1 | 状态: ✅ 已完成
 
@@ -8,7 +8,7 @@
 
 ### 1.1 核心问题
 
-在单 Agent 模式下，AI 反复绕过 `_team` 框架中已写入的规则，最典型的案例是 **Toolchain Gate**：
+在单 Agent 模式下，AI 反复绕过 `team-flow` 框架中已写入的规则，最典型的案例是 **Toolchain Gate**：
 
 - `dev.md` 和 `development-standards.md` 明确要求"从 project.md 读取包管理器"，但 AI 仍在 bun 项目中使用 `npx` 或错误的构建命令
 - 根因分析：单 Agent 模式下规则是"软约束"（soft constraints），AI 在压力下会跳过"先读 X 再做 Y"的指令，npx 属于肌肉记忆
@@ -17,7 +17,7 @@
 
 **Plan A（主方案）：Trae 多 Agent 路由**
 
-将 `_team` 的每个角色转换为 Trae IDE 的独立 Agent，**所有规则内联到 Prompt 中**（Trae 无文件系统访问能力，无法在运行时读取外部文件）。
+将 `team-flow` 的每个角色转换为 Trae IDE 的独立 Agent，**所有规则内联到 Prompt 中**（Trae 无文件系统访问能力，无法在运行时读取外部文件）。
 
 **Plan B（备选）：单 Agent 回退 + Git Hooks / CI**
 
@@ -27,7 +27,7 @@
 
 > **所有规则必须 INLINE（内联）** — 不允许"读取 X 文件后执行 Y"的运行时依赖
 
-| 传统 _team Prompt | Trae Agent Prompt |
+| 传统 team-flow Prompt | Trae Agent Prompt |
 |---|---|
 | 引用外部文件："读取 conventions/dev-common.md" | 全文内联：直接嵌入规则内容 |
 | PRE-FLIGHT 作为入口检查步骤 | PRE-FLIGHT 内联到每个 Agent 的开头 |
@@ -39,7 +39,7 @@
 
 ### 2.1 文件清单
 
-目标目录：`D:\workspace\project\golang\origadmin\framework\_team\examples\Trae\`
+目标目录：`{TEAM_PATH}/examples/Trae/`
 
 | # | 文件名 | 角色 | 大小 | PRE-FLIGHT 内联内容 |
 |---|--------|------|------|-------------------|
@@ -106,7 +106,7 @@
 
 ### 3.2 §CONSTRAINTS（硬约束）
 
-- 项目标识：orig-cms
+- 项目标识：{project-name}
 - API 前缀：`/api/v1`（前后端统一）
 - 前端路由前缀：`/admin`
 - 环境变量前缀：`ORIGCMS_`
@@ -194,14 +194,14 @@
 
 ---
 
-## 5. _team Framework v6.0 四点计划进度
+## 5. team-flow Framework v6.0 四点计划进度
 
 | # | 项目 | 状态 | 说明 |
 |---|------|------|------|
 | 1 | PRE-FLIGHT 模块 | ✅ 已完成 | `workflows/pre-flight.md` v6.1，定义了每个角色的 PRE-FLIGHT 差异 |
 | 2 | shared.md Step 0 更新 | ⏳ 未开始 | 在 shared.md 中加入 PRE-FLIGHT 作为 Step 0 |
 | 3 | 经验规则合并到 conventions | ⏳ 未开始 | 将 lessons/ 内容结构化合并到 conventions/ |
-| 4 | 原始 Prompt 更新 PRE-FLIGHT 引用 | ⏳ 部分完成 | Trae 生成已完成内联，但 `_team/prompts/` 原始文件尚未更新 |
+| 4 | 原始 Prompt 更新 PRE-FLIGHT 引用 | ⏳ 部分完成 | Trae 生成已完成内联，但 `{TEAM_PATH}/prompts/` 原始文件尚未更新 |
 
 ---
 
@@ -232,9 +232,9 @@
 
 ### 7.2 核心认知修正
 
-> **_team/ ≠ 项目层级，_team/ = AI 执行协议/约束**
+> **{TEAM_PATH}/ ≠ 项目层级，{TEAM_PATH}/ = AI 执行协议/约束**
 
-- _team/ 是"AI 怎么干活怎么不犯错"的规则
+- {TEAM_PATH}/ 是"AI 怎么干活怎么不犯错"的规则
 - _docs/{project}/ 是"项目的一切决策"
 - 两者是不同领域，而非不同层级
 
@@ -255,4 +255,4 @@
 
 ---
 
-*本文档由 QClaw 自动生成，基于 _team Framework v6.0 的 Trae Agent Prompt 生成过程记录。*
+*本文档由 QClaw 自动生成，基于 team-flow Framework v6.0 的 Trae Agent Prompt 生成过程记录。*

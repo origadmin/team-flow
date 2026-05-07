@@ -13,7 +13,7 @@ examples/OpenClaw/
 └── README.md    ← 本文件（快速开始、核心约束）
 ```
 
-> 各角色 prompt 在 `_team/prompts/` 目录下，OpenClaw 运行时通过 `sessions_spawn` 加载。
+> 各角色 prompt 在 `{TEAM_PATH}/prompts/` 目录下，OpenClaw 运行时通过 `sessions_spawn` 加载。
 
 ---
 
@@ -76,7 +76,7 @@ examples/OpenClaw/
 ## 核心约束（所有 Agent 必须遵守）
 
 ### 层边界
-- `framework/_team/` = 多项目框架层，**只读**，禁止写入
+- `{TEAM_PATH}/` = 多项目框架层，**只读**，禁止写入
 - `{PROJECT_PATH}/.team/` = 当前项目层，可读写
 
 ### ID 命名
@@ -88,7 +88,7 @@ examples/OpenClaw/
 - ❌ 中文注释
 - ❌ 跳过 RCA / SCOPE / 验收标准
 - ❌ 为同一 Bug 创建新 ID（B019 修复失败只能 B019-R2，不能 B026）
-- ❌ 直接写 `projects/orig-cms/_docs/`（正确路径是 `framework/_docs/orig-cms/`）
+- ❌ 直接写 `{PROJECT_PATH}/_docs/`（正确路径是 `{DOCS_INTERNAL}/`）
 
 ---
 
@@ -104,6 +104,6 @@ Get-Content "{PROJECT_PATH}/.team/task-pool.md" -Head 5
 ## 相关文档
 
 - Trae 配置示例: `examples/Trae/`（包含 11 个角色 agent prompt）
-- 框架层规则: `_team/BOUNDARY.md`
-- Bug 修复规范: `_team/workflows/shared.md`
-- 项目配置: `projects/orig-cms/.team/project.md`
+- 框架层规则: `{TEAM_PATH}/BOUNDARY.md`
+- Bug 修复规范: `{TEAM_PATH}/workflows/shared.md`
+- 项目配置: `{PROJECT_PATH}/.team/project.md`

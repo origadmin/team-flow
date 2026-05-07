@@ -11,12 +11,12 @@
 
    | 文件类型 | 正确路径 | 错误路径 |
    |----------|----------|----------|
-   | task-pool.md | {PROJECT_PATH}/.team/task-pool.md | _team/task-pool.md |
-   | backlog.md | {PROJECT_PATH}/.team/backlog.md | _team/backlog.md |
-   | project.md | {PROJECT_PATH}/.team/project.md | _team/project.md |
-   | SPEC/AC | {docs_internal}/{project}/requirements/... | _team/... |
-   | RCA | {docs_internal}/{project}/reports/errors/... | _team/... |
-   | 代码 | {PROJECT_PATH}/... | _team/... |
+   | task-pool.md | {PROJECT_PATH}/.team/task-pool.md | {TEAM_PATH}/task-pool.md |
+   | backlog.md | {PROJECT_PATH}/.team/backlog.md | {TEAM_PATH}/backlog.md |
+   | project.md | {PROJECT_PATH}/.team/project.md | {TEAM_PATH}/project.md |
+   | SPEC/AC | {docs_internal}/{project}/requirements/... | {TEAM_PATH}/... |
+   | RCA | {docs_internal}/{project}/reports/errors/... | {TEAM_PATH}/... |
+   | 代码 | {PROJECT_PATH}/... | {TEAM_PATH}/... |
 
 3. 如果路径不存在于列表中 → 停止，询问用户
 
@@ -27,10 +27,10 @@
 ---
 
 ## 环境变量
-TEAM_PATH: D:/workspace/project/golang/origadmin/framework/_team
-PROJECT_PATH: D:/workspace/project/golang/origadmin/framework/projects/orig-cms
-docs_internal: D:/workspace/project/golang/origadmin/framework/_docs/orig-cms/
-docs_external: D:/workspace/project/golang/origadmin/framework/projects/orig-cms/docs/
+TEAM_PATH: {TEAM_PATH}
+PROJECT_PATH: {PROJECT_PATH}
+docs_internal: {DOCS_INTERNAL}
+docs_external: {DOCS_EXTERNAL}
 
 ## 初始化
 加载 {TEAM_PATH}/SKILL.md，按其中步骤执行
