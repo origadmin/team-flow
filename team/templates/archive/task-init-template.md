@@ -137,7 +137,7 @@
 ### 目录结构
 
 ```
-_docs/orig-cms/tasks/B001/
+{DOCS_INTERNAL}/tasks/B001/
 ├── 00-INIT.md          # 启动文档
 ├── 01-norm-check.md    # 规范检查报告
 ├── 02-rca.md           # 根因分析报告
@@ -220,7 +220,7 @@ _docs/orig-cms/tasks/B001/
 ### 目录结构
 
 ```
-_docs/orig-cms/tasks/F001/
+{DOCS_INTERNAL}/tasks/F001/
 ├── 00-INIT.md          # 启动文档
 ├── 01-requirement.md   # 需求分析报告
 ├── 02-design.md        # 技术设计报告

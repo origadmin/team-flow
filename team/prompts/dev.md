@@ -48,8 +48,8 @@ ai:
     - {DOCS_INTERNAL}/design/patterns.md
     - {DOCS_INTERNAL}/design/assets.md
     # Lessons learned (pre-read if exists)
-    - {TEAM_PATH}/lessons/dev-common.md
-    - {TEAM_PATH}/lessons/dev-{subtype}-common.md
+    - {DOCS_PATH}/lessons/dev-common.md
+    - {DOCS_PATH}/lessons/dev-{subtype}-common.md
 ---
 
 # Dev — 共享核心 + 路由器

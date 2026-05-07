@@ -102,8 +102,8 @@
 
 | 标准文档 | 类型 | 路径 | 参考内容 |
 |---------|------|------|---------|
-| UI 标准 | 规范 | `_team/standards/ui-standards.md` | 按钮高度 h10 |
-| 设计文档 | 设计 | `_docs/orig-cms/ui-design/navigation/DESIGN.md` | 导航布局规范 |
+| UI 标准 | 规范 | `{TEAM_PATH}/standards/ui-standards.md` | 按钮高度 h10 |
+| 设计文档 | 设计 | `{DOCS_INTERNAL}/ui-design/navigation/DESIGN.md` | 导航布局规范 |
 
 ---
 
@@ -163,7 +163,7 @@
 
 | 标准文档 | 类型 | 路径 | 参考内容 |
 |---------|------|------|---------|
-| UI 标准 | 规范 | `_team/standards/ui-standards.md` | 按钮高度 h10 |
+| UI 标准 | 规范 | `{TEAM_PATH}/standards/ui-standards.md` | 按钮高度 h10 |
 | 前一阶段报告 | 报告 | `reports/bugs/B001/01-norm-check.md` | 规范检查结论 |
 
 ---
@@ -231,9 +231,9 @@
 
 | 标准文档 | 类型 | 路径 | 参考内容 |
 |---------|------|------|---------|
-| 需求规范 | 规范 | `_team/standards/requirements-standards.md` | 需求文档结构 |
-| PRD 模板 | 模板 | `_team/templates/prd-template.md` | PRD 格式 |
-| Gherkin 模板 | 模板 | `_team/templates/gherkin-feature-template.md` | AC 格式 |
+| 需求规范 | 规范 | `{TEAM_PATH}/standards/requirements-standards.md` | 需求文档结构 |
+| PRD 模板 | 模板 | `{TEAM_PATH}/templates/prd-template.md` | PRD 格式 |
+| Gherkin 模板 | 模板 | `{TEAM_PATH}/templates/gherkin-feature-template.md` | AC 格式 |
 
 ---
 

@@ -20,7 +20,7 @@ ai:
     - {TEAM_PATH}/workflows/shared.md
     - {TEAM_PATH}/workflows/roles/ui-standards.md
     - {TEAM_PATH}/templates/ui-design-template.md
-    # 项目级设计规范（覆盖 _team 通用默认值）
+    # 项目级设计规范（覆盖 team-flow 通用默认值）
     - {DOCS_INTERNAL}/design/tokens.md
     - {DOCS_INTERNAL}/design/components.md
     - {DOCS_INTERNAL}/design/layouts.md

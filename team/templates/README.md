@@ -37,5 +37,5 @@
 3. **验证**: 确保所有占位符已替换，文档路径正确
 
 **模板路径规则**:
-- 共通模板（`_team/templates/`）→ 通用场景
+- 共通模板（`{TEAM_PATH}/templates/`）→ 通用场景
 - 项目模板（`projects/{project}/templates/`）→ 项目特定场景

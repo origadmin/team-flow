@@ -132,7 +132,7 @@
 ### 模板位置
 
 ```
-_team/templates/
+{TEAM_PATH}/templates/
 ├── task-pool.md              # 任务池模板
 ├── stage-report-template.md  # 阶段报告模板（通用）
 ├── bug-report-template.md    # Bug 报告模板（阶段报告的 Bug 特化版）

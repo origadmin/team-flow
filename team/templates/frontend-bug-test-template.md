@@ -147,6 +147,6 @@
 
 | Type | Path |
 |------|------|
-| Bug report | `_docs/.../reports/bugs/Bxxx-Rx/RCA.md` |
-| Test code | `projects/orig-cms/web/tests/bugs/B{xxx}-{short-name}/` |
-| MSW handlers | `projects/orig-cms/web/tests/mocks/handlers.ts` |
+| Bug report | `{DOCS_INTERNAL}/reports/bugs/Bxxx-Rx/RCA.md` |
+| Test code | `{PROJECT_PATH}/web/tests/bugs/B{xxx}-{short-name}/` |
+| MSW handlers | `{PROJECT_PATH}/web/tests/mocks/handlers.ts` |

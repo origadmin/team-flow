@@ -1,13 +1,13 @@
 {
   "version": "7.0",
   "updated": "2026-04-25",
-  "_comment": "workspace 路径使用相对路径，相对于 _team 目录",
+  "_comment": "workspace 路径使用相对路径，相对于 {TEAM_PATH} 目录",
   "_comment_subagent": "subagent_type 映射到 Trae Task 工具的 subagent_type 参数",
   "_comment_routing": "routingRules 定义关键词/项目类型到角色的映射，供多 Agent 工具（trae/Gemini CLI 等）使用",
   "teams": {
     "app-dev": {
       "name": "应用开发团队",
-      "description": "负责 orig-cms-ee 等应用项目开发",
+      "description": "负责 {project-name} 等应用项目开发",
       "standards": "workflows/output-standards.md",
       "members": [
         {

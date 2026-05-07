@@ -147,7 +147,7 @@ export const handlers = [
 
 | Type | Path |
 |------|------|
-| Requirement | `_docs/.../requirements/Fxxx/SPEC.md` |
-| API Contract | `_docs/.../requirements/Fxxx/R3_API_CONTRACT.md` |
-| Test code | `projects/orig-cms/web/tests/features/F{xxx}-{short-name}/` |
-| MSW handlers | `projects/orig-cms/web/tests/mocks/handlers.ts` |
+| Requirement | `{DOCS_INTERNAL}/requirements/Fxxx/SPEC.md` |
+| API Contract | `{DOCS_INTERNAL}/requirements/Fxxx/R3_API_CONTRACT.md` |
+| Test code | `{PROJECT_PATH}/web/tests/features/F{xxx}-{short-name}/` |
+| MSW handlers | `{PROJECT_PATH}/web/tests/mocks/handlers.ts` |

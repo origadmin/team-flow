@@ -1,6 +1,6 @@
-# _team 安装指南
+# team-flow 安装指南
 
-> 如何在项目中使用 _team 多角色协作系统
+> 如何在项目中使用 team-flow 多角色协作系统
 > **TEAM_VERSION=6.0** | 2026-04-25
 
 ---
@@ -12,7 +12,7 @@
 在你的项目根目录创建 `SKILL.md`：
 
 ```markdown
-加载 D:/workspace/project/golang/origadmin/framework/_team/SKILL.md，按其中步骤执行。
+加载 {TEAM_PATH}/SKILL.md，按其中步骤执行。
 
 ## 项目信息
 
@@ -31,7 +31,7 @@
 ### 步骤 3：验证
 
 ```
-初始化项目，检查 _team 状态
+初始化项目，检查 team-flow 状态
 ```
 
 AI 会自动：
@@ -44,7 +44,7 @@ AI 会自动：
 ## 目录结构
 
 ```
-_team/
+{TEAM_PATH}/
 ├── SKILL.md                    ← 入口（AI 加载）
 ├── INSTALL.md                  ← 本文件
 ├── README.md                   ← 框架说明（人看的）
@@ -76,7 +76,7 @@ A: 项目 SKILL.md 是入口，它告诉 AI 去哪里加载框架 SKILL.md。框
 **Q: 为什么需要两层？**
 A: 项目层存放项目特定信息（名称、路径、技术栈），框架层存放通用规则。分离后框架可共享，项目可定制。
 
-**Q: 如何更新 _team？**
+**Q: 如何更新 team-flow？**
 A: 引用方式：更新框架目录，所有项目自动生效。复制方式：重新复制到各项目。
 
 **Q: 可以修改框架内容吗？**

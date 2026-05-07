@@ -135,5 +135,5 @@
 
 | 类型 | 路径 |
 |------|------|
-| Bug 报告 | `_docs/.../reports/bugs/Bxxx-Rx/RCA.md` |
-| 测试代码目录 | `projects/orig-cms/tests/bugs/B{xxx}-{short-name}/` |
+| Bug 报告 | `{DOCS_INTERNAL}/reports/bugs/Bxxx-Rx/RCA.md` |
+| 测试代码目录 | `{PROJECT_PATH}/tests/bugs/B{xxx}-{short-name}/` |

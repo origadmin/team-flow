@@ -150,6 +150,6 @@
 
 | 类型 | 路径 |
 |------|------|
-| 需求文档 | `_docs/.../requirements/Fxxx/SPEC.md` |
-| 接口契约 | `_docs/.../requirements/Fxxx/R3_API_CONTRACT.md` |
-| 测试代码目录 | `projects/orig-cms/tests/features/F{xxx}-{short-name}/` |
+| 需求文档 | `{DOCS_INTERNAL}/requirements/Fxxx/SPEC.md` |
+| 接口契约 | `{DOCS_INTERNAL}/requirements/Fxxx/R3_API_CONTRACT.md` |
+| 测试代码目录 | `{PROJECT_PATH}/tests/features/F{xxx}-{short-name}/` |

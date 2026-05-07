@@ -395,17 +395,17 @@ B019-R1/ (Phase 1: RCA → Phase 2: Fix → Phase 3: Verify)
 
 ## 文件空间定义
 
-> ⛔ **CRITICAL: Two-layer architecture. `_team/` ≠ `.team/`.**
-> - `_team/` = framework layer (READ-ONLY, shared across all projects)
+> ⛔ **CRITICAL: Two-layer architecture. `{TEAM_PATH}/` ≠ `.team/`.**
+> - `{TEAM_PATH}/` = framework layer (READ-ONLY, shared across all projects)
 > - `.team/` = project layer (READ-WRITE, per-project operational files)
 >
-> **AI must NEVER write to `_team/`. All operational files go to `{PROJECT_PATH}/.team/`.**
+> **AI must NEVER write to `{TEAM_PATH}/`. All operational files go to `{PROJECT_PATH}/.team/`.**
 
 ### Framework Layer (READ-ONLY for AI)
 
 ```
 framework/
-  _team/              ← Framework rules (READ-ONLY — do NOT modify during execution)
+  {TEAM_PATH}/        ← Framework rules (READ-ONLY — do NOT modify during execution)
     ├── SKILL.md       ← entry point
     ├── BOUNDARY.md    ← layer boundary rules
     ├── prompts/       ← role execution rules
@@ -418,19 +418,19 @@ framework/
 ### Project Layer (READ-WRITE for AI)
 
 ```
-{PROJECT_PATH}/       ← Project root (e.g., projects/orig-cms/)
+{PROJECT_PATH}/       ← Project root
   .team/              ← AI operational files (READ-WRITE)
     ├── project.md    ← Toolchain/paths/constraints
     ├── task-pool.md  ← Task status (Triage maintains)
     ├── backlog.md    ← Deferred tasks
     └── issues.md     ← Issue tracking
 
-{docs_internal}/      ← Project docs (AI writes here)
+{DOCS_INTERNAL}/      ← Project docs (AI writes here)
   ├── PROJECT.md      ← Project overview
   ├── requirements/   ← Requirements docs
   ├── design/         ← Design docs
   ├── reports/        ← Change/Bug reports
-  ├── lessons/        ← Experience lessons (AI writes here, NOT _team/lessons/)
+  ├── lessons/        ← Experience lessons (AI writes here, NOT {TEAM_PATH}/lessons/)
   └── test/           ← Test reports
 ```
 
@@ -615,5 +615,5 @@ Todo → Doing → Review → (用户确认) → Archived
 - ❌ 跳过 PRE-FLIGHT
 - ❌ 跳过质量门自检
 - ❌ 为同一 Bug 的不同修复尝试分配新 B-ID（用 R 后缀）
-- ❌ 写入 `framework/_team/`（只读层）
-- ❌ 写入 `projects/{project}/_docs/`（正确路径：`framework/_docs/{project}/`）
+- ❌ 写入 `framework/{TEAM_PATH}/`（只读层）
+- ❌ 写入 `{PROJECT_PATH}/_docs/`（正确路径：`framework/_docs/{project}/`）

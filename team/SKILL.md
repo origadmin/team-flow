@@ -1,364 +1,365 @@
----
-name: AI Multi-role collaboration system
-description: |
-  AI 多角色协作系统 v7.2。
-  两层工作流：任务层（Phase 0-3）+ 发布层（R-Phase 0-3）。
-  支持多 Agent 分发：Triage（主 Agent）编排 → 子 Agent 执行。
----
+# team-flow SKILL.md — Entry Point
 
-# AI Multi-role collaboration system
+> **Version**: 4.0 | **Date**: 2026-05-08
+> **Core change**: init specifies version, migrate upgrades, auto-detect low version
 
-> **TEAM_VERSION=7.3**
-> **更新日期**: 2026-04-28
+## Status Line (MANDATORY — Highest Priority)
 
-📌 三层门禁确保流程不可绕过；任务层管功能块，发布层管上线交付
-
----
-
-## ⛔ ENTRY GATE — Mandatory Path Check (MUST DO BEFORE ANY FILE WRITE)
-
-> **AI 必须在写任何文件前先执行此检查，否则路径错误 100% 复发**
+Every AI response MUST start with:
 
 ```
-在写入文件前，你必须：
-
-1. 识别文件类型（task-pool / backlog / SPEC / AC / RCA / 代码 / 测试 / ...）
-2. 对照路径表验证：
-
-   | 文件类型 | 正确路径 | 错误路径 |
-   |----------|----------|----------|
-   | task-pool.md | {PROJECT_PATH}/.team/task-pool.md | _team/task-pool.md |
-   | backlog.md | {PROJECT_PATH}/.team/backlog.md | _team/backlog.md |
-   | project.md | {PROJECT_PATH}/.team/project.md | _team/project.md |
-   | SPEC/AC | {docs_internal}/{project}/requirements/... | _team/... |
-   | RCA | {docs_internal}/{project}/reports/errors/... | _team/... |
-   | 代码 | {PROJECT_PATH}/... | _team/... |
-
-3. 如果路径不存在于列表中 → 停止，询问用户
-
+[Role: {role} | TaskPool: {status} | Phase: {phase} | Asset: {asset}]
 ```
 
-> **这是强制检查点。不要跳过。路径错误 = 项目污染。**
+| Field | Values | Description |
+|-------|--------|-------------|
+| Role | Triage / TechLead / Dev / QA / PM / DevOps / Analysis / UIDesigner | Current active role |
+| TaskPool | task ID (e.g., `F014`) or ❌unread | Current task |
+| Phase | ready / analyze / design / implement / verify / review / -(N/A) | Current phase |
+| Asset | directory path or -(N/A) | Current asset directory |
 
----
+## Version Detection (FIRST ACTION)
 
-## 🔒 HARD CONSTRAINTS - NEVER VIOLATE
-
-### Delete Permission: DISABLED
-
-> **AI 永远不得主动删除任何文件。**
-> - 删除前必须先征求用户明确同意
-> - 不得使用 trash/Move-Item/Remove-Item/exec rm 等任何删除操作
-> - 即使是"临时文件"也必须先确认
-
----
-
-## ⛔ LAYER BOUNDARY (READ BEFORE ANYTHING)
-
-> **`_team/` is the FRAMEWORK LAYER — shared across ALL projects.**
-> **AI agents MUST NOT write any file into `_team/` during project execution.**
->
-> | File Type | Correct Path | WRONG |
-> |-----------|-------------|-------|
-> | task-pool.md | `{PROJECT_PATH}/.team/task-pool.md` | `_team/task-pool.md` |
-> | backlog.md | `{PROJECT_PATH}/.team/backlog.md` | `_team/backlog.md` |
-> | project.md | `{PROJECT_PATH}/.team/project.md` | `_team/project.md` |
-> | SPEC/AC/RCA | `{docs_internal}/...` | `_team/...` |
->
-> See `BOUNDARY.md` for full rules.
-
----
-
-## Triage = 主 Agent = 编排者
-
-📌 主 Agent 就是 Triage，不只是分发任务，更负责整个任务生命周期的编排
-
-| Triage 职责 | 说明 |
-|-------------|------|
-| 意图识别 | 自动分类用户输入（无需 T: 前缀） |
-| 任务创建 | 写入 task-pool.md |
-| 子 Agent 调度 | 启动/串联/等待子 Agent |
-| 状态流转 | 更新 task-pool 状态 |
-| 结果汇报 | 向用户报告产出物 |
-| Review 确认 | 扫描 Review 任务，请用户确认 |
-
-📌 **Triage 只加载轻量规则**：路由表 + task-pool.md。角色详细规则由子 Agent 按需加载。
-
----
-
-## 🚨 入口门禁（第一优先级）
+Read `.team/version` to determine active version. This is the FIRST thing to do on every session.
 
 ```
-收到用户输入
+If .team/version = "v1" → Load v1 rules (task-pool workflow)
+If .team/version = "v2" → Load v2 rules (beads-native workflow)
+If .team/version missing → STOP, ask user to run `flow init`
+```
+
+## Version Management
+
+Three operations only:
+
+1. **`flow init --v1`** or **`flow init --v2`** → Install specified version rules
+2. **`flow migrate`** → Upgrade v1 → v2 (converts task-pool data to beads, updates .team/version)
+3. **`flow ver`** → Show current version + auto-detect low version (v1 suggests `flow migrate`)
+
+```
+init --v2 (default)  →  .team/version = "v2"  →  beads workflow
+init --v1            →  .team/version = "v1"  →  task-pool workflow
+migrate              →  v1 → v2 upgrade        →  .team/version = "v2"
+ver                  →  show status            →  v1 shows upgrade hint
+```
+
+No version switching. No dual installation. One version per project.
+
+## Migration (v1 → v2)
+
+```bash
+flow migrate          # Migrate task-pool.md data to beads
+```
+
+This converts v1 task-pool entries into beads issues. After migration, `.team/version` is automatically updated to v2.
+
+## Path Variables
+
+```yaml
+{TEAM_PATH}:     (auto-detected, see below)
+{PROJECT_PATH}:  (current working directory)
+{VERSION}:       (read from .team/version)
+{DOCS_PATH}:     (read from .team/project.md docs_path, fallback: _docs/{project-name}/ or .team/docs/)
+```
+
+Skill path auto-detection order:
+1. `~/.agents/skills/team-flow/` (global, npx skills add)
+2. `~/.trae-cn/skills/team-flow/` (Trae global)
+3. `~/.claude/skills/team-flow/` (Claude global)
+4. `.trae/skills/team-flow/` (Trae project-level)
+5. `.claude/skills/team-flow/` (Claude project-level)
+6. `.agents/skills/team-flow/` (project-level fallback)
+
+## Human-Readable Export (v2)
+
+beads is AI-managed. Humans need readable exports.
+
+**Configuration** (in `.team/project.md`):
+```yaml
+## Paths
+docs_path: _docs/{project-name}/    # User-configurable
+```
+
+**Export rules**:
+1. Triage exports task status to `{DOCS_PATH}/task-pool.md` after every status change
+2. CLI command: `flow export` — manual export anytime
+3. Export format: markdown table (same as v1 task-pool.md format)
+4. If `docs_path` not configured: fallback to `.team/docs/`
+
+**Resolution order**:
+```
+1. .team/project.md → docs_path value
+2. _docs/{project-name}/           (default convention)
+3. .team/docs/                     (minimal fallback)
+```
+
+This matches the pattern: `_docs/{project-name}/` for project docs.
+
+## Quick Start (First Session)
+
+```bash
+# Check version and status
+flow version
+
+# v2: Check beads status
+bd ready --json
+
+# v1: Read task pool
+cat .team/task-pool.md
+```
+
+## Critical Rules
+
+### Efficiency Rules
+
+1. **Hot start**: Load `{TEAM_PATH}/{VERSION}/prompts/triage.md` for classification or execution.
+2. **No redundant checks**: Unless `.team/` is missing or user requests, do not re-run "version check" or "project init" logic.
+3. **Heartbeat**: Role response first line: `[Role: {role} | Version: {v1|v2} | TaskPool: {status} | Phase: {phase}]`
+   - Role: Triage / Dev / QA / `-` (no role loaded)
+   - Version: `v1` / `v2`
+   - TaskPool: `bd ready` / `task-pool` / `-(N/A)`
+   - Phase: `Phase N` / `blocked` / `-(N/A)`
+4. **No-role guard**: When `Role: -`, only clarification answers allowed, no project modifications.
+
+### Dispatch Guard (same priority as Regression Guard)
+
+> **AI bypassing dispatch is the most common behavioral deviation. Triage must dispatch, never execute directly.**
+
+#### Rule 1: Must dispatch after classification
+- After intent recognition, **must use Task tool to start sub-agent**
+- Never do it yourself after classification (read code, modify code, debug, write design docs)
+- Only exception: clarification questions can be answered directly
+
+#### Rule 2: Self-check before action
+- Before any action, **must ask yourself**:
+  ```
+  Is this Triage's responsibility or sub-agent's?
+  Triage: intent recognition, task creation, start sub-agent, update status, report results
+  Sub-agent: read code, modify code, debug, design, analyze, deploy
+  ```
+- If sub-agent responsibility -> **stop, use Task tool to dispatch**
+
+#### Rule 3: No "just doing it quickly"
+- Even simple tasks **must be dispatched to sub-agent**
+- "Just doing it" is overreach, not efficiency
+- Simple tasks -> sub-agent executes faster (has dedicated prompts and tools)
+
+#### Rule 4: Classification report + dispatch is atomic
+- After classification report, **immediately start sub-agent**, do not wait for user confirmation
+- Classification report and Task call must be in the same response
+
+### Regression Guard (highest priority)
+
+> **AI breaking existing functionality is the most frequent issue. These rules have priority over all development instructions.**
+
+#### Rule 1: Must read before modifying
+- Before modifying any existing code file, **must read the complete file first**
+- Never modify based on partial view or diff range only
+
+#### Rule 2: Must search before changing exported symbols
+- Before changing exported function/method/interface/type, **must search all reference points**
+- Command: `grep -r "SymbolName" --include="*.go"` or equivalent
+- Changing exported symbols without searching references -> forbidden
+
+#### Rule 3: Layered testing - local first, then full
+- **During TDD cycle**: only run current module tests
+  - Backend: `go test ./internal/features/xxx/...`
+  - Frontend: `bun run test -- --testPathPattern="xxx"`
+- **After modification (regression verification)**: run full tests
+  - Backend: `go test ./...`
+  - Frontend: `bun run test`
+- **Zero regression tolerance**: any previously passing test fails -> stop, fix or rollback
+- **High-frequency modification**: after every N local tests, run full suite (recommended N=3)
+
+```
+Development flow:
+  TDD red->green->refactor: local tests (seconds)
+       ↓ repeat N times
+  Periodic regression:     full tests (minutes)
+       ↓
+  Completion gate:         full tests (must pass)
+       ↓
+  Frontend extra:         bun run typecheck (must pass)
+```
+
+#### Rule 4: Breaking changes must be compatible
+- Changing interface signatures, deleting methods, modifying return value structures = Breaking Change
+- Breaking changes must provide compatibility solution (new function / versioned interface / deprecation marker)
+- Never change interface without updating all callers
+
+#### Rule 5: Add tests before modifying untested code
+- Before modifying existing code without test coverage, **add tests first**
+- Only modify after tests pass
+
+#### Rule 6: TanStack Router parent routes with child routes must use Outlet
+- When a route has child routes, parent **must render `<Outlet/>`**, otherwise child route URL matches but page doesn't switch
+- Correct: `xxx/route.tsx` -> `<Outlet/>` + `xxx/index.tsx` -> list component
+- Wrong: `xxx.tsx` -> render component directly (child routes cannot display)
+- Always check for child routes when creating new routes
+
+#### Rule 7: Phenomenon first - Bug investigation must confirm phenomenon first
+- When user reports visual/interaction issues, **must check rendering code to confirm phenomenon first**, never skip to data layer
+- Investigation order: **Rendering layer -> API layer -> Business layer -> Data layer** (top-down)
+- Never assume the problem is in the data layer without confirming the phenomenon
+
+#### Rule 8: UI code self-check - must check for duplicate rendering
+- After writing UI components, **must check if same data is rendered multiple times**
+- **Compilation passing != logic correct**, UI code must be manually reviewed
+- Check method: `grep "formatDate\|formatDuration\|t('"` target file, confirm each data rendered once
+
+#### Rule 9: Data flow tracing - Bug fixes must trace runtime data flow
+- For bugs involving API/permissions/state/interaction, **must trace complete data flow from source to sink**, never "guess where the problem is and fix there"
+- Trace steps: define start/end -> list each step -> verify each step to find breakpoint -> fix breakpoint -> verify complete chain
+- **Compilation passing != fix complete**, mock test passing != functionality available
+
+#### Rule 10: Real scenario verification - mock test passing != functionality available
+- For bugs involving API/permissions/state/interaction, **must perform real scenario verification** (HTTP request / page-level), not just mock tests
+- Backend bugs: at minimum use httptest to send real HTTP requests, not just test UseCase
+- Frontend bugs: at minimum verify page renders normally + core interactions work, not just test components
+- R-iteration > 4 must force pause, ask user to confirm fix direction
+
+## v2 Task Lifecycle
+
+```
+bd create "Title" -t bug|feature|task -p 0-4 --json
+    ↓
+bd update <id> --claim   (status → in_progress)
+    ↓
+bd update <id> --notes "COMPLETED: ... IN PROGRESS: ..."
+    ↓
+bd close <id> --reason "Done" --json
+```
+
+## v1 Task Lifecycle
+
+```
+Triage adds row to .team/task-pool.md with status "Todo"
+    ↓
+Dev claims task → status "Doing"
+    ↓
+Dev completes → status "Review"
+    ↓
+QA/PM verifies → status "Archived"
+```
+
+## Agent Mapping
+
+| Role | subagent_type | Trigger Keywords | v1 Prompt | v2 Prompt |
+|------|--------------|-----------------|-----------|-----------|
+| Triage | (main agent) | all | v1/prompts/triage.md | v2/prompts/triage.md |
+| Tech Lead | tech-lead-architect | implement/add/develop/design/feature | v1/prompts/tech-lead.md | v2/prompts/tech-lead.md |
+| Dev (Backend) | developer-engineer | backend/API/database/Go | v1/prompts/dev-backend.md | v2/prompts/dev-backend.md |
+| Dev (Frontend) | developer-engineer | frontend/React/component/page | v1/prompts/dev-frontend.md | v2/prompts/dev-frontend.md |
+| Bugfix | bugfix-expert | Bug/error/crash/exception/fix | v1/prompts/bugfix.md | v2/prompts/bugfix.md |
+| QA | qa-engineer | test/verify/quality | v1/prompts/qa-engineer.md | v2/prompts/qa-engineer.md |
+| PM | pm-documenter | requirement/PRD/product/acceptance | v1/prompts/pm.md | v2/prompts/pm.md |
+| Analysis | analysis-expert | research/analyze/compare/evaluate | v1/prompts/analysis.md | v2/prompts/analysis.md |
+| DevOps | devops-engineer | deploy/CI/CD/Docker/K8s/ops | v1/prompts/devops.md | v2/prompts/devops.md |
+| UI Designer | ui-designer | UI/interface/design/component/style | v1/prompts/ui-designer.md | v2/prompts/ui-designer.md |
+| Framework Architect | tech-lead-architect | framework/architect/module design | v1/prompts/framework-architect.md | v2/prompts/framework-architect.md |
+
+## Sub-agent Prompt Template
+
+```
+You are {role_name}, executing task {task_id}: {task_description}
+
+Version: {VERSION}
+Rules: {TEAM_PATH}/{VERSION}/prompts/{role}.md
+Shared protocol: {TEAM_PATH}/{VERSION}/workflows/shared.md
+Task tracking: bd CLI (v2) or task-pool.md (v1)
+
+After completion:
+1. v2: bd update <id> --notes "COMPLETED: ... IN PROGRESS: ..."
+   v1: update task-pool.md status
+2. Set suggested next role
+3. Report deliverables list
+```
+
+## Three-Layer Gates
+
+### Layer 1: Entry Gate (Before Starting)
+
+```
+Role triggered
     │
-    ├── 意图识别 → 自动分类（Feature/Bug/Change/Analysis/Docs/澄清）
+    ├── v2: Issue exists in beads? → bd ready --json → continue
+    │   v1: Issue exists in task-pool.md? → continue
+    │   └── Not found? → ⛔ Reject, suggest Triage create
     │
-    ├── "R:" 前缀 + Milestone ID？→ 进入发布流程（R-Phase 0）
+    ├── Issue type matches role? → continue
+    │   └── Mismatch? → ⛔ Hand off to correct role
     │
-    ├── task-pool 中存在对应任务 ID？→ 加载对应角色 prompt，执行任务
+    └── Required docs loaded? → continue
+        └── Missing? → ⛔ Load before proceeding
+```
+
+### Layer 2: Phase Gate (Between Phases)
+
+```
+Phase transition
     │
-    └── 澄清/状态查询？→ 直接回答
-```
-
-**禁止**：
-- ❌ 跳过阶段门禁，自认为"用户授权直接做"
-
----
-
-## 🚨 Context Checkpoint（每个对话轮次强制）
-
-> **触发时机**：收到用户输入后、执行任何操作前，**必须**先输出以下内容。
-> 这是最小上下文确认点，确保 AI 始终知道自己在哪里、该做什么、要交付什么。
-
-```
-🔍 [Task Context]
-   Task: {task-id 或 "新输入"}
-   Phase: {当前所处阶段，Phase 0-3 或 R-Phase 0-3}
-   Required Docs: {本阶段必须有的产出物清单}
-   Toolchain: {从 {PROJECT_PATH}/.team/project.md 读取包管理器命令}
-   Mode: {新任务 / 延续 / R迭代}
-```
-
-**规则**：
-- `Task` = 当前处理的 task-pool ID；无则填 "新输入"
-- `Phase` = 从 task-pool 读取；新输入填 "Phase 0（分类中）"
-- `Required Docs` = 按任务类型和阶段推断；不确认则先列出可能项
-- `Toolchain` = **必须从 project.md 读取**，不得猜测
-- `Mode` = 判断依据见下方
-
-**Mode 判断**：
-| 场景 | Mode |
-|------|------|
-| 无 task-pool 任务，用户新输入 | `新任务` |
-| 有 task-pool 任务，用户继续讨论同一任务 | `延续` |
-| 执行中任务发现子问题（同模块/同根因） | `R迭代`（不创建新 ID） |
-| 执行中任务发现完全无关的新问题 | `新任务`（创建新 ID） |
-
-📌 **Context Checkpoint 必须在所有操作之前输出，是最高优先级。**
-
----
-
-### 角色加载（必须加载）
-
-第一次执行任务时：
-1. 确认自己被分配的角色（如 Dev、Bugfix、QA）
-2. 加载 `_team/prompts/{role}.md`
-3. 确认角色 Output Requirements（必须产出物清单）
-
-```
-🔒 角色确认：
-   角色: Dev
-   产出物: RCA.md, SCOPE.md, 修复代码
-   位置: {docs_internal}/errors/{task-id}/
-```
-
-**规则**：
-- 每次任务开始时必须确认角色（不是可选）
-- 必须从 prompt.md 读取产出物要求
-
----
-
-## 🚨 阶段门禁（角色执行前）
-
-> 切换 Phase 前必须检查上一阶段产出物是否存在，拒绝无检查就进入下一阶段
-
-```
-角色准备执行
+    ├── Current phase deliverables complete? → continue
+    │   └── Incomplete? → ⛔ Complete before transitioning
     │
-    ├── 确定任务当前阶段
-    ├── 检查上一阶段产出物是否存在（根据阶段产出物清单）
+    ├── Tests passing? → continue
+    │   └── Failing? → ⛔ Fix before proceeding
     │
-    ├── 全部存在？→ ✅ 进入执行
-    └── 存在缺失？→ ⛔ 拒绝进入，列出缺失项
+    └── v2: beads issue updated? → continue
+        v1: task-pool.md updated? → continue
+        └── Not updated? → ⛔ Update before proceeding
 ```
 
-**阶段产出物清单**：
-
-| Phase | Feature 产出物 | Bugfix 产出物 |
-|-------|----------------|---------------|
-| Phase 0 | task-pool 条目 | task-pool 条目 |
-| Phase 1 | SPEC.md, AC.md, R1/R2/R3 | RCA.md, TEST_CASE.md |
-| Phase 2 | 代码 + 测试 + SCOPE.md | 修复代码 + 验证 |
-| Phase 3 | 测试报告 | 验证报告 |
-
-## 🚨 完成门禁（声称完成前）
+### Layer 3: Completion Gate (Before Closing)
 
 ```
-角色准备更新状态为 Review
+Task complete
     │
-    ├── 确定任务类型对应的必须产出物清单
-    ├── 检查每个文件是否存在 + 内容非空（根据完成 Checklist）
+    ├── All deliverables produced? → continue
+    │   └── Missing? → ⛔ Produce before closing
     │
-    ├── 全部满足？→ ✅ 输出 Checklist，允许完成
-    └── 存在缺失？→ ⛔ 拒绝完成，列出缺失项
+    ├── All tests passing? → continue
+    │   └── Failing? → ⛔ Fix before closing
+    │
+    ├── No regressions? → continue
+    │   └── Regressions found? → ⛔ Fix or document known issues
+    │
+    └── v2: beads issue closable? → bd close
+        v1: task-pool.md status → Archived
+        └── Not ready? → Update with remaining items
 ```
 
-**完成 Checklist**：
+## HARD CONSTRAINTS
 
-| 任务类型 | 必须产出物 |
-|----------|----------|
-| Feature | SPEC.md, AC.md, 代码, SCOPE.md |
-| Bugfix | RCA.md, 修复代码, 验证 |
+- **Delete Permission: DISABLED** — Never delete files unless explicitly asked
+- **Framework ≠ Project** — Project problems solved at project layer, never patch framework
+- **No secrets in code** — Never expose or log secrets/keys
+- **NEVER commit unless user asks** — Explicit confirmation required
+- **NEVER use PowerShell Set-Content / Out-File** — these add UTF-8 BOM, corrupting source files
+  - Use Write tool (built-in, guarantees UTF-8 without BOM)
+  - Use SearchReplace tool (built-in, precise replacement)
+  - If must use command line: `[System.IO.File]::WriteAllText('path', $content, [System.Text.UTF8Encoding]::new($false))`
 
----
+## Core Principle: Skill ≠ Project
 
-## 必需配置文件
-
-> **强制加载的配置文件**
-
-| 文件 | 作用 | 何时加载 |
-|------|------|---------|
-| `_team/prompts/dev.md` | Dev 共享核心（路由器 + 通用规范） | Dev 角色触发 |
-| `_team/prompts/dev-backend.md` | 后端 Dev 专属规则 | Dev(subtype=backend-dev) |
-| `_team/prompts/dev-frontend.md` | 前端 Dev 专属规则 | Dev(subtype=frontend-dev) |
-| `_team/prompts/bugfix.md` | Bugfix 专属规则（含 subtype） | Bugfix 角色触发 |
-| `_team/workflows/roles/specialized-tests.md` | 后端 8 类专项测试触发规则 | Dev/Bugfix(subtype=backend-dev) |
-| `_team/workflows/roles/frontend-specialized-tests.md` | 前端 10 类专项测试触发规则 | Dev/Bugfix(subtype=frontend-dev) |
-| `_team/templates/feature-test-template.md` | 后端 Feature 测试覆盖声明模板 | Dev(subtype=backend-dev) Feature |
-| `_team/templates/frontend-feature-test-template.md` | 前端 Feature 测试覆盖声明模板 | Dev(subtype=frontend-dev) Feature |
-| `_team/templates/bug-test-template.md` | 后端 Bug 复现测试用例模板 | Bugfix(subtype=backend-dev) |
-| `_team/templates/frontend-bug-test-template.md` | 前端 Bug 复现测试用例模板 | Bugfix(subtype=frontend-dev) |
-| `{PROJECT_PATH}/web/tests/README.md` | 前端测试目录结构规范 | Dev/Bugfix(subtype=frontend-dev) |
-| `SKILL.md` | 任务流程 + 产出物映射 | 任务开始 |
-
----
-
-## Agent 映射（Trae 多 Agent 分发）
-
-| 角色 | subagent_type | 触发条件 |
-|------|--------------|---------|
-| Triage | 主 Agent（self） | 意图识别 + 任务创建 + 编排调度 + 状态流转 + 结果汇报 |
-| Tech Lead | `tech-lead-architect` | Feature/Change/Docs/Analysis 设计阶段 |
-| Dev | `developer-engineer` | Feature 实现阶段 |
-| Bugfix | `bugfix-expert` | Bug 修复 |
-| QA | `developer-engineer` | 测试实现（无专用 QA Agent） |
-| PM | `pm-documenter` | 需求/PRD/验收 |
-| Analysis | `analysis-expert` | 调研/分析/对比/评估 |
-| UI Designer | `ui-designer` | UI/界面/设计稿 |
-| DevOps | `devops-engineer` | 部署/CI/CD/容器 |
-| Framework Architect | `tech-lead-architect` | 框架架构设计 |
-
----
-
-## 两层工作流
-
-### 任务层（Feature/Bug/Change 单个任务）
-
-📌 任务层只管功能块完成，不管上线部署
+> Skill rules (installed at skill path) are cross-project shared and read-only.
+> Project problems must be solved at the project level, never by patching skill rules.
 
 ```
-Phase 0: 创建（Triage/主 Agent）→ task-pool 条目
-Phase 1: 设计（Tech Lead）→ SPEC + AC + R1/R2/R3
-Phase 2: 实现（Dev）→ 代码 + 测试 + SCOPE.md
-Phase 3: 验证（QA）→ 测试报告 → 状态 Review
+Skill path/        = AI framework rules (cross-project shared, read-only)
+                   → Only modifiable when developing the SKILL itself
+
+.team/project.md   = Project constraints (Triage reads and follows)
+.team/version      = Active version (v1 or v2)
+.ai/               = AI-generated temporary files (safe to delete)
 ```
 
-### 发布层（Milestone 级别）
+**Project problems → Solve at project layer, NEVER patch framework layer**
 
-📌 发布层由 Milestone 触发，所有任务就绪后才进入
+## Entry Point for AI
 
-```
-R-Phase 0: 就绪检查（Triage）
-R-Phase 1: 集成验证（QA + DevOps）
-R-Phase 2: 验收放行（PM）
-R-Phase 3: 上线部署（DevOps）
-```
+When loaded by the AI runtime:
 
----
-
-## 角色与文档归属
-
-| 角色 | 职责 | 维护文档 |
-|------|------|---------|
-| **甲方** | 提需求、验收 | MILESTONES（需求清单） |
-| **Triage** | 分类、分发、跟踪 | Task Pool + 同步 MILESTONES 状态 |
-| **Tech Lead** | 技术设计、创建资产包 | SPEC.md, AC.md, R1/R2/R3 |
-| **Dev** (backend-dev) | 后端功能开发 | 代码、SCOPE.md |
-| **Dev** (frontend-dev) | 前端功能开发 | 代码、TEST_COVERAGE.md, SCOPE.md |
-| **Bugfix** (backend-dev) | 后端 Bug 修复 | RCA.md, TEST_CASE.md, 修复代码, SCOPE.md |
-| **Bugfix** (frontend-dev) | 前端 Bug 修复 | RCA.md, TEST_CASE.md, 修复代码, SCOPE.md |
-| **QA** | 测试验证、闭环验证 | 测试报告、闭环验证报告 |
-| **PM** | 验收放行 | 验收签字 |
-| **DevOps** | CI/CD、部署 | 部署报告 |
-
-**禁止**：
-- ❌ Triage 创建资产包文件
-- ❌ Triage 填充 SPEC.md / AC.md / R1/R2/R3 内容
-- ❌ Tech Lead 维护 MILESTONES
-- ❌ Dev 跳过 Tech Lead 直接创建资产包
-- ❌ 非 PM 角色放行上线
-
----
-
-## 任务分类与 MILESTONES 同步
-
-| 任务类型 | ID 前缀 | 进MILESTONES | 分发给 |
-|---------|---------|-------------|--------|
-| Feature | F | ✅ | Tech Lead |
-| Bug (阻断发版) | B | ✅ | Dev |
-| Bug (普通) | B | ❌ | Dev |
-| Change | C | ✅ 保守策略 | Tech Lead |
-| Docs | D | ❌ | Tech Lead |
-| Analysis | A | ❌ | Tech Lead |
-
-### Change 保守策略
-
-1. Triage 收到变更 → 默认更新 MILESTONES（状态: 🔍 变更评估中）
-2. 分发给 Tech Lead
-3. Tech Lead 判断：
-   - 影响交付 → 保持 MILESTONES 记录
-   - 不影响交付 → 反馈 Triage → Triage 从 MILESTONES 移除
-
-### Bug 阻断判断
-
-1. Triage 收到 Bug → 询问甲方: "是否阻断发版？"
-2. 是 → 更新 MILESTONES（状态: ⚠️ 有Bug）
-3. 否 → 只更新 Task Pool
-
-### MILESTONES 状态映射
-
-| Task Pool 状态 | MILESTONES 状态 |
-|---------------|-----------------|
-| Todo | 📋 待开始 |
-| Doing | 🔄 进行中 |
-| Review | ⏳ 待确认 |
-| Archived | ✅ 已完成 |
-| 阻断Bug | ⚠️ 有Bug |
-| Change 评估中 | 🔍 变更评估中 |
-
----
-
-## 版本历史
-
-| 版本 | 日期 | 变更 |
-|------|------|------|
-| v4.0 | 2026-04-23 | 三层门禁架构 |
-| v5.0 | 2026-04-23 | 甲方-乙方分离，Triage 分发工具 |
-| v5.5 | 2026-04-24 | task-pool v6.0 模板，backlog v6.0 模板 |
-| v6.0 | 2026-04-24 | 两层工作流分离，📌 背景标记 |
-| **v7.0** | **2026-04-25** | **移除 T: 前缀强制要求，加入 Agent 映射表，支持多 Agent 分发** |
-| **v7.2** | **2026-04-25** | **明确 Triage = 编排者，不只是分发，更负责启动/串联/等待子 Agent** |
-
-## 目录结构
-
-```
-_team/
-├── SKILL.md              ← [AI入口] 本文件
-├── prompts/              ← [AI] 角色执行规则
-├── workflows/shared.md   ← [AI] 门禁 + 工作流 + 资产包
-├── templates/            ← [AI] 模板
-├── config/               ← [AI] 配置
-└── examples/             ← [人读] AI 工具配置示例
-```
-
-📌 _team/ 只包含 AI 执行规则和项目配置。人读文档由 DOMGEN 管理，不在本文件职责范围内
-
-## 相关文件
-
-| 文件 | 作用 | 版本 |
-|------|------|------|
-| `workflows/shared.md` | 三层门禁 + 两层工作流 + 资产包规格 | v7.0 |
-| `prompts/triage.md` | Triage 执行规则 | v7.0 |
-| `prompts/bugfix.md` | Bug 修复执行规则 | v2.0 |
-| `prompts/tech-lead.md` | Tech Lead 执行规则 | v3.0 |
-| `prompts/dev.md` | Dev 执行规则 | v3.0 |
+1. Read `.team/version` → determine v1 or v2
+2. Load `{TEAM_PATH}/{VERSION}/prompts/triage.md` — if your role is triage
+3. Load `{TEAM_PATH}/{VERSION}/workflows/shared.md` — always (layer 1/2 gates)
+4. Load `{TEAM_PATH}/{VERSION}/workflows/roles/<role>-standards.md` — role-specific standards

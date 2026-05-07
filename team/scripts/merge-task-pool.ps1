@@ -1,18 +1,18 @@
-# Rebuild .team/task-pool.md clean from _team/task-pool.md
+# Rebuild .team/task-pool.md clean from {TEAM_PATH}/task-pool.md
 # Conflict IDs: A001,B061,C010,C011,F013,F015,F018,F020 -> T_ prefix
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $OutputEncoding = [System.Text.Encoding]::UTF8
 
 $conflictIds = @("A001","B061","C010","C011","F013","F015","F018","F020")
-$projectsDir = "D:\workspace\project\golang\origadmin\framework\projects\orig-cms"
-$docsDir = "$projectsDir\_docs\orig-cms"
+$projectsDir = "{PROJECT_PATH}"
+$docsDir = "{DOCS_INTERNAL}"
 $requirementsDir = "$docsDir\requirements"
 
-# Read _team/task-pool.md
-$teamContent = Get-Content "D:\workspace\project\golang\origadmin\framework\_team\task-pool.md" -Encoding UTF8
+# Read {TEAM_PATH}/task-pool.md
+$teamContent = Get-Content "{TEAM_PATH}\task-pool.md" -Encoding UTF8
 
-# Parse _team active table (from header to ## 任务详情)
+# Parse {TEAM_PATH} active table (from header to ## 任务详情)
 $inTable = $false
 $teamTable = @()
 
@@ -41,7 +41,7 @@ foreach ($line in $teamContent) {
         }
     }
 }
-Write-Host "Parsed _team tasks: $($teamTable.Count)"
+Write-Host "Parsed {TEAM_PATH} tasks: $($teamTable.Count)"
 $conflictTasks = $teamTable | Where-Object { $_.newId -match '^T_' }
 $newTasks = $teamTable | Where-Object { $_.newId -notmatch '^T_' }
 Write-Host "  Conflict (T_): $($conflictTasks.Count)"

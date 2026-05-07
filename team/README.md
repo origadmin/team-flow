@@ -1,4 +1,4 @@
-# _team — AI 多角色协作框架
+# team-flow — AI 多角色协作框架
 
 > OrigAdmin 多项目管理平台 — AI 执行协议
 >
@@ -8,16 +8,16 @@
 
 ## ⛔ FRAMEWORK LAYER BOUNDARY
 
-**`_team/` is a MULTI-PROJECT framework. It is NOT a project directory.**
+**`{TEAM_PATH}/` is a MULTI-PROJECT framework. It is NOT a project directory.**
 
 | Rule | Description |
 |------|-------------|
-| ❌ **NO WRITE** | AI must NEVER create or modify files inside `_team/` during project execution |
-| ❌ **NO task-pool** | `task-pool.md` belongs at `{PROJECT_PATH}/.team/task-pool.md`, NOT `_team/task-pool.md` |
+| ❌ **NO WRITE** | AI must NEVER create or modify files inside `{TEAM_PATH}/` during project execution |
+| ❌ **NO task-pool** | `task-pool.md` belongs at `{PROJECT_PATH}/.team/task-pool.md`, NOT `{TEAM_PATH}/task-pool.md` |
 | ❌ **NO operational files** | backlog.md, project.md, issues.md all belong at `{PROJECT_PATH}/.team/` |
-| ✅ **READ ONLY** | AI only reads rules/prompts/workflows from `_team/` |
+| ✅ **READ ONLY** | AI only reads rules/prompts/workflows from `{TEAM_PATH}/` |
 
-**Before writing any file, verify the path does NOT start with `_team/`.**
+**Before writing any file, verify the path does NOT start with `{TEAM_PATH}/`.**
 See `BOUNDARY.md` for complete layer architecture.
 
 ---
@@ -26,7 +26,7 @@ See `BOUNDARY.md` for complete layer architecture.
 
 ## 这是什么？
 
-`_team` 是一套让 AI 工具（Trae、Gemini CLI、OpenClaw 等）按照统一规范工作的配置框架。
+`team-flow` 是一套让 AI 工具（Trae、Gemini CLI、OpenClaw 等）按照统一规范工作的配置框架。
 
 **解决的问题**：
 - AI 每次对话从零开始，不知道项目规范
@@ -52,11 +52,11 @@ See `BOUNDARY.md` for complete layer architecture.
 
 ## 初始化
 
-加载 D:/workspace/.../framework/_team/SKILL.md，按其中步骤执行。
+加载 {TEAM_PATH}/SKILL.md，按其中步骤执行。
 
 ## 项目信息
 
-- **项目名**: orig-cms
+- **项目名**: {project-name}
 - **技术栈**: Go + React
 - **工作目录**: .
 ```
@@ -78,7 +78,7 @@ AI 会自动：
 ## 目录结构
 
 ```
-_team/                          ← 框架层（通用规则）
+{TEAM_PATH}/                    ← 框架层（通用规则）
 ├── SKILL.md                    ← 入口：启动流程、角色路由
 ├── INSTALL.md                  ← 安装指南
 ├── README.md                   ← 本文件（人看的）

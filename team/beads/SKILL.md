@@ -1,13 +1,13 @@
 ---
 name: team-beads
 description: |
-  _team framework task tracking using beads. Use when managing tasks, 
+  team-flow framework task tracking using beads. Use when managing tasks,
   checking ready work, tracking progress, or session handoff.
 version: "1.0.0"
 tags: [task-management, beads, issue-tracking, multi-session]
 ---
 
-# _team Beads Integration
+# team-flow Beads Integration
 
 ## Trigger
 
@@ -22,8 +22,8 @@ bd --version  # Requires 1.0.3+
 ## Path Variables
 
 ```markdown
-{PROJECT_PATH} = projects/orig-cms/
-{BEADS_DB}     = projects/orig-cms/.beads/
+{PROJECT_PATH} = {PROJECT_PATH}/
+{BEADS_DB}     = {PROJECT_PATH}/.beads/
 ```
 
 ## Session Protocol
@@ -62,7 +62,7 @@ bd dolt push
 
 ## Issue Type Mapping
 
-| _team 类型 | Beads 类型 | 说明 |
+| task 类型 | Beads 类型 | 说明 |
 |------------|-----------|------|
 | bugfix | bug | 缺陷修复 |
 | feature | feature | 新功能 |
@@ -71,7 +71,7 @@ bd dolt push
 
 ## Priority Mapping
 
-| _team | Beads | 说明 |
+| task | Beads | 说明 |
 |-------|-------|------|
 | P0 | 0 | 阻塞主流程 |
 | P1 | 1 | 重要但不紧急 |
@@ -80,7 +80,7 @@ bd dolt push
 
 ## Status Mapping
 
-| _team 状态 | Beads 状态 | CLI |
+| task 状态 | Beads 状态 | CLI |
 |------------|-----------|-----|
 | Todo | open | default |
 | Doing | in_progress | `bd update <id> --status in_progress` |

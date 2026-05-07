@@ -560,14 +560,14 @@ Todo → Doing → Review → (用户确认) → Archived
 
 ### ⛔ 路径防护（最高优先级）
 
-> **task-pool.md 和 backlog.md 必须写在项目层 `.team/` 下，严禁写在框架层 `_team/` 下。**
+> **task-pool.md 和 backlog.md 必须写在项目层 `.team/` 下，严禁写在框架层 `{TEAM_PATH}/` 下。**
 >
 > | File | Correct Path (USE THIS) | WRONG Path (NEVER) |
 > |------|------------------------|-------------------|
-> | task-pool.md | `{PROJECT_PATH}/.team/task-pool.md` | `_team/task-pool.md` |
-> | backlog.md | `{PROJECT_PATH}/.team/backlog.md` | `_team/backlog.md` |
+> | task-pool.md | `{PROJECT_PATH}/.team/task-pool.md` | `{TEAM_PATH}/task-pool.md` |
+> | backlog.md | `{PROJECT_PATH}/.team/backlog.md` | `{TEAM_PATH}/backlog.md` |
 >
-> `_team/` 是框架层，跨项目共享，AI 执行时只读。写错路径 = 跨项目污染。
+> `{TEAM_PATH}/` 是框架层，跨项目共享，AI 执行时只读。写错路径 = 跨项目污染。
 
 ### 文件位置
 

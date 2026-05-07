@@ -46,7 +46,7 @@ bd dolt push
 
 ## Type Mapping
 
-| _team type | beads type |
+| task type | beads type |
 |------------|-----------|
 | bugfix | bug |
 | feature | feature |
@@ -55,7 +55,7 @@ bd dolt push
 
 ## Priority Mapping
 
-| _team | beads |
+| task | beads |
 |-------|-------|
 | P0 | 0 |
 | P1 | 1 |
@@ -64,7 +64,7 @@ bd dolt push
 
 ## Dependency Types
 
-| _team concept | beads dep type |
+| task concept | beads dep type |
 |---------------|---------------|
 | A blocks B | `blocks` |
 | related | `related` |

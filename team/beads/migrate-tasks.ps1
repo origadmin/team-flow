@@ -1,7 +1,7 @@
 # task-pool to beads migration script
-# Usage: Run from projects/orig-cms/ directory
+# Usage: Run from {PROJECT_PATH}/ directory
 
-$ProjectDir = "D:/workspace/project/golang/origadmin/framework/projects/orig-cms"
+$ProjectDir = "{PROJECT_PATH}"
 Set-Location $ProjectDir
 
 # Active tasks to import (Review + Doing status)
