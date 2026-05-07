@@ -34,3 +34,16 @@ framework/**/.DS_Store
 .dolt/
 *.db
 .beads-credential-key
+
+# AI runtime files (NEVER commit these)
+.team/
+.team-flow/
+.claude/
+.trae/
+.agents/
+.cursor/
+.beads/
+
+# AI-generated root files (cause loading failures)
+AGENTS.md
+CLAUDE.md
