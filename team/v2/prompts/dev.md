@@ -424,6 +424,7 @@ Feature 完成检查:
 - [ ] 建议后续角色 → QA
 
 Bugfix 完成检查:
+- [ ] ⛔ 测试验证已执行（必须展示实际命令输出，见 bugfix.md Phase 2 强制验证步骤）
 - [ ] Pipeline 全部通过（Step 1-5）
 - [ ] 代码无中文注释（Step 2 lint 阶段已强制）
 - [ ] SCOPE.md 已生成（含 pipeline 结果 + 覆盖率）

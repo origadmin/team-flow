@@ -222,7 +222,9 @@ ID: B{NNN}
 ```markdown
 ### Bug 后验证（Triage 执行）
 
-bugfix-expert 返回后，Triage 必须验证以下文件是否存在：
+bugfix-expert 返回后，Triage 必须验证：
+
+#### Part 1: 文件存在性检查
 
 | # | 验证项 | 预期路径 | 缺失时 |
 |---|--------|---------|--------|
@@ -230,25 +232,73 @@ bugfix-expert 返回后，Triage 必须验证以下文件是否存在：
 | 2 | TEST_CASE.md | {docs_internal}/reports/bugs/B{NNN}-R{N}/TEST_CASE.md | ⛔ 标记为"TEST_CASE缺失"，要求补全 |
 | 3 | 复现测试代码 | tests/bugs/B{NNN}-*/ 或 web/tests/bugs/B{NNN}-*/ | ⛔ 标记为"复现测试缺失"，要求补全 |
 
-[v2] 数据流追踪验证（涉及API/权限/状态/交互的Bug必须）:
+#### Part 2: 测试执行验证（⛔ 关键 — 必须运行实际测试）
+
+Triage 必须执行以下命令验证修复是否真正生效：
+
+**后端 Bug**:
+```bash
+go build ./...
+go test ./...
+go test ./tests/bugs/B{NNN}-.../...
+```
+
+**前端 Bug**:
+```bash
+bun run typecheck
+bun run lint
+bun run test
+bun run test -- --testPathPattern="B{NNN}"
+```
+
+**⛔ 前端 Bug 额外必须: UI 运行时验证**:
+```bash
+# 启动 dev server 并验证 UI
+bun run dev
+# 然后必须执行:
+# - 打开 Bug 涉及的页面（导航到 Bug URL）
+# - 检查页面内容（文本/数据/组件正确显示）
+# - 执行 Bug 涉及的交互（点击/输入/提交）
+# - 重现 Bug 原始触发步骤，确认 Bug 现象消失
+# - 截图保存到 {docs_internal}/reports/bugs/B{NNN}-R{N}/
+```
+
+| # | 验证项 | 检查方式 | 失败时 |
+|---|--------|---------|--------|
+| 4 | 后端: go build 通过 | 执行 `go build ./...` | ⛔ 标记为"编译失败"，退回 bugfix |
+| 5 | 后端: go test 通过 | 执行 `go test ./...` | ⛔ 标记为"测试失败"，退回 bugfix |
+| 6 | 前端: typecheck 通过 | 执行 `bun run typecheck` | ⛔ 标记为"类型错误"，退回 bugfix |
+| 7 | 前端: lint 通过 | 执行 `bun run lint` | ⛔ 标记为"lint错误"，退回 bugfix |
+| 8 | 前端: test 通过 | 执行 `bun run test` | ⛔ 标记为"测试失败"，退回 bugfix |
+| 9 | Bug 专项测试通过 | 执行 Bug 回归测试 | ⛔ 标记为"修复未生效"，退回 bugfix |
+| 10 | 前端: 页面正常渲染 | 打开 Bug URL | ⛔ 标记为"页面崩溃"，退回 bugfix |
+| 11 | 前端: 页面内容正确 | 检查文本/数据/组件 | ⛔ 标记为"内容错误"，退回 bugfix |
+| 12 | 前端: 交互行为正常 | 点击/输入/提交 Bug 区域 | ⛔ 标记为"交互异常"，退回 bugfix |
+| 13 | 前端: Bug 现象消失 | 重现 Bug 原始触发步骤 | ⛔ 标记为"Bug仍存在"，退回 bugfix |
+| 14 | 前端: 截图已保存 | 检查 {docs_internal}/reports/bugs/B{NNN}-R{N}/screenshots/ | ⛔ 标记为"无截图证据" |
+| 15 | 前端: UI_VERIFICATION.md 存在 | 检查 {docs_internal}/reports/bugs/B{NNN}-R{N}/UI_VERIFICATION.md | ⛔ 标记为"无UI验证报告"，退回 bugfix |
+| 16 | 前端: 截图命名符合规则 | 检查文件名匹配 B{NNN}-R{N}-{NNN}-{action}-{state}.png | ⛔ 标记为"截图命名违规" |
+| 17 | 前端: 截图数量达标 | 检查截图数 >= Bug类型最低要求 | ⛔ 标记为"截图数量不足" |
+
+#### Part 3: 数据流追踪验证（涉及API/权限/状态/交互的Bug必须）
 
 | # | 验证项 | 检查方式 | 缺失时 |
 |---|--------|---------|--------|
-| 4 | RCA.md 包含"数据流追踪"章节 | 读取 RCA.md，搜索"数据流追踪" | ⛔ 标记为"缺少数据流追踪"，要求补全 |
-| 5 | 数据流追踪包含断点分析 | 读取 RCA.md，搜索"断点" | ⛔ 标记为"数据流追踪不完整" |
-| 6 | TEST_CASE.md 包含真实场景验证 | 读取 TEST_CASE.md，搜索"真实场景" | ⛔ 标记为"缺少真实场景验证"，要求补全 |
+| 10 | RCA.md 包含"数据流追踪"章节 | 读取 RCA.md，搜索"数据流追踪" | ⛔ 标记为"缺少数据流追踪"，要求补全 |
+| 11 | 数据流追踪包含断点分析 | 读取 RCA.md，搜索"断点" | ⛔ 标记为"数据流追踪不完整" |
+| 12 | TEST_CASE.md 包含真实场景验证 | 读取 TEST_CASE.md，搜索"真实场景" | ⛔ 标记为"缺少真实场景验证"，要求补全 |
 
-[v2] R 迭代质量检查（R2+ 必须执行）:
+#### Part 4: R 迭代质量检查（R2+ 必须执行）
 
 | # | 验证项 | 检查方式 | 缺失时 |
 |---|--------|---------|--------|
-| 7 | RCA.md 包含上一轮失败分析 | 读取 RCA.md，搜索"R{N-1}"或"上一轮" | ⛔ 标记为"缺少R迭代分析" |
-| 8 | R 迭代 >= R4 时是否已暂停请用户确认 | 检查 task-pool 备注 | ⛔ 标记为"R4+未暂停" |
+| 13 | RCA.md 包含上一轮失败分析 | 读取 RCA.md，搜索"R{N-1}"或"上一轮" | ⛔ 标记为"缺少R迭代分析" |
+| 14 | R 迭代 >= R4 时是否已暂停请用户确认 | 检查 task-pool 备注 | ⛔ 标记为"R4+未暂停" |
 
 验证结果：
-- 全部存在 → 更新 task-pool 状态为 Review，建议后续角色=QA
-- 任何缺失 → 更新 task-pool 状态为 Doing，备注"缺少{具体项}，需补全"
-- 向用户报告验证结果
+- 全部存在 + 全部测试通过 → 更新 task-pool 状态为 Review，建议后续角色=QA
+- 任何缺失或测试失败 → 更新 task-pool 状态为 Doing，备注"缺少{具体项}，需补全"，退回 bugfix-expert
+- 向用户报告验证结果（包含测试输出）
 ```
 
 **禁止**: 创建 RCA.md / TEST_CASE.md。这些由 bugfix-expert 创建。Triage 只验证不创建。

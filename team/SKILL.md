@@ -18,6 +18,12 @@ Every AI response MUST start with:
 | Phase | ready / analyze / design / implement / verify / review / -(N/A) | Current phase |
 | Asset | directory path or -(N/A) | Current asset directory |
 
+**⛔ CRITICAL: When TaskPool = ❌unread**:
+1. Execute `bd ready` FIRST — this reads the task pool and shows available tasks
+2. If tasks exist → pick one, update Status Line with its ID
+3. If no tasks exist → create one with `bd create` before starting any work
+4. NEVER start working without a task ID in Status Line
+
 ## Version Detection (FIRST ACTION)
 
 Read `.team/version` to determine active version. This is the FIRST thing to do on every session.

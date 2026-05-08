@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	skillfs "github.com/origadmin/team-flow"
+	"github.com/origadmin/team-flow/internal/toolchain"
 	"github.com/spf13/cobra"
 )
 
@@ -131,7 +132,7 @@ pipeline: bun run test | bun run build
 	if version == "v2" {
 		fmt.Println("\n━━━ Step 3: v2 Tools Init ━━━")
 
-		pyPath = findPythonPath()
+		pyPath = toolchain.FindPythonPath()
 
 		fmt.Println("  Building code graph...")
 		graphDB := filepath.Join(projectPath, ".code-review-graph")
@@ -156,7 +157,7 @@ pipeline: bun run test | bun run build
 		if _, err := os.Stat(beadsDir); err == nil {
 			fmt.Println("  ✓ .beads already exists")
 		} else {
-			bdPath := findBdPath()
+			bdPath := toolchain.FindBdPath()
 			if bdPath != "" {
 				cmd := exec.Command(bdPath, "init")
 				cmd.Stdout = os.Stdout
@@ -192,7 +193,7 @@ pipeline: bun run test | bun run build
 }
 
 func ensurePython() string {
-	pyPath := findPythonPath()
+	pyPath := toolchain.FindPythonPath()
 	if pyPath != "" {
 		out, err := exec.Command(pyPath, "-c", "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')").CombinedOutput()
 		if err == nil {
@@ -251,11 +252,11 @@ func ensurePython() string {
 		fmt.Println("  ⏭ Skipped. Some features will not work without Python.")
 	}
 
-	return findPythonPath()
+	return toolchain.FindPythonPath()
 }
 
 func ensurePip(pyPath string) {
-	pipPath := findPipPath()
+	pipPath := toolchain.FindPipPath()
 	if pipPath != "" {
 		fmt.Printf("  ✓ pip found: %s\n", pipPath)
 		return
@@ -294,7 +295,7 @@ func ensureCodeReviewGraph(pyPath string) {
 
 	fmt.Println("  code-review-graph not found.")
 	if autoYes || confirm("  Install code-review-graph via pip?") {
-		pipPath := findPipPath()
+		pipPath := toolchain.FindPipPath()
 		installCmd := "pip"
 		if pipPath != "" {
 			installCmd = pipPath
@@ -322,10 +323,20 @@ func ensureCodeReviewGraph(pyPath string) {
 }
 
 func ensureBeads() {
-	bdPath := findBdPath()
+	bdPath := toolchain.FindBdPath()
 	if bdPath != "" {
 		version, _ := exec.Command(bdPath, "--version").CombinedOutput()
 		fmt.Printf("  ✓ beads found: %s (%s)\n", bdPath, strings.TrimSpace(string(version)))
+
+		if !toolchain.IsBdOnPath() {
+			fmt.Println("  bd is not on PATH. Adding...")
+			if toolchain.AddBdToPath(bdPath) {
+				fmt.Printf("  ✓ Added %s to PATH (current session + persistent)\n", filepath.Dir(bdPath))
+			} else {
+				fmt.Printf("  ⚠ Could not add to persistent PATH. Current session updated.\n")
+				fmt.Printf("    Manual: Add %s to your PATH\n", filepath.Dir(bdPath))
+			}
+		}
 		return
 	}
 
@@ -341,11 +352,13 @@ func ensureBeads() {
 				fmt.Println("  ⚠ Auto install failed. Manual: irm https://raw.githubusercontent.com/steveyegge/beads/main/install.ps1 | iex")
 			} else {
 				fmt.Println("  ✓ beads installed")
-				bdPath = findBdPath()
-				if bdPath == "" {
-					fmt.Println("  ⚠ bd installed but not on PATH yet.")
-					fmt.Println("    Restart your terminal, or add to PATH:")
-					fmt.Printf("    %s\\Programs\\bd\n", os.Getenv("LOCALAPPDATA"))
+				bdPath = toolchain.FindBdPath()
+				if bdPath != "" {
+					toolchain.AddBdToPath(bdPath)
+					fmt.Printf("  ✓ Added %s to PATH\n", filepath.Dir(bdPath))
+				} else {
+					fmt.Println("  ⚠ bd installed but could not be located.")
+					fmt.Println("    Restart your terminal and run: flow init")
 				}
 			}
 		case "darwin":
@@ -361,136 +374,7 @@ func ensureBeads() {
 	}
 }
 
-func findPythonPath() string {
-	for _, name := range []string{"python", "python3"} {
-		if path, err := exec.LookPath(name); err == nil {
-			return path
-		}
-	}
 
-	home, _ := os.UserHomeDir()
-	localAppData := os.Getenv("LOCALAPPDATA")
-	programFiles := os.Getenv("ProgramFiles")
-
-	candidates := []string{}
-	switch runtime.GOOS {
-	case "windows":
-		if localAppData != "" {
-			candidates = append(candidates,
-				filepath.Join(localAppData, "Programs", "Python", "Python311", "python.exe"),
-				filepath.Join(localAppData, "Programs", "Python", "Python312", "python.exe"),
-				filepath.Join(localAppData, "Programs", "Python", "Python313", "python.exe"),
-				filepath.Join(localAppData, "Programs", "Python", "Python310", "python.exe"),
-			)
-		}
-		if programFiles != "" {
-			candidates = append(candidates,
-				filepath.Join(programFiles, "Python311", "python.exe"),
-				filepath.Join(programFiles, "Python312", "python.exe"),
-				filepath.Join(programFiles, "Python313", "python.exe"),
-			)
-		}
-		candidates = append(candidates,
-			`C:\Python311\python.exe`,
-			`C:\Python312\python.exe`,
-			`C:\Python310\python.exe`,
-		)
-		if home != "" {
-			candidates = append(candidates,
-				filepath.Join(home, "AppData", "Local", "Programs", "Python", "Python311", "python.exe"),
-				filepath.Join(home, "AppData", "Local", "Programs", "Python", "Python312", "python.exe"),
-				filepath.Join(home, "AppData", "Local", "Programs", "Python", "Python313", "python.exe"),
-			)
-		}
-	case "darwin":
-		candidates = append(candidates,
-			"/usr/bin/python3",
-			"/usr/local/bin/python3",
-			"/opt/homebrew/bin/python3",
-		)
-		if home != "" {
-			candidates = append(candidates,
-				filepath.Join(home, ".local", "bin", "python3"),
-			)
-		}
-	default:
-		candidates = append(candidates,
-			"/usr/bin/python3",
-			"/usr/local/bin/python3",
-		)
-		if home != "" {
-			candidates = append(candidates,
-				filepath.Join(home, ".local", "bin", "python3"),
-			)
-		}
-	}
-
-	for _, c := range candidates {
-		if _, err := os.Stat(c); err == nil {
-			return c
-		}
-	}
-
-	return ""
-}
-
-func findPipPath() string {
-	for _, name := range []string{"pip", "pip3"} {
-		if path, err := exec.LookPath(name); err == nil {
-			return path
-		}
-	}
-	return ""
-}
-
-func findBdPath() string {
-	if path, err := exec.LookPath("bd"); err == nil {
-		return path
-	}
-
-	home, _ := os.UserHomeDir()
-	localAppData := os.Getenv("LOCALAPPDATA")
-
-	candidates := []string{}
-	switch runtime.GOOS {
-	case "windows":
-		if localAppData != "" {
-			candidates = append(candidates,
-				filepath.Join(localAppData, "Programs", "bd", "bd.exe"),
-				filepath.Join(localAppData, "bd", "bd.exe"),
-			)
-		}
-		if home != "" {
-			candidates = append(candidates,
-				filepath.Join(home, "AppData", "Local", "Programs", "bd", "bd.exe"),
-				filepath.Join(home, ".local", "bin", "bd.exe"),
-			)
-		}
-	case "darwin":
-		if home != "" {
-			candidates = append(candidates,
-				filepath.Join(home, ".local", "bin", "bd"),
-				filepath.Join("/usr/local/bin", "bd"),
-				filepath.Join("/opt/homebrew/bin", "bd"),
-			)
-		}
-	default:
-		if home != "" {
-			candidates = append(candidates,
-				filepath.Join(home, ".local", "bin", "bd"),
-				filepath.Join("/usr/local/bin", "bd"),
-			)
-		}
-	}
-
-	for _, c := range candidates {
-		if _, err := os.Stat(c); err == nil {
-			return c
-		}
-	}
-
-	return ""
-}
 
 func printVerify(projectPath, version string) {
 	checks := []struct {
@@ -556,12 +440,12 @@ func printVerify(projectPath, version string) {
 		}
 	}
 
-	if findPythonPath() != "" {
+	if toolchain.FindPythonPath() != "" {
 		fmt.Println("  ✓ python")
 	} else {
 		fmt.Println("  ✗ python")
 	}
-	if findBdPath() != "" {
+	if toolchain.FindBdPath() != "" {
 		fmt.Println("  ✓ bd (beads)")
 	} else {
 		fmt.Println("  ✗ bd (beads)")
@@ -698,9 +582,12 @@ func generateBridgeFileContent(format, skillPath string) string {
 		"[Role: {role} | TaskPool: {status} | Phase: {phase} | Asset: {asset}]\n" +
 		"```\n\n" +
 		"- Role: Triage/TechLead/Dev/QA/PM/DevOps/Analysis/UIDesigner\n" +
-		"- TaskPool: beads issue ID or ❌unread\n" +
+		"- TaskPool: beads issue ID (e.g., `team-flow-7bd`) or ❌unread\n" +
 		"- Phase: ready/analyze/design/implement/verify/review/-(N/A)\n" +
-		"- Asset: directory path or -(N/A)\n\n"
+		"- Asset: directory path or -(N/A)\n\n" +
+		"**When TaskPool = ❌unread, you MUST execute `bd ready` FIRST before any other action.**\n" +
+		"This reads the task pool and assigns you a task. Never start working without a task ID.\n" +
+		"If no tasks exist, create one with `bd create` before starting work.\n\n"
 
 	skillRef := "Read `.team/version` for active version (v1 or v2).\n" +
 		"Load and follow ALL rules in `" + skillPath + "/SKILL.md` as the entry point.\n"
@@ -740,8 +627,8 @@ func generateBridgeFileContent(format, skillPath string) string {
 }
 
 func installMCPConfig(projectPath string) {
-	pyPath := findPythonPath()
-	bdPath := findBdPath()
+	pyPath := toolchain.FindPythonPath()
+	bdPath := toolchain.FindBdPath()
 
 	mcpPythonCmd := "python"
 	if pyPath != "" {

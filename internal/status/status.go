@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/origadmin/team-flow/internal/toolchain"
 	"github.com/spf13/cobra"
 )
 
@@ -123,14 +124,16 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Println("\n--- External Tools ---")
-	if bdPath, err := exec.LookPath("bd"); err == nil {
+	bdPath := toolchain.FindBdPath()
+	if bdPath != "" {
 		fmt.Printf("  bd (beads):  ✓ %s\n", bdPath)
 	} else {
 		fmt.Println("  bd (beads):  ✗ not installed")
 	}
 
-	if _, err := exec.LookPath("python"); err == nil {
-		out, err := exec.Command("python", "-m", "code_review_graph", "status").CombinedOutput()
+	pyPath := toolchain.FindPythonPath()
+	if pyPath != "" {
+		out, err := exec.Command(pyPath, "-m", "code_review_graph", "status").CombinedOutput()
 		if err == nil && strings.Contains(string(out), "nodes") {
 			fmt.Println("  code-review-graph: ✓ installed")
 		} else {

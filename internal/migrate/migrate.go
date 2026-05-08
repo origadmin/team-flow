@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/origadmin/team-flow/internal/toolchain"
 	"github.com/spf13/cobra"
 )
 
@@ -98,10 +99,12 @@ func runMigrate(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("bd not available: %w\nInstall: irm https://raw.githubusercontent.com/steveyegge/beads/main/install.ps1 | iex", err)
 	}
 
+	bdCmd := toolchain.FindBdPath()
+
 	beadsDir := filepath.Join(projectPath, ".beads")
 	if _, err := os.Stat(beadsDir); os.IsNotExist(err) || migrateForce {
 		fmt.Println("Initializing beads database...")
-		if err := runCmd("bd", "init"); err != nil {
+		if err := runCmd(bdCmd, "init"); err != nil {
 			return fmt.Errorf("bd init: %w", err)
 		}
 		fmt.Println("  ✓ bd init done")
@@ -123,7 +126,7 @@ func runMigrate(cmd *cobra.Command, args []string) error {
 			"--json",
 		}
 
-		output, err := runCmdCapture("bd", createArgs...)
+		output, err := runCmdCapture(bdCmd, createArgs...)
 		if err != nil {
 			fmt.Printf("  ✗ %s: %v\n", e.ID, err)
 			continue
@@ -134,18 +137,18 @@ func runMigrate(cmd *cobra.Command, args []string) error {
 			if beadsID, ok := result["id"].(string); ok {
 				if e.Status == "Doing" || e.Status == "Review" {
 					statusArgs := []string{"update", beadsID, "--status", "in_progress"}
-					runCmd("bd", statusArgs...)
+					runCmd(bdCmd, statusArgs...)
 				}
 				if e.Assignee != "" && e.Assignee != "-" {
 					assignArgs := []string{"update", beadsID, "--assignee", e.Assignee}
-					runCmd("bd", assignArgs...)
+					runCmd(bdCmd, assignArgs...)
 				}
 				notes := fmt.Sprintf("MIGRATED FROM v1 task-pool. Original ID: %s, Status: %s, Phase: %s", e.ID, e.Status, e.Phase)
 				if e.Docs != "" && e.Docs != "-" {
 					notes += fmt.Sprintf(", Docs: %s", e.Docs)
 				}
 				noteArgs := []string{"update", beadsID, "--notes", notes}
-				runCmd("bd", noteArgs...)
+				runCmd(bdCmd, noteArgs...)
 			}
 		}
 
@@ -282,8 +285,11 @@ func mapPriority(p string) int {
 }
 
 func ensureBdInstalled() error {
-	_, err := exec.LookPath("bd")
-	return err
+	bdPath := toolchain.FindBdPath()
+	if bdPath == "" {
+		return fmt.Errorf("bd CLI not found")
+	}
+	return nil
 }
 
 func runCmd(name string, args ...string) error {

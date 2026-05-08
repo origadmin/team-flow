@@ -27,6 +27,7 @@ ai:
     # subtype = frontend-dev 时额外加载
     - {TEAM_PATH}/workflows/roles/frontend-specialized-tests.md
     - {TEAM_PATH}/templates/frontend-bug-test-template.md
+    - {TEAM_PATH}/templates/ui-verification-template.md
     # subtype = backend-dev 时额外加载
     - {TEAM_PATH}/workflows/roles/specialized-tests.md
     - {TEAM_PATH}/templates/bug-test-template.md
@@ -260,6 +261,122 @@ RCA.md 数据流追踪模板：
 | 预期结果 | 修复后应达到的状态 |
 | 验证结果 | ✅ 通过 / ❌ 失败 |
 
+### ⛔ 强制测试验证流程（HARD GATE — 跳过 = 任务失败）
+
+> **核心问题**: AI修复前端Bug后经常不运行测试就报告完成。以下步骤必须按顺序执行，每步必须看到实际输出。
+
+**后端 Bug (subtype = backend-dev) 验证步骤**:
+
+```
+Step 1: 编译检查
+  命令: go build ./...
+  通过标准: 无编译错误
+  ⛔ 编译失败 → 修复后重新执行 Step 1
+
+Step 2: 单元测试
+  命令: go test ./...
+  通过标准: 所有测试通过，0 failures
+  ⛔ 测试失败 → 修复后重新执行 Step 2
+
+Step 3: Bug 复现测试
+  命令: go test ./tests/bugs/B{NNN}-.../...
+  通过标准: 复现测试通过（修复前应失败，修复后应通过）
+  ⛔ 复现测试仍失败 → 修复未生效，回到 Phase 1 重新分析
+
+Step 4: 全量回归
+  命令: go test ./...
+  通过标准: 无回归（之前通过的测试仍然通过）
+  ⛔ 出现回归 → 修复引入新问题，回滚或修复
+
+Step 5: 运行时验证（涉及 API/权限/状态/交互的 Bug 必须）
+  命令: go test -run TestB{NNN}... ./... （httptest 级别）
+  通过标准: HTTP 请求验证通过，完整链路可达
+  ⛔ 仅 UseCase 测试通过 → 不够，必须 httptest 级别验证
+```
+
+**前端 Bug (subtype = frontend-dev) 验证步骤**:
+
+```
+Step 1: 类型检查
+  命令: bun run typecheck
+  通过标准: 0 errors
+  ⛔ 类型错误 → 修复后重新执行 Step 1
+
+Step 2: 代码检查
+  命令: bun run lint
+  通过标准: 0 errors（warnings 可接受）
+  ⛔ lint 错误 → 修复后重新执行 Step 2
+
+Step 3: 单元测试
+  命令: bun run test
+  通过标准: 所有测试通过，0 failures
+  ⛔ 测试失败 → 修复后重新执行 Step 3
+
+Step 4: Bug 复现测试
+  命令: bun run test -- --testPathPattern="B{NNN}"
+  通过标准: 复现测试通过（修复前应失败，修复后应通过）
+  ⛔ 复现测试仍失败 → 修复未生效，回到 Phase 1 重新分析
+
+Step 5: 全量回归
+  命令: bun run test
+  通过标准: 无回归（之前通过的测试仍然通过）
+  ⛔ 出现回归 → 修复引入新问题，回滚或修复
+
+Step 6: UI 运行时验证（前端 Bug 必须 — 不是可选的）
+  方式: 启动 dev server + Playwright MCP（或手动浏览器验证）
+  文档: 使用 `{TEAM_PATH}/templates/ui-verification-template.md` 生成 UI_VERIFICATION.md
+  
+  ⛔ 必须执行以下全部验证动作并记录到 UI_VERIFICATION.md:
+  
+  6a. 启动 dev server
+    命令: bun run dev
+    确认: 服务器启动成功，无编译错误
+    记录: 终端输出粘贴到 UI_VERIFICATION.md Step 1
+  
+  6b. 打开 Bug 涉及的页面
+    动作: 导航到 Bug 出现的 URL
+    确认: 页面正常渲染，无白屏/报错
+    记录: URL + 导航路径 + 截图 B{NNN}-R{N}-001-navigate-{page}-result.png
+  
+  6c. 验证页面内容
+    动作: 检查 Bug 涉及的文本/数据/组件是否正确显示
+    确认: 内容与预期一致（不是"页面能打开"）
+    记录: 逐项检查表 + 截图 B{NNN}-R{N}-002-check-{area}-result.png
+  
+  6d. 验证交互行为
+    动作: 执行 Bug 涉及的点击/输入/提交等操作
+    确认: 交互响应正确（按钮可点击、表单可提交、弹窗可关闭）
+    记录: 交互步骤表 + 截图 B{NNN}-R{N}-003-{action}-{target}-before.png
+                        + 截图 B{NNN}-R{N}-004-{action}-{target}-after.png
+  
+  6e. 验证 Bug 现象消失
+    动作: 重现 Bug 的原始触发步骤
+    确认: Bug 现象不再出现（不是"代码改了应该好了"）
+    记录: 复现尝试表 + 截图 B{NNN}-R{N}-005-verify-fix-result.png
+  
+  6f. 副作用检查
+    动作: 检查相邻功能、导航是否正常
+    记录: 副作用检查表 + 截图 B{NNN}-R{N}-006-side-effect-result.png
+  
+  截图规则（详见 ui-verification-template.md）:
+  - 保存路径: {DOCS_INTERNAL}/reports/bugs/B{NNN}-R{N}/screenshots/
+  - 命名: B{NNN}-R{N}-{3位步骤号}-{动作}-{状态}.png
+  - 最少截图数: 交互Bug 3张，渲染Bug 2张，多步骤Bug N+1张
+  - 格式: PNG，1280x720最低，必须显示URL栏
+  
+  ⛔ 仅组件 mock 测试通过 → 不够，必须实际打开页面验证
+  ⛔ 跳过 6c/6d/6e 中的任何一项 → 等于没验证
+  ⛔ 只启动 dev server 不检查页面 → 等于没验证
+  ⛔ 没有截图 → 等于没验证
+  ⛔ 没有生成 UI_VERIFICATION.md → 等于没验证
+```
+
+**⛔ 验证输出要求**:
+- 每个步骤必须展示**实际命令输出**（不是"已执行"）
+- 测试通过必须展示**通过数量**（如 "Tests: 12 passed, 0 failed"）
+- 禁止跳过任何步骤
+- 禁止在验证未完成时更新 beads 状态
+
 ### 真实场景验证（mock 测试通过 ≠ 修复完成）
 
 > **B099 R5 的 58 个 mock 测试全通过但功能不可用。mock 测试只验证逻辑，不验证集成。**
@@ -270,6 +387,7 @@ RCA.md 数据流追踪模板：
 |---------|------------|
 | 后端 API Bug | HTTP 请求验证（httptest，不是仅 UseCase 单元测试） |
 | 前端 API 集成 Bug | MSW mock + 组件测试（不是仅组件 mock 测试） |
+| 前端 UI 交互 Bug | Playwright MCP / dev server 验证（不是仅组件渲染测试） |
 | 权限/认证 Bug | HTTP 请求 + JWT 验证（不是仅权限函数测试） |
 
 真实场景验证要求：
@@ -281,15 +399,8 @@ RCA.md 数据流追踪模板：
 **禁止**：
 - ❌ 仅凭 mock 测试通过就报告 Bug 修复完成（涉及 API/权限/状态/交互的 Bug）
 - ❌ "测试全通过但功能不可用"就报告完成
-
-**质量检查**（根据 subtype 选择命令）:
-
-| 检查项 | 后端命令 | 前端命令 |
-|--------|---------|---------|
-| 编译/类型检查 | `go build ./...` | `bun run typecheck` |
-| 静态检查 | `go vet ./...` | `bun run lint` |
-| 单元测试 | `go test ./...` | `bun run test` |
-| Bug 复现测试 | 复现测试通过 | 复现测试通过 |
+- ❌ 不执行测试命令就报告修复完成
+- ❌ 跳过 Step 1-6 中的任何步骤
 
 ---
 
@@ -321,6 +432,15 @@ Bugfix 完成检查（⛔ 任何一项缺失 = 禁止报告"完成"）:
 - [ ] RCA.md 包含：现象/根因/影响/预防
 - [ ] TEST_CASE.md 包含：复现步骤/预期/验证结果
 
+⛔ 测试验证执行检查（必须展示实际命令输出）:
+- [ ] 后端: go build ./... 编译通过（展示输出）
+- [ ] 后端: go test ./... 全部通过（展示通过数量）
+- [ ] 前端: bun run typecheck 类型检查通过（展示输出）
+- [ ] 前端: bun run lint 代码检查通过（展示输出）
+- [ ] 前端: bun run test 全部通过（展示通过数量）
+- [ ] Bug 复现测试通过（展示测试输出）
+- [ ] 全量回归测试通过（展示测试输出）
+
 数据流追踪检查（涉及API/权限/状态/交互的Bug必须）:
 - [ ] RCA.md 包含"数据流追踪"章节
 - [ ] 数据流追踪包含：起点/终点/环节清单/断点分析
@@ -332,24 +452,26 @@ Bugfix 完成检查（⛔ 任何一项缺失 = 禁止报告"完成"）:
 - [ ] 真实场景验证覆盖：默认值/零值/边界条件
 - [ ] 真实场景验证结果：通过（不是"已编写"）
 
-测试检查:
-- [ ] Bug 复现测试代码存在
-  - 后端: {PROJECT_PATH}/tests/bugs/B{NNN}-{name}/regression_*.go
-  - 前端: {PROJECT_PATH}/web/tests/bugs/B{NNN}-{name}/regression_*.test.{ts,tsx}
-- [ ] 复现测试通过
-- [ ] 全量回归测试通过
+运行时验证检查（涉及API/权限/状态/交互的Bug必须）:
+- [ ] 后端Bug: HTTP请求验证通过（不是仅UseCase单元测试）
+- [ ] 前端Bug: UI运行时验证通过（不是仅组件mock测试）:
+  - [ ] UI_VERIFICATION.md 已生成（使用 ui-verification-template.md）
+  - [ ] 启动dev server，打开Bug涉及页面
+  - [ ] 检查页面内容（文本/数据/组件正确显示）
+  - [ ] 执行交互行为（点击/输入/提交）
+  - [ ] 重现Bug原始触发步骤，确认Bug现象消失
+  - [ ] 副作用检查（相邻功能、导航正常）
+  - [ ] 截图保存到 {DOCS_INTERNAL}/reports/bugs/B{NNN}-R{N}/screenshots/
+  - [ ] 截图命名: B{NNN}-R{N}-{3位步骤号}-{动作}-{状态}.png
+  - [ ] 截图数量 >= Bug类型最低要求
+- [ ] 修复后的完整链路已验证（不是仅断点环节）
 
 质量检查:
 - [ ] 后端: go build + go vet + go test ./... 全部通过
 - [ ] 前端: bun run typecheck + bun run lint + bun run test 全部通过
 
-运行时验证检查:
-- [ ] 后端Bug: HTTP请求验证通过（不是仅UseCase单元测试）
-- [ ] 前端Bug: 页面可正常渲染+核心交互可工作（不是仅组件mock测试）
-- [ ] 修复后的完整链路已验证（不是仅断点环节）
-
 流程检查:
-- [ ] 执行顺序正确：RCA → 复现测试 → 修复 → TEST_CASE → 回归
+- [ ] 执行顺序正确：RCA → 复现测试 → 修复 → 验证步骤1-6 → TEST_CASE → 回归
 - [ ] 报告目录格式为 B{NNN}-R{N}/
 - [ ] beads issue 状态更新: bd update <id> --add-label phase:review
 - [ ] 建议后续角色 → QA
@@ -359,6 +481,8 @@ Bugfix 完成检查（⛔ 任何一项缺失 = 禁止报告"完成"）:
 **禁止**:
 - ❌ 未通过完成门禁就更新状态为 review
 - ❌ "代码修好了就行，文档后面补"
+- ❌ 不执行测试命令就报告修复完成
+- ❌ 只展示"已执行"而不展示实际命令输出
 
 ---
 

@@ -54,7 +54,26 @@ Triage only loads lightweight rules: routing table + beads status. Role-specific
 When acting as Triage:
 1. Load this file + `{TEAM_PATH}/workflows/shared.md` + `{TEAM_PATH}/workflows/roles/triage-standards.md`
 2. Ensure you're in the project directory: `cd {PROJECT_PATH}`
-3. Check beads status: `bd stats --json`
+3. Verify beads: `bd --version` (if fails, use full path from `flow doctor`)
+4. Check beads status: `bd stats --json`
+
+## Beads Availability
+
+`bd` CLI is installed and verified during `flow init`. If `bd` is not found on PATH in the current shell:
+
+```bash
+# Step 1: Verify bd is installed
+flow doctor
+
+# Step 2: If doctor shows bd OK but shell can't find it, use the full path
+# Windows: & "$env:LOCALAPPDATA\Programs\bd\bd.exe" <command>
+# macOS/Linux: ~/.local/bin/bd <command>
+
+# Step 3: Fix PATH permanently
+flow init --force
+```
+
+**bd is ALWAYS installed** — `flow init` guarantees it. The only issue is PATH not being updated in the current shell session.
 
 ---
 
@@ -267,7 +286,9 @@ BEADS_ID=$(echo $ISSUE | jq -r '.id')
 ```markdown
 ### Bug Post-Verification (Triage Executes)
 
-After bugfix-expert returns, Triage must verify the following files exist:
+After bugfix-expert returns, Triage must verify:
+
+#### Part 1: File Existence Check
 
 | # | Verification Item | Expected Path | If Missing |
 |---|--------|---------|--------|
@@ -275,25 +296,85 @@ After bugfix-expert returns, Triage must verify the following files exist:
 | 2 | TEST_CASE.md | {DOCS_PATH}/reports/bugs/B{NNN}/R{N}/TEST_CASE.md | Mark as "TEST_CASE missing", require completion |
 | 3 | Reproduction test code | tests/bugs/B{NNN}-*/ or web/tests/bugs/B{NNN}-*/ | Mark as "reproduction test missing", require completion |
 
-[v2] Data flow tracing verification (required for bugs involving API/permissions/state/interaction):
+#### Part 2: Test Execution Verification (CRITICAL — must run actual tests)
+
+⛔ Triage MUST execute the following commands to verify the fix actually works:
+
+**Backend Bug**:
+```bash
+# Step 1: Compile check
+go build ./...
+
+# Step 2: Run all tests
+go test ./...
+
+# Step 3: Run bug-specific regression test
+go test ./tests/bugs/B{NNN}-.../...
+```
+
+**Frontend Bug**:
+```bash
+# Step 1: Type check
+bun run typecheck
+
+# Step 2: Lint check
+bun run lint
+
+# Step 3: Run all tests
+bun run test
+
+# Step 4: Run bug-specific regression test
+bun run test -- --testPathPattern="B{NNN}"
+```
+
+**⛔ Frontend Bug 额外必须: UI 运行时验证**:
+```bash
+# Step 5: Start dev server and verify UI
+bun run dev
+# 然后必须执行:
+# - 打开 Bug 涉及的页面（导航到 Bug URL）
+# - 检查页面内容（文本/数据/组件正确显示）
+# - 执行 Bug 涉及的交互（点击/输入/提交）
+# - 重现 Bug 原始触发步骤，确认 Bug 现象消失
+# - 截图保存到 {DOCS_INTERNAL}/reports/bugs/B{NNN}-R{N}/
+```
+
+| # | Verification Item | Check Method | If Failed |
+|---|--------|---------|--------|
+| 4 | Backend: go build passes | Execute `go build ./...` | Mark as "compilation failed", send back to bugfix |
+| 5 | Backend: go test passes | Execute `go test ./...` | Mark as "tests failing", send back to bugfix |
+| 6 | Frontend: typecheck passes | Execute `bun run typecheck` | Mark as "type errors", send back to bugfix |
+| 7 | Frontend: lint passes | Execute `bun run lint` | Mark as "lint errors", send back to bugfix |
+| 8 | Frontend: tests pass | Execute `bun run test` | Mark as "tests failing", send back to bugfix |
+| 9 | Bug-specific test passes | Execute bug regression test | Mark as "fix not effective", send back to bugfix |
+| 10 | Frontend: page renders correctly | Open Bug URL in browser | Mark as "page broken", send back to bugfix |
+| 11 | Frontend: page content correct | Check text/data/components | Mark as "content wrong", send back to bugfix |
+| 12 | Frontend: interaction works | Click/input/submit on Bug area | Mark as "interaction broken", send back to bugfix |
+| 13 | Frontend: Bug symptom gone | Reproduce original Bug steps | Mark as "Bug still exists", send back to bugfix |
+| 14 | Frontend: screenshot saved | Check {DOCS_INTERNAL}/reports/bugs/B{NNN}-R{N}/screenshots/ | Mark as "no screenshot evidence" |
+| 15 | Frontend: UI_VERIFICATION.md exists | Check {DOCS_INTERNAL}/reports/bugs/B{NNN}-R{N}/UI_VERIFICATION.md | Mark as "no UI verification report", send back to bugfix |
+| 16 | Frontend: screenshots follow naming rule | Check filenames match B{NNN}-R{N}-{NNN}-{action}-{state}.png | Mark as "screenshot naming violation" |
+| 17 | Frontend: screenshot count meets minimum | Check screenshot count >= minimum for bug type | Mark as "insufficient screenshots" |
+
+#### Part 3: Data Flow Tracing Verification (API/permissions/state/interaction bugs)
 
 | # | Verification Item | Check Method | If Missing |
 |---|--------|---------|--------|
-| 4 | RCA.md contains "Data Flow Tracing" section | Read RCA.md, search for "Data Flow Tracing" | Mark as "missing data flow tracing" |
-| 5 | Data flow tracing includes breakpoint analysis | Read RCA.md, search for "breakpoint" | Mark as "incomplete data flow tracing" |
-| 6 | TEST_CASE.md includes real-scenario verification | Read TEST_CASE.md, search for "real scenario" | Mark as "missing real-scenario verification" |
+| 10 | RCA.md contains "Data Flow Tracing" section | Read RCA.md, search for "Data Flow Tracing" | Mark as "missing data flow tracing" |
+| 11 | Data flow tracing includes breakpoint analysis | Read RCA.md, search for "breakpoint" | Mark as "incomplete data flow tracing" |
+| 12 | TEST_CASE.md includes real-scenario verification | Read TEST_CASE.md, search for "real scenario" | Mark as "missing real-scenario verification" |
 
-[v2] R iteration quality check (must execute for R2+):
+#### Part 4: R Iteration Quality Check (must execute for R2+)
 
 | # | Verification Item | Check Method | If Missing |
 |---|--------|---------|--------|
-| 7 | RCA.md contains previous round failure analysis | Read RCA.md, search for "R{N-1}" or "previous round" | Mark as "missing R iteration analysis" |
-| 8 | R iteration >= R4, has user been asked to confirm? | Check beads notes | Mark as "R4+ not paused" |
+| 13 | RCA.md contains previous round failure analysis | Read RCA.md, search for "R{N-1}" or "previous round" | Mark as "missing R iteration analysis" |
+| 14 | R iteration >= R4, has user been asked to confirm? | Check beads notes | Mark as "R4+ not paused" |
 
 Verification result:
-- All present -> Update beads: `bd update <id> --add-label phase:review --remove-label phase:verify`, assignee=QA
-- Any missing -> Update beads: `bd update <id> --notes "MISSING: {specific items}, need completion"`
-- Report verification results to user
+- All present + All tests pass -> Update beads: `bd update <id> --add-label phase:review --remove-label phase:verify`, assignee=QA
+- Any missing or test failure -> Update beads: `bd update <id> --notes "MISSING: {specific items}, need completion"`, send back to bugfix-expert
+- Report verification results to user (include test output)
 ```
 
 **Forbidden**: Creating RCA.md / TEST_CASE.md. These are created by bugfix-expert. Triage only verifies, never creates.

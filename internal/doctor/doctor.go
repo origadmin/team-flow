@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/origadmin/team-flow/internal/toolchain"
 	"github.com/spf13/cobra"
 )
 
@@ -83,7 +84,7 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 func diagnosePython() Diagnosis {
 	d := Diagnosis{Name: "Python 3.10+"}
 
-	pyPath := findPythonPath()
+	pyPath := toolchain.FindPythonPath()
 	if pyPath == "" {
 		d.Status = "missing"
 		d.Detail = "not found"
@@ -137,7 +138,7 @@ func diagnosePip() Diagnosis {
 		}
 	}
 
-	pyPath := findPythonPath()
+	pyPath := toolchain.FindPythonPath()
 	if pyPath != "" {
 		out, _ := exec.Command(pyPath, "-m", "pip", "--version").CombinedOutput()
 		if strings.Contains(string(out), "pip") {
@@ -157,7 +158,7 @@ func diagnosePip() Diagnosis {
 func diagnoseCodeReviewGraph() Diagnosis {
 	d := Diagnosis{Name: "code-review-graph"}
 
-	pyPath := findPythonPath()
+	pyPath := toolchain.FindPythonPath()
 	if pyPath == "" {
 		d.Status = "blocked"
 		d.Detail = "Python not available"
@@ -197,7 +198,7 @@ func diagnoseCodeReviewGraph() Diagnosis {
 func diagnoseBeads() Diagnosis {
 	d := Diagnosis{Name: "beads (bd CLI)"}
 
-	bdPath := findBdPath()
+	bdPath := toolchain.FindBdPath()
 	if bdPath == "" {
 		d.Status = "missing"
 		d.Detail = "not found"
@@ -227,55 +228,6 @@ func diagnoseBeads() Diagnosis {
 	}
 
 	return d
-}
-
-func findBdPath() string {
-	if path, err := exec.LookPath("bd"); err == nil {
-		return path
-	}
-
-	home, _ := os.UserHomeDir()
-	localAppData := os.Getenv("LOCALAPPDATA")
-
-	candidates := []string{}
-	switch runtime.GOOS {
-	case "windows":
-		if localAppData != "" {
-			candidates = append(candidates,
-				filepath.Join(localAppData, "Programs", "bd", "bd.exe"),
-				filepath.Join(localAppData, "bd", "bd.exe"),
-			)
-		}
-		if home != "" {
-			candidates = append(candidates,
-				filepath.Join(home, "AppData", "Local", "Programs", "bd", "bd.exe"),
-				filepath.Join(home, ".local", "bin", "bd.exe"),
-			)
-		}
-	case "darwin":
-		if home != "" {
-			candidates = append(candidates,
-				filepath.Join(home, ".local", "bin", "bd"),
-				filepath.Join("/usr/local/bin", "bd"),
-				filepath.Join("/opt/homebrew/bin", "bd"),
-			)
-		}
-	default:
-		if home != "" {
-			candidates = append(candidates,
-				filepath.Join(home, ".local", "bin", "bd"),
-				filepath.Join("/usr/local/bin", "bd"),
-			)
-		}
-	}
-
-	for _, c := range candidates {
-		if _, err := os.Stat(c); err == nil {
-			return c
-		}
-	}
-
-	return ""
 }
 
 func diagnoseMCP() Diagnosis {
@@ -353,63 +305,4 @@ func fileExists(path string) bool {
 	return err == nil
 }
 
-func findPythonPath() string {
-	for _, name := range []string{"python", "python3"} {
-		if path, err := exec.LookPath(name); err == nil {
-			return path
-		}
-	}
 
-	home, _ := os.UserHomeDir()
-	localAppData := os.Getenv("LOCALAPPDATA")
-	programFiles := os.Getenv("ProgramFiles")
-
-	candidates := []string{}
-	switch runtime.GOOS {
-	case "windows":
-		if localAppData != "" {
-			candidates = append(candidates,
-				filepath.Join(localAppData, "Programs", "Python", "Python311", "python.exe"),
-				filepath.Join(localAppData, "Programs", "Python", "Python312", "python.exe"),
-				filepath.Join(localAppData, "Programs", "Python", "Python313", "python.exe"),
-				filepath.Join(localAppData, "Programs", "Python", "Python310", "python.exe"),
-			)
-		}
-		if programFiles != "" {
-			candidates = append(candidates,
-				filepath.Join(programFiles, "Python311", "python.exe"),
-				filepath.Join(programFiles, "Python312", "python.exe"),
-			)
-		}
-		candidates = append(candidates,
-			`C:\Python311\python.exe`,
-			`C:\Python312\python.exe`,
-			`C:\Python310\python.exe`,
-		)
-		if home != "" {
-			candidates = append(candidates,
-				filepath.Join(home, "AppData", "Local", "Programs", "Python", "Python311", "python.exe"),
-				filepath.Join(home, "AppData", "Local", "Programs", "Python", "Python312", "python.exe"),
-			)
-		}
-	case "darwin":
-		candidates = append(candidates,
-			"/usr/bin/python3",
-			"/usr/local/bin/python3",
-			"/opt/homebrew/bin/python3",
-		)
-	default:
-		candidates = append(candidates,
-			"/usr/bin/python3",
-			"/usr/local/bin/python3",
-		)
-	}
-
-	for _, c := range candidates {
-		if _, err := os.Stat(c); err == nil {
-			return c
-		}
-	}
-
-	return ""
-}

@@ -14,24 +14,47 @@ Every AI response MUST start with a status line. This is the FIRST thing output,
 | Field | Values | Description |
 |-------|--------|-------------|
 | Role | Triage / TechLead / Dev / QA / PM / DevOps / Analysis / UIDesigner | Current active role |
-| TaskPool | beads issue ID (e.g., `cms-42`) or ❌unread | Current task being worked on |
+| TaskPool | beads issue ID (e.g., `team-flow-7bd`) or ❌unread | Current task being worked on |
 | Phase | ready / analyze / design / implement / verify / review / -(N/A) | Current phase of the task |
 | Asset | directory path (e.g., `F014-user-profile/`) or -(N/A) | Current asset directory |
 
 **Example**:
 ```
 [Role: Triage | TaskPool: ❌unread | Phase: -(N/A) | Asset: -(N/A)]
-→ First action: read .team/version, then bd ready
+→ First action: bd ready (read task pool). If no tasks, bd create to register work.
 
-[Role: Dev | TaskPool: cms-42 | Phase: implement | Asset: F014-user-profile/]
+[Role: Dev | TaskPool: team-flow-7bd | Phase: implement | Asset: F014-user-profile/]
 → Continue implementation of F014
 ```
+
+**⛔ CRITICAL: When TaskPool = ❌unread**:
+1. Execute `bd ready` FIRST — this reads the task pool and shows available tasks
+2. If tasks exist → pick one, update Status Line with its ID
+3. If no tasks exist → create one with `bd create` before starting any work
+4. NEVER start working without a task ID in Status Line
 
 **Why**: Without this, there is no way to verify the AI is following the correct role and phase. This is the most critical compliance check.
 
 ## Overview
 
-team-flow v2 is the beads-native evolution of team-flow. Triage uses `bd` CLI exclusively for all task creation, tracking, and status updates. The `task-pool.md` file becomes a read-only export for human-readable reference and AI context injection.
+team-flow v2 is the beads-native evolution of team-flow. `bd` CLI is installed and verified during `flow init`. Triage uses `bd` exclusively for all task creation, tracking, and status updates. The `task-pool-export.md` file is a human-readable export (read-only).
+
+## Beads Availability (v2)
+
+`bd` CLI is always available after `flow init` (which installs, verifies, and adds to PATH). If `bd` is not found on PATH:
+
+```bash
+# Verify bd installation
+flow doctor
+
+# If bd found but not on PATH, re-run init to fix PATH
+flow init --force
+
+# Or manually discover bd path
+where.exe bd 2>$null; Get-ChildItem "$env:LOCALAPPDATA\Programs\bd\bd.exe" -ErrorAction SilentlyContinue
+```
+
+**bd is ALWAYS installed** — `flow init` guarantees it. If shell can't find `bd`, use the full path reported by `flow doctor`.
 
 ## Path Variables
 
