@@ -27,9 +27,6 @@ Thumbs.db
 tmp/
 *.tmp
 
-# framework/ 中的临时文件
-framework/**/.DS_Store
-
 # Beads / Dolt files (added by bd init)
 .dolt/
 *.db
@@ -43,7 +40,9 @@ framework/**/.DS_Store
 .agents/
 .cursor/
 .beads/
+.code-review-graph/
 
 # AI-generated root files (cause loading failures)
 AGENTS.md
 CLAUDE.md
+
