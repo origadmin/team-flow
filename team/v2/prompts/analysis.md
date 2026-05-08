@@ -78,6 +78,83 @@ bd update <id> --set-metadata doc_path="{DOCS_INTERNAL}/analysis/{name}/"
 - [ ] 分析结论有数据支撑
 - [ ] 多方案对比表已输出
 - [ ] 资产包已创建
+```
+
+---
+
+## Analysis 后续流程
+
+分析完成后，需要决定如何处理结论：
+
+```
+Analysis 完成
+    ↓
+Triage 扫描 phase:review 的 Analysis issue
+    ↓
+评估结论类型
+    ↓
+┌─────────────────────────────────────────────────────────────┐
+│ 结论类型判断                                                │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│ A. 产生新需求                                               │
+│    ↓                                                       │
+│    → 用户确认是否创建 Feature                                │
+│    → 是 → Triage 创建 F{N+1}                               │
+│    → 否 → 记录为参考文档                                   │
+│                                                             │
+│ B. 发现 Bug                                                │
+│    ↓                                                       │
+│    → 用户确认是否创建 Bug                                    │
+│    → 是 → Triage 创建 B{N+1}                               │
+│    → 否 → 记录为观察                                       │
+│                                                             │
+│ C. 产生变更                                                │
+│    ↓                                                       │
+│    → 用户确认是否创建 Change                                 │
+│    → 是 → Triage 创建 C{N+1}                               │
+│    → 否 → 记录为参考文档                                   │
+│                                                             │
+│ D. 仅作参考                                                │
+│    ↓                                                       │
+│    → Review 确认 → 关闭                                    │
+│    → 文档保存在 {DOCS_PATH}/reports/analysis/              │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Triage 处理 Review 阶段的 Analysis
+
+```bash
+# 扫描 Review 阶段的 Analysis
+bd list --label phase:review --json | jq '.[] | select(.type == "analysis")'
+```
+
+```markdown
+## Analysis 待处理
+
+| ID | 分析主题 | 结论类型 | 建议操作 |
+|----|---------|---------|---------|
+| A001 | XX 技术对比 | 新需求 | 创建 F010 |
+| A002 | YY 性能分析 | 仅参考 | 关闭 |
+
+**请确认每个 Analysis 的后续操作**:
+- [确认并创建 Feature/Bug/Change]
+- [确认仅作参考，关闭]
+- [稍后处理]
+```
+
+### 文档保存位置
+
+```
+{DOCS_PATH}/reports/analysis/
+├── A001-{topic}/
+│   ├── INDEX.md
+│   ├── COMPARISON.md
+│   └── ADR-XXX.md
+└── A002-{topic}/
+    └── ...
+```
 - [ ] beads issue 已更新 (bd update --notes "analysis complete")
 ```
 

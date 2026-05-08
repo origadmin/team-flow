@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/origadmin/team-flow/internal/bd"
 )
 
 var (
@@ -57,8 +57,7 @@ func runExport(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("create docs path: %w", err)
 	}
 
-	bdPath, err := exec.LookPath("bd")
-	if err != nil {
+	if !bd.IsAvailable() {
 		return fmt.Errorf("bd CLI not found. Install beads first")
 	}
 
@@ -69,13 +68,13 @@ func runExport(cmd *cobra.Command, args []string) error {
 	fmt.Printf("  Docs:     %s\n", docsPath)
 	fmt.Printf("  Format:   %s\n\n", exportFormat)
 
-	output, err := exec.Command(bdPath, "list", "--json").CombinedOutput()
+	output, err := bd.RunQuiet("list", "--json")
 	if err != nil {
 		return fmt.Errorf("bd list failed: %w\nOutput: %s", err, string(output))
 	}
 
 	var issues []map[string]interface{}
-	if err := json.Unmarshal(output, &issues); err != nil {
+	if err := json.Unmarshal([]byte(output), &issues); err != nil {
 		return fmt.Errorf("parse bd list output: %w", err)
 	}
 

@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/origadmin/team-flow/internal/bd"
 	"github.com/origadmin/team-flow/internal/toolchain"
 	"github.com/spf13/cobra"
 )
@@ -198,8 +199,7 @@ func diagnoseCodeReviewGraph() Diagnosis {
 func diagnoseBeads() Diagnosis {
 	d := Diagnosis{Name: "beads (bd CLI)"}
 
-	bdPath := toolchain.FindBdPath()
-	if bdPath == "" {
+	if !bd.IsAvailable() {
 		d.Status = "missing"
 		d.Detail = "not found"
 		switch runtime.GOOS {
@@ -213,7 +213,7 @@ func diagnoseBeads() Diagnosis {
 		return d
 	}
 
-	version, _ := exec.Command(bdPath, "--version").CombinedOutput()
+	version, _ := exec.Command(bd.FindPath(), "--version").CombinedOutput()
 	d.Detail = strings.TrimSpace(string(version))
 	d.Healthy = true
 	d.Status = "ok"

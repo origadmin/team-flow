@@ -14,6 +14,7 @@
 | `frontend-feature-test-template.md` | 前端 Feature 测试覆盖声明 | Feature 开发（前端） | subsystem:frontend |
 | `frontend-bug-test-template.md` | 前端 Bug 复现测试用例 | Bug 修复（前端） | subsystem:frontend |
 | `scope-template.md` | 变更报告（机器可读 YAML） | 所有任务完成时 | 通用 |
+| `error-report-template.md` | Bug 修复总结报告 | QA 验证通过后 | 通用 |
 
 ### P1 — 重要模板（QA/验收必用）
 

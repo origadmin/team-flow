@@ -1,28 +1,36 @@
 # team-flow SKILL.md — Entry Point
 
-> **Version**: 4.0 | **Date**: 2026-05-08
-> **Core change**: init specifies version, migrate upgrades, auto-detect low version
+> **Version**: 4.3 | **Date**: 2026-05-08
+> **Core change**: TRIAGE-INBOX 统一入口 + 拆分机制
 
 ## Status Line (MANDATORY — Highest Priority)
 
 Every AI response MUST start with:
 
 ```
-[Role: {role} | TaskPool: {status} | Phase: {phase} | Asset: {asset}]
+[Role: {role} | TaskPool: {id} | Phase: {phase} | Asset: {project-name}]
 ```
 
 | Field | Values | Description |
 |-------|--------|-------------|
 | Role | Triage / TechLead / Dev / QA / PM / DevOps / Analysis / UIDesigner | Current active role |
-| TaskPool | task ID (e.g., `F014`) or ❌unread | Current task |
+| TaskPool | `INBOX` 或 task ID (e.g., `F014`, `B001`) | Current task ID |
 | Phase | ready / analyze / design / implement / verify / review / -(N/A) | Current phase |
-| Asset | directory path or -(N/A) | Current asset directory |
+| Asset | project name (e.g., `orig-cms`) or -(N/A) | Current project |
 
-**⛔ CRITICAL: When TaskPool = ❌unread**:
-1. Execute `bd ready` FIRST — this reads the task pool and shows available tasks
-2. If tasks exist → pick one, update Status Line with its ID
-3. If no tasks exist → create one with `bd create` before starting any work
-4. NEVER start working without a task ID in Status Line
+**Example**:
+```
+[Role: Triage | TaskPool: INBOX | Phase: -(N/A) | Asset: team-flow]
+→ Session started, inbox active. All inputs go through INBOX.
+
+[Role: Triage | TaskPool: F014 | Phase: ready | Asset: orig-cms]
+→ Task split from inbox, awaiting classification confirmation.
+
+[Role: Dev | TaskPool: F014 | Phase: implement | Asset: orig-cms]
+→ Working on F014
+```
+
+**⛔ TRIAGE-INBOX**: Session 启动时，确保 task-pool.md 中有 `INBOX` 条目作为统一入口。所有输入在 Inbox 中分析，可分类时拆分为独立 Task。详见 `{TEAM_PATH}/{VERSION}/prompts/triage.md`。
 
 ## Version Detection (FIRST ACTION)
 

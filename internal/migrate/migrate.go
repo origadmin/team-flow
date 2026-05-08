@@ -10,13 +10,15 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/origadmin/team-flow/internal/toolchain"
+	"github.com/origadmin/team-flow/internal/bd"
+	"github.com/origadmin/team-flow/internal/logger"
 	"github.com/spf13/cobra"
 )
 
 var (
 	migrateDryRun bool
 	migrateForce  bool
+	log           *logger.Logger
 )
 
 type TaskPoolEntry struct {
@@ -50,10 +52,15 @@ func init() {
 }
 
 func runMigrate(cmd *cobra.Command, args []string) error {
+	log := logger.GetLogger()
+	log.Debug("Starting migration")
+
 	projectPath, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("get cwd: %w", err)
 	}
+
+	log.Debug("Starting migration: " + projectPath)
 
 	versionFile := filepath.Join(projectPath, ".team", "version")
 	if data, err := os.ReadFile(versionFile); err == nil {
@@ -95,16 +102,31 @@ func runMigrate(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	if err := ensureBdInstalled(); err != nil {
-		return fmt.Errorf("bd not available: %w\nInstall: irm https://raw.githubusercontent.com/steveyegge/beads/main/install.ps1 | iex", err)
+	bdCmd := bd.FindPath()
+	if bdCmd == "" {
+		fmt.Println("\n⚠ beads (bd CLI) not found.")
+		fmt.Println("Installing beads...")
+		if err := bd.Install(); err != nil {
+			return fmt.Errorf("bd installation failed: %w\nManual install: https://github.com/steveyegge/beads", err)
+		}
+		bdCmd = bd.FindPath()
+		if bdCmd != "" {
+			bd.EnsureOnPath()
+		}
 	}
 
-	bdCmd := toolchain.FindBdPath()
+	if bdCmd == "" {
+		return fmt.Errorf("bd not available after installation")
+	}
+
+	if err := bd.EnsureOnPath(); err != nil {
+		fmt.Printf("  ⚠ %v\n", err)
+	}
 
 	beadsDir := filepath.Join(projectPath, ".beads")
 	if _, err := os.Stat(beadsDir); os.IsNotExist(err) || migrateForce {
 		fmt.Println("Initializing beads database...")
-		if err := runCmd(bdCmd, "init"); err != nil {
+		if _, err := bd.Run("init"); err != nil {
 			return fmt.Errorf("bd init: %w", err)
 		}
 		fmt.Println("  ✓ bd init done")
@@ -126,37 +148,65 @@ func runMigrate(cmd *cobra.Command, args []string) error {
 			"--json",
 		}
 
-		output, err := runCmdCapture(bdCmd, createArgs...)
-		if err != nil {
-			fmt.Printf("  ✗ %s: %v\n", e.ID, err)
+		output, _ := bd.Run(createArgs...)
+
+		jsonOutput, jsonErr := extractJSON(output)
+		if jsonErr != nil {
+			fmt.Printf("  ✗ %s: failed to extract JSON: %v\n", e.ID, jsonErr)
+			fmt.Printf("    Raw output: %s\n", truncateString(output, 200))
 			continue
 		}
 
-		var result map[string]interface{}
-		if err := json.Unmarshal([]byte(output), &result); err == nil {
+		var results []map[string]interface{}
+		if err := json.Unmarshal([]byte(jsonOutput), &results); err != nil {
+			var singleResult map[string]interface{}
+			if err2 := json.Unmarshal([]byte(jsonOutput), &singleResult); err2 != nil {
+				fmt.Printf("  ✗ %s: parse error: %v\n", e.ID, err)
+				continue
+			}
+			results = []map[string]interface{}{singleResult}
+		}
+
+		if len(results) > 0 {
+			result := results[0]
 			if beadsID, ok := result["id"].(string); ok {
+				var title string
+				if t, ok := result["title"].(string); ok {
+					title = t
+					fmt.Printf("  ✓ %s → %s (%s)\n", e.ID, beadsID, title)
+				} else {
+					fmt.Printf("  ✓ %s → %s\n", e.ID, beadsID)
+				}
+
 				if e.Status == "Doing" || e.Status == "Review" {
-					statusArgs := []string{"update", beadsID, "--status", "in_progress"}
-					runCmd(bdCmd, statusArgs...)
+					bd.Run("update", beadsID, "--status", "in_progress")
 				}
 				if e.Assignee != "" && e.Assignee != "-" {
-					assignArgs := []string{"update", beadsID, "--assignee", e.Assignee}
-					runCmd(bdCmd, assignArgs...)
+					bd.Run("update", beadsID, "--assignee", e.Assignee)
+				}
+				if title != "" {
+					log.Debugf("Created issue %s: %s", beadsID, title)
 				}
 				notes := fmt.Sprintf("MIGRATED FROM v1 task-pool. Original ID: %s, Status: %s, Phase: %s", e.ID, e.Status, e.Phase)
 				if e.Docs != "" && e.Docs != "-" {
 					notes += fmt.Sprintf(", Docs: %s", e.Docs)
 				}
-				noteArgs := []string{"update", beadsID, "--notes", notes}
-				runCmd(bdCmd, noteArgs...)
+				bd.Run("update", beadsID, "--notes", notes)
 			}
 		}
 
-		fmt.Printf("  ✓ %s → beads\n", e.ID)
-		migrated++
+		if _, ok := results[0]["id"].(string); ok {
+			migrated++
+		}
 	}
 
 	fmt.Printf("\n✅ Migrated %d/%d tasks\n", migrated, len(entries))
+
+	if migrated == 0 {
+		fmt.Println("\n⚠ No tasks migrated successfully. Not updating version.")
+		fmt.Println("Please check the errors above and try again.")
+		return fmt.Errorf("migration failed: no tasks migrated")
+	}
 
 	versionFile = filepath.Join(projectPath, ".team", "version")
 	if err := os.WriteFile(versionFile, []byte("v2"), 0644); err != nil {
@@ -285,8 +335,7 @@ func mapPriority(p string) int {
 }
 
 func ensureBdInstalled() error {
-	bdPath := toolchain.FindBdPath()
-	if bdPath == "" {
+	if !bd.IsAvailable() {
 		return fmt.Errorf("bd CLI not found")
 	}
 	return nil
@@ -299,8 +348,26 @@ func runCmd(name string, args ...string) error {
 	return cmd.Run()
 }
 
-func runCmdCapture(name string, args ...string) (string, error) {
-	cmd := exec.Command(name, args...)
-	output, err := cmd.CombinedOutput()
-	return string(output), err
+func extractJSON(output string) (string, error) {
+	start := strings.Index(output, "[")
+	if start == -1 {
+		start = strings.Index(output, "{")
+	}
+	if start == -1 {
+		return "", fmt.Errorf("no JSON found in output")
+	}
+
+	end := strings.LastIndex(output, "]")
+	if end == -1 || !strings.Contains(output[:end], "[") {
+		end = strings.LastIndex(output, "}")
+	}
+
+	return strings.TrimSpace(output[start : end+1]), nil
+}
+
+func truncateString(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	return s[:maxLen] + "..."
 }

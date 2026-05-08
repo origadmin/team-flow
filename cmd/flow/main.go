@@ -9,11 +9,17 @@ import (
 	"github.com/origadmin/team-flow/internal/editor"
 	"github.com/origadmin/team-flow/internal/export"
 	"github.com/origadmin/team-flow/internal/graph"
+	"github.com/origadmin/team-flow/internal/logger"
 	"github.com/origadmin/team-flow/internal/migrate"
 	"github.com/origadmin/team-flow/internal/status"
 	"github.com/origadmin/team-flow/internal/ver"
 	"github.com/origadmin/team-flow/internal/version"
 	"github.com/spf13/cobra"
+)
+
+var (
+	verboseFlag bool
+	log        *logger.Logger
 )
 
 var rootCmd = &cobra.Command{
@@ -28,6 +34,15 @@ Provides initialization, migration, graph analysis, and diagnostics.`,
 
 func init() {
 	rootCmd.SetVersionTemplate(fmt.Sprintf("flow version %s (build: %s, commit: %s)\n", version.Version, version.BuildTime, version.GitCommit))
+	rootCmd.PersistentFlags().BoolVarP(&verboseFlag, "verbose", "v", false, "Verbose output (log to .team/logs/)")
+	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+		log = logger.GetLogger()
+		if verboseFlag {
+			log.SetLevel(logger.DEBUG)
+		}
+		log.Debug("Command executed: " + cmd.Name())
+		return nil
+	}
 }
 
 func main() {

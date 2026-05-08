@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	skillfs "github.com/origadmin/team-flow"
+	"github.com/origadmin/team-flow/internal/bd"
 	"github.com/origadmin/team-flow/internal/toolchain"
 	"github.com/spf13/cobra"
 )
@@ -157,12 +158,8 @@ pipeline: bun run test | bun run build
 		if _, err := os.Stat(beadsDir); err == nil {
 			fmt.Println("  ✓ .beads already exists")
 		} else {
-			bdPath := toolchain.FindBdPath()
-			if bdPath != "" {
-				cmd := exec.Command(bdPath, "init")
-				cmd.Stdout = os.Stdout
-				cmd.Stderr = os.Stderr
-				if err := cmd.Run(); err != nil {
+			if bd.IsAvailable() {
+				if _, err := bd.Run("init"); err != nil {
 					fmt.Printf("  ⚠ bd init failed: %v\n", err)
 					fmt.Println("  You can init later: bd init")
 				} else {
@@ -323,51 +320,32 @@ func ensureCodeReviewGraph(pyPath string) {
 }
 
 func ensureBeads() {
-	bdPath := toolchain.FindBdPath()
-	if bdPath != "" {
-		version, _ := exec.Command(bdPath, "--version").CombinedOutput()
-		fmt.Printf("  ✓ beads found: %s (%s)\n", bdPath, strings.TrimSpace(string(version)))
+	if bd.IsAvailable() {
+		version, _ := exec.Command(bd.FindPath(), "--version").CombinedOutput()
+		fmt.Printf("  ✓ beads found: %s (%s)\n", bd.FindPath(), strings.TrimSpace(string(version)))
 
-		if !toolchain.IsBdOnPath() {
-			fmt.Println("  bd is not on PATH. Adding...")
-			if toolchain.AddBdToPath(bdPath) {
-				fmt.Printf("  ✓ Added %s to PATH (current session + persistent)\n", filepath.Dir(bdPath))
-			} else {
-				fmt.Printf("  ⚠ Could not add to persistent PATH. Current session updated.\n")
-				fmt.Printf("    Manual: Add %s to your PATH\n", filepath.Dir(bdPath))
-			}
+		if err := bd.EnsureOnPath(); err != nil {
+			fmt.Printf("  ⚠ Could not add to persistent PATH. Current session updated.\n")
+			fmt.Printf("    Manual: Add %s to your PATH\n", filepath.Dir(bd.FindPath()))
+		} else {
+			fmt.Printf("  ✓ Added %s to PATH\n", filepath.Dir(bd.FindPath()))
 		}
 		return
 	}
 
 	fmt.Println("  beads (bd CLI) not found.")
 	if autoYes || confirm("  Install beads?") {
-		switch runtime.GOOS {
-		case "windows":
-			psCmd := `irm https://raw.githubusercontent.com/steveyegge/beads/main/install.ps1 | iex`
-			cmd := exec.Command("powershell", "-Command", psCmd)
-			cmd.Stdout = os.Stdout
-			cmd.Stderr = os.Stderr
-			if err := cmd.Run(); err != nil {
-				fmt.Println("  ⚠ Auto install failed. Manual: irm https://raw.githubusercontent.com/steveyegge/beads/main/install.ps1 | iex")
+		if err := bd.Install(); err != nil {
+			fmt.Println("  ⚠ Auto install failed.")
+			fmt.Println("    Manual: https://github.com/steveyegge/beads")
+		} else {
+			fmt.Println("  ✓ beads installed")
+			if err := bd.EnsureOnPath(); err != nil {
+				fmt.Println("  ⚠ bd installed but could not be located.")
+				fmt.Println("    Restart your terminal and run: flow init")
 			} else {
-				fmt.Println("  ✓ beads installed")
-				bdPath = toolchain.FindBdPath()
-				if bdPath != "" {
-					toolchain.AddBdToPath(bdPath)
-					fmt.Printf("  ✓ Added %s to PATH\n", filepath.Dir(bdPath))
-				} else {
-					fmt.Println("  ⚠ bd installed but could not be located.")
-					fmt.Println("    Restart your terminal and run: flow init")
-				}
+				fmt.Printf("  ✓ Added %s to PATH\n", filepath.Dir(bd.FindPath()))
 			}
-		case "darwin":
-			cmd := exec.Command("brew", "install", "beads")
-			cmd.Stdout = os.Stdout
-			cmd.Stderr = os.Stderr
-			cmd.Run()
-		default:
-			fmt.Println("  Manual: curl -fsSL https://raw.githubusercontent.com/steveyegge/beads/main/install.sh | bash")
 		}
 	} else {
 		fmt.Println("  ⏭ Skipped. Task tracking will use task-pool.md fallback.")
@@ -445,7 +423,7 @@ func printVerify(projectPath, version string) {
 	} else {
 		fmt.Println("  ✗ python")
 	}
-	if toolchain.FindBdPath() != "" {
+	if bd.IsAvailable() {
 		fmt.Println("  ✓ bd (beads)")
 	} else {
 		fmt.Println("  ✗ bd (beads)")
@@ -628,7 +606,7 @@ func generateBridgeFileContent(format, skillPath string) string {
 
 func installMCPConfig(projectPath string) {
 	pyPath := toolchain.FindPythonPath()
-	bdPath := toolchain.FindBdPath()
+	bdPath := bd.FindPath()
 
 	mcpPythonCmd := "python"
 	if pyPath != "" {

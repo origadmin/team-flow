@@ -1,39 +1,36 @@
 # team-flow v2 SKILL.md — Entry Point
 
-> **Version**: v2.0 | **Date**: 2026-05-02
-> **Core change**: Triage + Task Management → 100% beads
+> **Version**: v2.2 | **Date**: 2026-05-08
+> **Core change**: TRIAGE-INBOX 统一入口 + 拆分机制
 
 ## Status Line (MANDATORY — Highest Priority)
 
 Every AI response MUST start with a status line. This is the FIRST thing output, before any other content.
 
 ```
-[Role: {role} | TaskPool: {status} | Phase: {phase} | Asset: {asset}]
+[Role: {role} | TaskPool: {id|ref|❌unread} | Phase: {phase} | Asset: {project-name}]
 ```
 
 | Field | Values | Description |
 |-------|--------|-------------|
 | Role | Triage / TechLead / Dev / QA / PM / DevOps / Analysis / UIDesigner | Current active role |
-| TaskPool | beads issue ID (e.g., `team-flow-7bd`) or ❌unread | Current task being worked on |
+| TaskPool | `TRIAGE-INBOX` 或 beads ID (e.g., `cms-abc`) 或 task ID (e.g., `F014`) | Current task ID |
 | Phase | ready / analyze / design / implement / verify / review / -(N/A) | Current phase of the task |
-| Asset | directory path (e.g., `F014-user-profile/`) or -(N/A) | Current asset directory |
+| Asset | project name (e.g., `orig-cms`) or -(N/A) | Current project |
 
 **Example**:
 ```
-[Role: Triage | TaskPool: ❌unread | Phase: -(N/A) | Asset: -(N/A)]
-→ First action: bd ready (read task pool). If no tasks, bd create to register work.
+[Role: Triage | TaskPool: TRIAGE-INBOX | Phase: -(N/A) | Asset: team-flow]
+→ Session started, inbox active. All inputs go through TRIAGE-INBOX.
 
-[Role: Dev | TaskPool: team-flow-7bd | Phase: implement | Asset: F014-user-profile/]
-→ Continue implementation of F014
+[Role: Triage | TaskPool: F001 | Phase: ready | Asset: orig-cms]
+→ Task split from inbox, awaiting classification confirmation.
+
+[Role: Dev | TaskPool: F001 | Phase: implement | Asset: orig-cms]
+→ Working on F001
 ```
 
-**⛔ CRITICAL: When TaskPool = ❌unread**:
-1. Execute `bd ready` FIRST — this reads the task pool and shows available tasks
-2. If tasks exist → pick one, update Status Line with its ID
-3. If no tasks exist → create one with `bd create` before starting any work
-4. NEVER start working without a task ID in Status Line
-
-**Why**: Without this, there is no way to verify the AI is following the correct role and phase. This is the most critical compliance check.
+**⛔ TRIAGE-INBOX**: Session 启动时，检查/创建 `TRIAGE-INBOX` 作为统一入口。所有输入在 Inbox 中分析，可分类时拆分为独立 Task。详见 `prompts/triage.md`。
 
 ## Overview
 
