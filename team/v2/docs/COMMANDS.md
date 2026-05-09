@@ -18,7 +18,7 @@ AI 始终使用 `flow task`，无需关心底层实现。
 flow task create "Title" -t {bug|feature|task|epic} -p {0-4} --parent {id} --labels "label1,label2" --silent
 flow task update {id} --claim|--notes "..."|--add-label key:value|--remove-label key:value
 flow task close {id} --reason "..."
-flow task list [--status open|closed|all] [--json] [--format table]
+flow task list [--status open|closed|all] [--json] [--format table] [--created-after YYYY-MM-DD] [--updated-after YYYY-MM-DD]
 flow task show {id}
 flow task ready [--json]
 flow task append {id} --speaker {role} --content "..."
@@ -39,6 +39,13 @@ flow task append {id} --speaker {role} --content "..."
 | `--status` | 筛选状态：open / closed / all |
 | `--json` | JSON 格式输出 |
 | `--format` | 输出格式：table |
+| `--created-after` | 筛选创建日期之后（YYYY-MM-DD 或 RFC3339） |
+| `--created-before` | 筛选创建日期之前 |
+| `--updated-after` | 筛选更新日期之后 |
+| `--updated-before` | 筛选更新日期之前 |
+| `--closed-after` | 筛选关闭日期之后 |
+| `--closed-before` | 筛选关闭日期之前 |
+| `--sort` | 排序字段：priority / created / updated / closed / status |
 | `--speaker` | 对话记录发言者角色 |
 | `--content` | 对话记录内容 |
 
@@ -104,6 +111,8 @@ flow config paths --validate
 | 查看任务 | `flow task show {id}` |
 | 查找工作 | `flow task ready --json` |
 | 列出任务 | `flow task list --status open --format table` |
+| 按日期筛选 | `flow task list --created-after 2026-05-09 --json` |
+| 按更新筛选 | `flow task list --updated-after 2026-05-09 --sort updated` |
 | 追加对话 | `flow task append {id} --speaker {role} --content "..."` |
 | 添加依赖 | `flow task dep add {id} depends-on {target-id}` |
 | 推送数据 | `flow task dolt push` |
