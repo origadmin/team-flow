@@ -70,7 +70,7 @@ Resolve all paths at startup via `flow config paths --json`. See `references/pat
 | Close task | `flow task close {id} --reason "..."` |
 | Show task | `flow task show {id}` |
 | Find work | `flow task ready --json` |
-| Append record | `flow task append {id} --speaker {role} --content "..."` |
+| Append record | `flow task append {id} "[{role}] message text"` |
 | Resolve paths | `flow config paths --json` |
 
 ## Critical Rules

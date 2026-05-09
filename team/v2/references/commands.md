@@ -24,7 +24,7 @@
 | List tasks | `flow task list --status open` |
 | Filter by date | `flow task list --created-after YYYY-MM-DD --json` |
 | Filter by update | `flow task list --updated-after YYYY-MM-DD --sort updated` |
-| Append record | `flow task append {id} --speaker {role} --content "..."` |
+| Append record | `flow task append {id} "[{role}] message text"` |
 | Add dependency | `flow task dep add {id} depends-on {target-id}` |
 | Push data | `flow task dolt push` |
 | Export tasks | `flow export > .team/task-pool-export.md` |
@@ -38,7 +38,9 @@
 
 ## Conversation Records
 
-`flow task append {id} --speaker {role} --content "..."` auto-increments cr-index and sets timestamp.
+`flow task append {id} "[{role}] message text"` — maps to `bd note <id> [text...]`.
+
+Role prefix convention: `[Triage]`, `[Dev]`, `[QA]`, etc. Auto-includes `--actor` from git config.
 
 ## Task Availability
 
