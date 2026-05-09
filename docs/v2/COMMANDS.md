@@ -21,7 +21,7 @@ flow task close {id} --reason "..."
 flow task list [--status open|closed|all] [--json] [--format table] [--created-after YYYY-MM-DD] [--updated-after YYYY-MM-DD]
 flow task show {id}
 flow task ready [--json]
-flow task append {id} --speaker {role} --content "..."
+flow task append {id} "[{role}] message text"
 ```
 
 | 参数 | 说明 |
@@ -46,8 +46,6 @@ flow task append {id} --speaker {role} --content "..."
 | `--closed-after` | 筛选关闭日期之后 |
 | `--closed-before` | 筛选关闭日期之前 |
 | `--sort` | 排序字段：priority / created / updated / closed / status |
-| `--speaker` | 对话记录发言者角色 |
-| `--content` | 对话记录内容 |
 
 ## 自动时间戳
 
@@ -113,7 +111,7 @@ flow config paths --validate
 | 列出任务 | `flow task list --status open --format table` |
 | 按日期筛选 | `flow task list --created-after 2026-05-09 --json` |
 | 按更新筛选 | `flow task list --updated-after 2026-05-09 --sort updated` |
-| 追加对话 | `flow task append {id} --speaker {role} --content "..."` |
+| 追加对话 | `flow task append {id} "[{role}] message text"` |
 | 添加依赖 | `flow task dep add {id} depends-on {target-id}` |
 | 推送数据 | `flow task dolt push` |
 | 导出任务 | `flow export > .team/task-pool-export.md` |
