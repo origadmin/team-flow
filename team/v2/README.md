@@ -100,8 +100,8 @@ flow task close <id> --reason "Fixed in commit abc123"
 |----------|---------|-----------|
 | `SKILL.md` | Entry point, structure, quick start | Every session |
 | `BOUNDARY.md` | Layer rules, what goes where | Setting up project |
-| `docs/MIGRATION.md` | Migrate from v1 | Moving project to v2 |
-| `docs/BEADS_INTEGRATION.md` | beads CLI usage, field mapping | All roles |
+| `docs/v2/MIGRATION.md` | Migrate from v1 | Moving project to v2 |
+| `docs/v2/BEADS_INTEGRATION.md` | beads CLI usage, field mapping | All roles |
 | `prompts/triage.md` | Triage workflow | Acting as triage |
 | `workflows/shared.md` | Universal rules | Every session |
 

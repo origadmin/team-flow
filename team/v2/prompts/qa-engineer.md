@@ -271,7 +271,7 @@ Quality threshold is the quantitative check standard for release-level R-Phase 1
 - Test levels: `{TEAM_PATH}/workflows/roles/test-levels.md`
 - Specialized tests: `{TEAM_PATH}/workflows/roles/specialized-tests.md`
 - Checklist: `{TEAM_PATH}/workflows/roles/checklist.md`
-- Beads integration: `{TEAM_PATH}/docs/BEADS_INTEGRATION.md`
+- Beads integration: `{TEAM_PATH}/docs/v2/BEADS_INTEGRATION.md`
 
 ---
 

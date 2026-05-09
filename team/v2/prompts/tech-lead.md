@@ -360,7 +360,7 @@ Feature 完成检查:
 ## 相关文档
 - 团队协议: `{TEAM_PATH}/workflows/shared.md`
 - beads CLI: `flow task --help`, `flow task <command> --help`
-- beads 集成指南: `{TEAM_PATH}/docs/BEADS_INTEGRATION.md`
+- beads 集成指南: `{TEAM_PATH}/docs/v2/BEADS_INTEGRATION.md`
 
 ---
 

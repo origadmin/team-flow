@@ -138,6 +138,26 @@ flow config paths --json
 
 **Conversation records**: `flow task append {id} --speaker {role} --content "..."` auto-increments cr-index and sets timestamp.
 
+### Command Quick Reference
+
+| Operation | Command |
+|-----------|---------|
+| Create task | `flow task create "Title" -t {bug\|feature\|task\|epic} -p {0-4} --parent {id}` |
+| Claim task | `flow task update {id} --claim` |
+| Add notes | `flow task update {id} --notes "..."` |
+| Add label | `flow task update {id} --add-label phase:implement` |
+| Close task | `flow task close {id} --reason "..."` |
+| Show task | `flow task show {id}` |
+| Find work | `flow task ready --json` |
+| List tasks | `flow task list --status open` |
+| Filter by date | `flow task list --created-after YYYY-MM-DD --json` |
+| Filter by update | `flow task list --updated-after YYYY-MM-DD --sort updated` |
+| Append record | `flow task append {id} --speaker {role} --content "..."` |
+| Add dependency | `flow task dep add {id} depends-on {target-id}` |
+| Push data | `flow task dolt push` |
+| Export tasks | `flow export > .team/task-pool-export.md` |
+| Resolve paths | `flow config paths --json` |
+
 ## Human-Readable Export
 
 beads is AI-managed. Humans need readable exports.
@@ -185,7 +205,7 @@ type {PROJECT}/.team/ai-context.md
 │   └── roles/            # Per-role standards (15 files)
 ├── templates/            # Document templates (14 files)
 ├── scripts/              # Automation
-└── docs/                 # MIGRATION.md, BEADS_INTEGRATION.md
+└── docs/                 # Project docs at {PROJECT}/docs/v2/
 ```
 
 ## Critical Rules
@@ -441,4 +461,4 @@ When loaded by the AI runtime, read this file to understand v2 structure, then l
 2. `workflows/shared.md` — always (layer 1/2 gates)
 3. `workflows/roles/<role>-standards.md` — role-specific standards
 
-For beads commands reference: see `docs/BEADS_INTEGRATION.md`
+For beads commands reference: see `docs/v2/BEADS_INTEGRATION.md`
