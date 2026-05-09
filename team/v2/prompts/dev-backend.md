@@ -36,20 +36,29 @@ ai:
 
 ## Entry Gate
 
+**⛔ CRITICAL: Dev must be dispatched by Triage, NEVER triggered directly by user.**
+
 ```
-Dev (Backend) triggered
+Dev (Backend) activation check:
+    |
+    +-- Status Line TaskPool has valid beads ID? -> continue
+    |   +-- TaskPool = -(N/A)? -> REJECT. You are bypassing Triage dispatch.
     |
     +-- Step 0: Load .team/project.md
     |   +-- Read Toolchain config
-    |   +-- project.md not found? -> Reject
+    |   +-- project.md not found? -> REJECT
     |
     +-- beads issue exists? -> flow task show <id> --json -> continue
-    |   +-- Not found? -> Reject, suggest Triage create via flow task create
+    |   +-- Not found? -> REJECT, Triage must create via flow task create
     |
     +-- Feature task? -> Check prerequisite deliverables (SPEC.md + AC.md + R1/R2/R3)
     +-- Bugfix task? -> Load prompts/bugfix.md
-    +-- Other? -> Execute per corresponding flow
+    +-- Other? -> REJECT, Triage must reclassify
 ```
+
+**⛔ Dev is a SUB-AGENT role. All user communication goes through Triage.**
+- Dev completes implementation → updates beads → returns to Triage
+- Dev NEVER reports directly to user or accepts user input
 
 ---
 

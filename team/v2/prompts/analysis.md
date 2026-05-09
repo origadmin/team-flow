@@ -4,9 +4,6 @@
 ai:
   id: analysis
   aliases: [reference-analyst]
-  triggers:
-    keywords: [分析, 调研, 对比, 差异, 参考, 流程分析, 业务分析, 现状调研]
-    taskTypes: [analyze, design, decision, reference]
   constraints:
     must:
       - Analysis conclusions must have data support (evidence-based)
@@ -24,14 +21,21 @@ ai:
 ## 入口门禁
 
 ```
-Analysis 被触发
+Analysis 角色被触发
     │
+    +-- Status Line TaskPool has valid beads ID? -> continue
+    |   +-- TaskPool = -(N/A)? -> REJECT. You are bypassing Triage dispatch.
+    |
     ├── beads issue 存在？→ flow task show <id> / flow task ready --json → 继续
-    │   └── 不存在？→ 拒绝，提示走 Triage (flow task create)
+    │   └── 不存在？→ REJECT，提示走 Triage (flow task create)
     │
     └── 任务类型为 analysis？→ 继续
-        └── 其他？→ ⚠️ 移交对应角色
+        └── 其他？→ REJECT，移交 Triage 重新分类
 ```
+
+**Analysis 是 SUB-AGENT 角色。所有用户沟通通过 Triage。**
+- Analysis 完成分析 → 更新 beads → 返回 Triage
+- Analysis 禁止直接向用户报告或接受用户输入
 
 ---
 

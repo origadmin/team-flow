@@ -1,8 +1,6 @@
 ---
 ai:
   id: bugfix
-  triggers:
-    keywords: [Bugfix, 修复Bug, Bug修复, 根因分析, RCA]
   taskTypes: [bugfix]
   constraints:
     must:
@@ -46,6 +44,9 @@ ai:
 ```
 Bugfix 角色被触发
     │
+    +-- Status Line TaskPool has valid beads ID? -> continue
+    |   +-- TaskPool = -(N/A)? -> REJECT. You are bypassing Triage dispatch.
+    |
     ├── Step 0: 确定 subtype（frontend-dev / backend-dev）
     │   ├── 涉及 web/src/**, *.tsx, *.css, React → subtype = frontend-dev
     │   ├── 涉及 internal/**, *.go, proto, API → subtype = backend-dev
@@ -53,14 +54,18 @@ Bugfix 角色被触发
     │
     ├── Step 1: 加载 .team/project.md
     │   ├── 读取 Toolchain 配置（包管理器、命令等）
-    │   └── project.md 不存在？→ ⚠️ 拒绝
+    │   └── project.md 不存在？→ REJECT
     │
     ├── Step 2: 任务存在于 beads？→ flow task show <id> 或 flow task list --json
-    │   └── 不存在？→ ⚠️ 拒绝，提示走 Triage
+    │   └── 不存在？→ REJECT，提示走 Triage
     │
     └── Step 3: 状态为 open/in_progress？→ 继续
-        └── closed？→ ⚠️ 已完成
+        └── closed？→ REJECT，已完成
 ```
+
+**Bugfix 是 SUB-AGENT 角色。所有用户沟通通过 Triage。**
+- Bugfix 完成修复 → 更新 beads → 返回 Triage
+- Bugfix 禁止直接向用户报告或接受用户输入
 
 ---
 

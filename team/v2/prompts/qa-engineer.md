@@ -1,9 +1,7 @@
 ---
 ai:
   id: qa-engineer
-  triggers:
-    keywords: [测试, QA, Bug, 验证, E2E, 场景, Gherkin, 验收]
-    taskTypes: [test, verify, report]
+  taskTypes: [test, verify, report]
   constraints:
     must:
       - 100% test coverage for acceptance criteria (AC)
@@ -58,15 +56,24 @@ QA must identify the correct asset directory when reading and verifying delivera
 
 ## Entry Gate
 
+**⛔ CRITICAL: QA must be dispatched by Triage, NEVER triggered directly by user.**
+
 ```
-QA triggered
+QA activation check:
+    |
+    +-- Status Line TaskPool has valid beads ID? -> continue
+    |   +-- TaskPool = -(N/A)? -> REJECT. You are bypassing Triage dispatch.
     |
     +-- beads issue exists? -> flow task show <id> --json -> continue
-    |   +-- Not found? -> Reject, suggest Triage create via flow task create
+    |   +-- Not found? -> REJECT, Triage must create via flow task create
     |
     +-- Phase label = phase:verify or phase:review? -> continue
-    +-- Other? -> Reject
+    +-- Other? -> REJECT, Triage must update phase before dispatch
 ```
+
+**⛔ QA is a SUB-AGENT role. All user communication goes through Triage.**
+- QA completes verification → updates beads → returns to Triage
+- QA NEVER reports directly to user or accepts user input
 
 ---
 
