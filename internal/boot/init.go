@@ -2,6 +2,7 @@ package boot
 
 import (
 	"bufio"
+	"context"
 	"embed"
 	"fmt"
 	"io/fs"
@@ -10,6 +11,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 
 	skillfs "github.com/origadmin/team-flow"
 	"github.com/origadmin/team-flow/internal/bd"
@@ -786,8 +788,22 @@ func detectIDEs(projectPath string) []IDEInfo {
 	return ides
 }
 
+func isInteractive() bool {
+	fileInfo, _ := os.Stdin.Stat()
+	return (fileInfo.Mode() & os.ModeCharDevice) != 0
+}
+
 func installSkill(projectPath string, fsys embed.FS, version string, overwrite bool) {
 	fmt.Println("\n  Installing skill...")
+
+	isNonInteractive := !isInteractive()
+
+	if isNonInteractive {
+		fmt.Println("  ✓ Non-interactive mode detected")
+		fmt.Println("  ✓ Using embedded skill files (no network required)")
+		installSkillFromFS(projectPath, fsys, version, overwrite)
+		return
+	}
 
 	if npxPath, err := exec.LookPath("npx"); err == nil {
 		fmt.Printf("  npx found: %s\n", npxPath)
@@ -819,11 +835,21 @@ func installSkill(projectPath string, fsys embed.FS, version string, overwrite b
 				parts = append(parts, strings.Fields(agentFlag)...)
 			}
 
-			cmd := exec.Command(npxPath, parts...)
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+			defer cancel()
+			
+			cmd := exec.CommandContext(ctx, npxPath, parts...)
 			cmd.Stdout = os.Stdout
 			cmd.Stderr = os.Stderr
+			
+			fmt.Println("  (timeout after 2 minutes)")
+			
 			if err := cmd.Run(); err != nil {
-				fmt.Printf("  ⚠ npx skills add failed: %v\n", err)
+				if ctx.Err() == context.DeadlineExceeded {
+					fmt.Println("  ⚠ npx skills add timed out after 2 minutes")
+				} else {
+					fmt.Printf("  ⚠ npx skills add failed: %v\n", err)
+				}
 				fmt.Println("  Falling back to embedded copy...")
 				installSkillFromFS(projectPath, fsys, version, overwrite)
 			} else {
