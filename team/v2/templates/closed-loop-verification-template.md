@@ -1,4 +1,4 @@
-# 闭环验证报告模板 — v2 beads-native
+﻿# 闭环验证报告模板 — v2 beads-native
 
 ---
 
@@ -56,5 +56,5 @@
 ## beads 状态更新
 
 ```bash
-flow tools beads update <id> --add-label phase:closed --notes "Closed-loop verification passed"
+flow task update <id> --add-label phase:closed --notes "Closed-loop verification passed"
 ```

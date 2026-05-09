@@ -1,4 +1,4 @@
-# {Fxxx}: {Feature Name} — Frontend Test Coverage Declaration
+﻿# {Fxxx}: {Feature Name} — Frontend Test Coverage Declaration
 
 ## beads 关联
 
@@ -150,6 +150,6 @@ export const handlers = [
 完成测试后执行：
 
 ```bash
-flow tools beads update <issue-id> --notes "TEST_COVERAGE: {x}/8 categories covered, {pass}/{fail} results"
-flow tools beads update <issue-id> --add-label phase:verify --remove-label phase:implement
+flow task update <issue-id> --notes "TEST_COVERAGE: {x}/8 categories covered, {pass}/{fail} results"
+flow task update <issue-id> --add-label phase:verify --remove-label phase:implement
 ```

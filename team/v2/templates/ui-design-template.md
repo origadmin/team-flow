@@ -1,4 +1,4 @@
-# UI 设计模板 — v2 beads-native
+﻿# UI 设计模板 — v2 beads-native
 
 > **位置**: `{DOCS_INTERNAL}/design/{feature}/UI_DESIGN.md`
 
@@ -64,5 +64,5 @@
 ## beads 状态更新
 
 ```bash
-flow tools beads update <id> --set-metadata doc_path="{DOCS_INTERNAL}/design/{feature}/UI_DESIGN.md"
+flow task update <id> --set-metadata doc_path="{DOCS_INTERNAL}/design/{feature}/UI_DESIGN.md"
 ```

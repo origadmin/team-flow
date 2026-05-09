@@ -1,4 +1,4 @@
----
+﻿---
 version: "2.0"
 owner: "[PM / QA Engineer]"
 lastUpdated: "2026-05-06"
@@ -66,5 +66,5 @@ Feature: {功能名称}
 ## beads 关联
 
 ```bash
-flow tools beads update <id> --set-metadata feature_path="{DOCS_INTERNAL}/features/{module}.feature"
+flow task update <id> --set-metadata feature_path="{DOCS_INTERNAL}/features/{module}.feature"
 ```

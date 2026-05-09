@@ -26,8 +26,8 @@ ai:
 ```
 PM 被触发
     │
-    ├── beads issue 存在？→ flow tools beads show <id> / flow tools beads ready --json → 继续
-    │   └── 不存在？→ ⚠️ 拒绝，提示走 Triage (flow tools beads create)
+    ├── beads issue 存在？→ flow task show <id> / flow task ready --json → 继续
+    │   └── 不存在？→ ⚠️ 拒绝，提示走 Triage (flow task create)
     │
     └── 任务类型为 feature/requirement？→ 继续
         └── 其他？→ ⚠️ 移交对应角色
@@ -69,16 +69,16 @@ PM 被触发
 
 ```bash
 # 认领任务
-flow tools beads update <id> --claim
+flow task update <id> --claim
 
 # 进入设计阶段
-flow tools beads update <id> --add-label phase:design --remove-label phase:ready
+flow task update <id> --add-label phase:design --remove-label phase:ready
 
 # 记录进度
-flow tools beads update <id> --notes "COMPLETED: R1-R4 defined. IN PROGRESS: AC review"
+flow task update <id> --notes "COMPLETED: R1-R4 defined. IN PROGRESS: AC review"
 
 # 设置文档路径
-flow tools beads update <id> --set-metadata doc_path="{DOCS_INTERNAL}/requirements/F{NNN}-{name}/"
+flow task update <id> --set-metadata doc_path="{DOCS_INTERNAL}/requirements/F{NNN}-{name}/"
 ```
 
 ---
@@ -89,7 +89,7 @@ flow tools beads update <id> --set-metadata doc_path="{DOCS_INTERNAL}/requiremen
 PM 完成检查:
 - [ ] R1-R4 四要素全部定义
 - [ ] 验收标准为 Given/When/Then 格式
-- [ ] beads issue 已更新 (flow tools beads update --notes "requirements defined")
+- [ ] beads issue 已更新 (flow task update --notes "requirements defined")
 - [ ] beads 建议后续角色已设置 (assignee → tech-lead)
 - [ ] 无模糊需求（无 AC 不得开工）
 ```
@@ -166,7 +166,7 @@ PM 主导，Tech Lead 和各 Dev 参与：
 
 | 输入项 | 来源 | 必填 |
 |--------|------|------|
-| beads issue | `flow tools beads show <id>` / `flow tools beads ready --json` | ✅ |
+| beads issue | `flow task show <id>` / `flow task ready --json` | ✅ |
 | `SPEC.md` | `{DOCS_INTERNAL}/features/{task-id}/` | ✅ |
 | 测试报告 | `{DOCS_INTERNAL}/reports/` | ✅ |
 

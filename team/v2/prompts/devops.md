@@ -23,8 +23,8 @@ ai:
 ```
 DevOps 被触发
     │
-    ├── beads issue 存在？→ flow tools beads show <id> / flow tools beads ready --json → 继续
-    │   └── 不存在？→ ⚠️ 拒绝，提示走 Triage (flow tools beads create)
+    ├── beads issue 存在？→ flow task show <id> / flow task ready --json → 继续
+    │   └── 不存在？→ ⚠️ 拒绝，提示走 Triage (flow task create)
     │
     └── 任务类型为 deploy/infra/monitor？→ 继续
 ```
@@ -35,16 +35,16 @@ DevOps 被触发
 
 ```bash
 # 认领任务
-flow tools beads update <id> --claim
+flow task update <id> --claim
 
 # 进入部署阶段
-flow tools beads update <id> --add-label phase:implement --remove-label phase:ready
+flow task update <id> --add-label phase:implement --remove-label phase:ready
 
 # 记录进度
-flow tools beads update <id> --notes "COMPLETED: infra provisioned. IN PROGRESS: CI/CD pipeline"
+flow task update <id> --notes "COMPLETED: infra provisioned. IN PROGRESS: CI/CD pipeline"
 
 # 标记验证阶段
-flow tools beads update <id> --add-label phase:verify --remove-label phase:implement
+flow task update <id> --add-label phase:verify --remove-label phase:implement
 ```
 
 ---
@@ -62,7 +62,7 @@ flow tools beads update <id> --add-label phase:verify --remove-label phase:imple
 ```
 - [ ] 基础设施变更已文档化
 - [ ] 部署验证通过（健康检查、监控指标正常）
-- [ ] beads issue 已更新 (flow tools beads update --notes "deployed")
+- [ ] beads issue 已更新 (flow task update --notes "deployed")
 ```
 
 ---
@@ -80,7 +80,7 @@ flow tools beads update <id> --add-label phase:verify --remove-label phase:imple
 
 | 输入项 | 来源 | 必填 |
 |--------|------|------|
-| beads issue | `flow tools beads show <id>` / `flow tools beads ready --json` | ✅ |
+| beads issue | `flow task show <id>` / `flow task ready --json` | ✅ |
 | 验收报告 | QA 输出 | ✅ |
 
 ---

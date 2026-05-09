@@ -1,11 +1,11 @@
-# Migration Guide: team-flow v1 → v2
+﻿# Migration Guide: team-flow v1 → v2
 
 > **Version**: v2.0 | **Date**: 2026-05-02
 > **Scope**: Triage workflow, Task pool management, Multi-agent coordination
 
 ## Executive Summary
 
-team-flow v2 replaces task-pool.md as the source of truth with beads (flow tools beads CLI), eliminating:
+team-flow v2 replaces task-pool.md as the source of truth with beads (flow task CLI), eliminating:
 - Git merge conflicts from concurrent edits
 - Manual sync overhead between agents
 - Inconsistent task state tracking
@@ -16,10 +16,10 @@ team-flow v2 replaces task-pool.md as the source of truth with beads (flow tools
 |--------|----|----|
 | **Task source** | `task-pool.md` file | beads `.beads/` database |
 | **ID format** | F/B/C/A-NNN (manual) | `<beads-id>` (auto-generated) |
-| **Status sync** | Edit file + git commit | `flow tools beads update` (Dolt handles sync) |
+| **Status sync** | Edit file + git commit | `flow task update` (Dolt handles sync) |
 | **Multi-agent** | Git merge conflicts | Dolt git-native collaboration |
-| **Triage writes** | Parse + modify markdown | `flow tools beads create/update/close` |
-| **Context injection** | Read task-pool.md | `flow tools beads list --json` or export |
+| **Triage writes** | Parse + modify markdown | `flow task create/update/close` |
+| **Context injection** | Read task-pool.md | `flow task list --json` or export |
 
 ## Migration Steps
 
@@ -31,7 +31,7 @@ Run v1 and v2 in parallel for 1-2 weeks before switching fully.
 
 ```bash
 cd {PROJECT}
-flow tools beads init --prefix cms
+flow task init --prefix cms
 ```
 
 #### 1.2 Migrate existing tasks
@@ -57,11 +57,11 @@ Migration script will:
 
 ```bash
 # Check counts match
-flow tools beads stats
+flow task stats
 # Should show same count as task-pool.md rows
 
 # Spot check specific issues
-flow tools beads list --json | jq '.[] | select(.externalRef == "F014")'
+flow task list --json | jq '.[] | select(.externalRef == "F014")'
 ```
 
 #### 1.4 Update CLAUDE.md
@@ -77,7 +77,7 @@ Load team-flow rules: {TEAM_PATH}/v2/SKILL.md
 
 #### 2.1 Stop writing to task-pool.md
 
-Update all agent prompts to use `flow tools beads` commands instead of file edits.
+Update all agent prompts to use `flow task` commands instead of file edits.
 
 #### 2.2 Archive v1
 
@@ -99,7 +99,7 @@ Load framework: {TEAM_PATH}/v2/SKILL.md
 ```powershell
 # Schedule daily export for human review
 # In Windows Task Scheduler or cron
-flow tools beads list --status open --format table > .team/task-pool-export.md
+flow task list --status open --format table > .team/task-pool-export.md
 ```
 
 ## Field Mapping Reference
@@ -107,9 +107,9 @@ flow tools beads list --status open --format table > .team/task-pool-export.md
 | task-pool.md Column | beads Field | Example |
 |---------------------|-------------|---------|
 | Task ID | `external_ref` | F014 → `--external-ref F014` |
-| Task | `title` | "Implement X" → `flow tools beads create "Implement X"` |
+| Task | `title` | "Implement X" → `flow task create "Implement X"` |
 | Type | `issue_type` | Feature → `-t feature` |
-| Dependencies | `flow tools beads dep add` | A001,B062 → `flow tools beads dep add $ID $A001_ID $B062_ID` |
+| Dependencies | `flow task dep add` | A001,B062 → `flow task dep add $ID $A001_ID $B062_ID` |
 | Milestone | `--milestone` or parent epic | M1 → `--milestone M1` |
 | Owner | `assignee` | alice → `--assignee alice` |
 | Priority | `priority` | P0 → `-p 0` |
@@ -132,10 +132,10 @@ Pain points:
 - Git merge conflicts
 - Manual sync between agents
 
-### After (v2): Triage Uses flow tools beads CLI
+### After (v2): Triage Uses flow task CLI
 
 ```
-User input → Triage prompt → flow tools beads create/update → Dolt auto-sync
+User input → Triage prompt → flow task create/update → Dolt auto-sync
 ```
 
 Benefits:
@@ -146,7 +146,7 @@ Benefits:
 
 ## Common Migration Issues
 
-### Issue: "flow tools beads: command not found"
+### Issue: "flow task: command not found"
 
 Solution: Install beads CLI
 
@@ -162,7 +162,7 @@ Solution: Initialize beads in project
 
 ```bash
 cd {PROJECT}
-flow tools beads init --prefix cms
+flow task init --prefix cms
 ```
 
 ### Issue: "Dolt repository not initialized"
@@ -188,7 +188,7 @@ Solution: Run migration script with `--force` to recreate mapping
 Solution: Ensure labels are added after creation
 
 ```bash
-flow tools beads update cms-xxx --add-label phase:implement
+flow task update cms-xxx --add-label phase:implement
 ```
 
 ## Rollback Plan
@@ -202,17 +202,17 @@ If v2 causes issues, rollback to v1:
 
 ## Checklist
 
-- [ ] beads installed (`flow tools beads --version`)
-- [ ] beads initialized in project (`flow tools beads init`)
-- [ ] Tasks migrated (`flow tools beads stats` shows correct count)
+- [ ] beads installed (`flow task --version`)
+- [ ] beads initialized in project (`flow task init`)
+- [ ] Tasks migrated (`flow task stats` shows correct count)
 - [ ] Mapping file generated (`.beads/task-pool-mapping.json`)
 - [ ] CLAUDE.md updated to v2
 - [ ] Export routine established
-- [ ] Team trained on `flow tools beads` commands
+- [ ] Team trained on `flow task` commands
 - [ ] v1 archived (not deleted)
 
 ## Training Resources
 
-- beads CLI reference: `flow tools beads --help`, `flow tools beads <command> --help`
+- beads CLI reference: `flow task --help`, `flow task <command> --help`
 - team-flow v2 docs: `{TEAM_PATH}/v2/docs/`
 - Integration guide: `BEADS_INTEGRATION.md`

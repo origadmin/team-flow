@@ -1,4 +1,4 @@
-#!/usr/bin/env pwsh
+﻿#!/usr/bin/env pwsh
 # export-task-pool.ps1 — Export beads issues to human-readable Markdown
 # Usage: ./export-task-pool.ps1 [-Output <path>] [-Priority <0-4>] [-Status <status>]
 
@@ -39,7 +39,7 @@ if (-not (Test-Path ".beads")) {
 }
 
 # Build command
-$Cmd = "flow tools beads list --json"
+$Cmd = "flow task list --json"
 
 if (-not $All) {
     $StatusFilter = $Status -join ","

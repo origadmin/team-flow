@@ -1,4 +1,4 @@
-# PRD 模板 — v2 beads-native
+﻿# PRD 模板 — v2 beads-native
 
 > **位置**: `{DOCS_INTERNAL}/requirements/F{NNN}-{name}/PRD.md`
 
@@ -79,5 +79,5 @@ Scenario: {场景名称}
 ## beads 状态更新
 
 ```bash
-flow tools beads update <id> --set-metadata doc_path="{DOCS_INTERNAL}/requirements/F{NNN}-{name}/PRD.md"
+flow task update <id> --set-metadata doc_path="{DOCS_INTERNAL}/requirements/F{NNN}-{name}/PRD.md"
 ```

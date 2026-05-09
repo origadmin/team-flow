@@ -129,15 +129,15 @@
 
 ```bash
 # 从 beads ID 查找 task ID
-flow tools beads show <beads-id> --json | jq '.externalRef'
+flow task show <beads-id> --json | jq '.externalRef'
 # → "F014"
 
 # 从 task ID 查找 beads ID
-flow tools beads list --json | jq '.[] | select(.externalRef == "F014") | .id'
+flow task list --json | jq '.[] | select(.externalRef == "F014") | .id'
 # → "<beads-id>"
 
 # 查询 Bug 的 R 迭代次数（reopen 次数 + 1）
-flow tools beads show <beads-id> --json | jq '[.events[] | select(.event_type == "reopened")] | length + 1'
+flow task show <beads-id> --json | jq '[.events[] | select(.event_type == "reopened")] | length + 1'
 # → 2 (表示当前是 R2)
 
 # 从 task ID 定位文档目录
@@ -156,10 +156,10 @@ flow tools beads show <beads-id> --json | jq '[.events[] | select(.event_type ==
 ```
 
 **Rules**:
-- AI interacts via `flow tools beads` CLI only
+- AI interacts via `flow task` CLI only
 - **⛔ NEVER** directly edit `.beads/*.db`
 - **⛔ NEVER** directly edit `.beads/issues.jsonl`
-- Use `flow tools beads create/update/close` for all modifications
+- Use `flow task create/update/close` for all modifications
 
 ### Layer 4: Implementation (AI workspace)
 
@@ -202,7 +202,7 @@ flow tools beads show <beads-id> --json | jq '[.events[] | select(.event_type ==
 ## Permitted Actions
 
 ✅ **ALWAYS**:
-- Use `flow tools beads` CLI for all task operations
+- Use `flow task` CLI for all task operations
 - Read from L0 for rules
 - Write to L1 for project state
 - Write to L4 for implementation
@@ -216,7 +216,7 @@ When starting a session, AI loads:
 1. **L0**: `{TEAM_PATH}/v2/SKILL.md` (rules + structure)
 2. **L1**: `.team/project.md` (project paths + team)
 3. **L1**: `.team/ai-context.md` (recent focus)
-4. **L3**: `flow tools beads ready --json` (available tasks)
+4. **L3**: `flow task ready --json` (available tasks)
 
 Example CLAUDE.md:
 
@@ -242,7 +242,7 @@ echo "Load team-flow rules: {TEAM_PATH}/v2/SKILL.md" > {PROJECT}/CLAUDE.md
 # 3. Migrate tasks to beads
 {TEAM_PATH}/v2/scripts/migrate-tasks.ps1 -ProjectPath {PROJECT}
 
-# 4. Update agent prompts to use flow tools beads CLI
+# 4. Update agent prompts to use flow task CLI
 ```
 
 ## Quality Gates
@@ -257,6 +257,6 @@ pwd
 # L0 → Never
 # L1 → Yes, if in .team/
 # L2 → Yes, if documenting
-# L3 → Never (use flow tools beads CLI)
+# L3 → Never (use flow task CLI)
 # L4 → Yes, if implementing
 ```

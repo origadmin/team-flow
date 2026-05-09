@@ -1,10 +1,10 @@
-# beads Integration Guide — team-flow v2
+﻿# beads Integration Guide — team-flow v2
 
 > **Version**: v2.0 | **Date**: 2026-05-02
 
 ## Overview
 
-beads (flow tools beads CLI) is the single source of truth for task management in team-flow v2. This document maps beads concepts to team-flow v1 equivalents and defines the new workflow.
+beads (flow task CLI) is the single source of truth for task management in team-flow v2. This document maps beads concepts to team-flow v1 equivalents and defines the new workflow.
 
 ## Concept Mapping
 
@@ -15,7 +15,7 @@ beads (flow tools beads CLI) is the single source of truth for task management i
 | Status column | `status` field | open/in_progress/blocked/closed |
 | Phase (todo/doing/done) | `phase:*` label | Use labels for phases |
 | Sub-column | N/A → `subsystem:*` label | Use subsystem labels instead |
-| Dependency | `flow tools beads dep add` | Native dependency tracking |
+| Dependency | `flow task dep add` | Native dependency tracking |
 | Assignee | `assignee` field | User name or email |
 | Priority | `priority` field | 0-4 (P0 highest) |
 | Milestone | `--milestone` or parent epic | Link to milestone/epic |
@@ -37,10 +37,10 @@ Progress through phases by adding/removing labels:
 
 ```bash
 # Move to implementation
-flow tools beads update cms-xxx --add-label phase:implement --remove-label phase:analyze
+flow task update cms-xxx --add-label phase:implement --remove-label phase:analyze
 
 # Move to review
-flow tools beads update cms-xxx --add-label phase:review --remove-label phase:verify
+flow task update cms-xxx --add-label phase:review --remove-label phase:verify
 ```
 
 ## Subsystem Labels (Replaces Sub-columns)
@@ -72,13 +72,13 @@ task legacy IDs (F001, B061, etc.) are stored in beads' `external_ref` field:
 
 ```bash
 # Create with task ID reference
-flow tools beads create "Feature: X" -t feature --external-ref "F014" -p 1 --json
+flow task create "Feature: X" -t feature --external-ref "F014" -p 1 --json
 
 # Find by task ID
-flow tools beads list --json | jq '.[] | select(.externalRef == "F014")'
+flow task list --json | jq '.[] | select(.externalRef == "F014")'
 
 # Update mapping
-flow tools beads update cms-xxx --external-ref "F014"
+flow task update cms-xxx --external-ref "F014"
 ```
 
 ## Common Workflows
@@ -87,53 +87,53 @@ flow tools beads update cms-xxx --external-ref "F014"
 
 ```bash
 # 1. Create issue
-ISSUE=$(flow tools beads create "Description" -t bug -p 0 --external-ref "B099" --json)
+ISSUE=$(flow task create "Description" -t bug -p 0 --external-ref "B099" --json)
 ID=$(echo $ISSUE | jq -r '.id')
 
 # 2. Add phase label
-flow tools beads update $ID --add-label phase:ready
+flow task update $ID --add-label phase:ready
 
 # 3. Add subsystem
-flow tools beads update $ID --add-label subsystem:backend
+flow task update $ID --add-label subsystem:backend
 
 # 4. Link dependencies (if any)
-flow tools beads dep add $ID <dependency-id> --type discovered-from
+flow task dep add $ID <dependency-id> --type discovered-from
 ```
 
 ### Dev: Claim and Execute
 
 ```bash
 # 1. Claim issue
-flow tools beads update cms-xxx --claim
+flow task update cms-xxx --claim
 
 # 2. Mark implementation start
-flow tools beads update cms-xxx --add-label phase:implement --remove-label phase:ready
+flow task update cms-xxx --add-label phase:implement --remove-label phase:ready
 
 # 3. Record progress
-flow tools beads update cms-xxx --notes "COMPLETED: X IN PROGRESS: Y"
+flow task update cms-xxx --notes "COMPLETED: X IN PROGRESS: Y"
 
 # 4. Mark for verification
-flow tools beads update cms-xxx --add-label phase:verify --remove-label phase:implement
+flow task update cms-xxx --add-label phase:verify --remove-label phase:implement
 
 # 5. Close when done
-flow tools beads close cms-xxx --reason "Fixed and verified"
+flow task close cms-xxx --reason "Fixed and verified"
 ```
 
 ### Tech Lead: Review Analysis
 
 ```bash
 # 1. List issues needing analysis
-flow tools beads list --status open --priority 0,1 -l phase:ready --json
+flow task list --status open --priority 0,1 -l phase:ready --json
 
 # 2. Claim for analysis
-flow tools beads update <beads-id> --claim
-flow tools beads update <beads-id> --add-label phase:analyze --remove-label phase:ready
+flow task update <beads-id> --claim
+flow task update <beads-id> --add-label phase:analyze --remove-label phase:ready
 
 # 3. Document findings
-flow tools beads update <beads-id> --design "Root cause: ... Solution: ..."
+flow task update <beads-id> --design "Root cause: ... Solution: ..."
 
 # 4. Hand off to dev
-flow tools beads update <beads-id> --add-label phase:ready --remove-label phase:analyze --assignee "dev-name"
+flow task update <beads-id> --add-label phase:ready --remove-label phase:analyze --assignee "dev-name"
 ```
 
 ## Export to Human-Readable Format
@@ -142,16 +142,16 @@ For AI context injection or human review:
 
 ```bash
 # JSON export
-flow tools beads list --json > .team/task-pool-export.json
+flow task list --json > .team/task-pool-export.json
 
 # Table export (human-readable)
-flow tools beads list --format table > .team/task-pool.md
+flow task list --format table > .team/task-pool.md
 
 # Filter by status
-flow tools beads list --status open --format table > .team/task-pool-open.md
+flow task list --status open --format table > .team/task-pool-open.md
 
 # Filter by priority
-flow tools beads list --priority 0 --format table > .team/task-pool-p0.md
+flow task list --priority 0 --format table > .team/task-pool-p0.md
 ```
 
 ### Export Script Template
@@ -159,7 +159,7 @@ flow tools beads list --priority 0 --format table > .team/task-pool-p0.md
 ```powershell
 # export-task-pool.ps1
 $Output = @()
-$Issues = flow tools beads list --status open --json | ConvertFrom-Json
+$Issues = flow task list --status open --json | ConvertFrom-Json
 
 foreach ($Issue in $Issues) {
     $Phase = ($Issue.labels | Where-Object { $_ -match '^phase:' }) -replace 'phase:', ''
@@ -196,9 +196,9 @@ Standard metadata fields stored via `--set-metadata`:
 
 ```bash
 # Set metadata
-flow tools beads update cms-xxx --set-metadata team_id=F014
-flow tools beads update cms-xxx --set-metadata subsystem=backend
-flow tools beads update cms-xxx --set-metadata doc_path="{DOCS_INTERNAL}/requirements/F014/"
+flow task update cms-xxx --set-metadata team_id=F014
+flow task update cms-xxx --set-metadata subsystem=backend
+flow task update cms-xxx --set-metadata doc_path="{DOCS_INTERNAL}/requirements/F014/"
 ```
 
 ## Dolt Integration (Git-native)
@@ -207,13 +207,13 @@ beads uses Dolt for version control:
 
 ```bash
 # Check Dolt status
-flow tools beads dolt status
+flow task dolt status
 
 # Commit changes (batch mode)
-flow tools beads dolt commit -m "Batch update from triage session"
+flow task dolt commit -m "Batch update from triage session"
 
 # Push to remote
-flow tools beads dolt push
+flow task dolt push
 ```
 
 For multi-agent environments, use `--dolt-auto-commit on` to auto-commit after each operation.
@@ -222,27 +222,27 @@ For multi-agent environments, use `--dolt-auto-commit on` to auto-commit after e
 
 ```bash
 # All P0 bugs in backend
-flow tools beads list -t bug --priority 0 -l subsystem:backend
+flow task list -t bug --priority 0 -l subsystem:backend
 
 # All issues in implementation phase
-flow tools beads list -l phase:implement
+flow task list -l phase:implement
 
 # Issues blocked by specific issue
-flow tools beads children <beads-id> --type blocks
+flow task children <beads-id> --type blocks
 
 # Ready to work (no blockers, open status)
-flow tools beads ready --json
+flow task ready --json
 ```
 
 ## Configuration
 
 ```bash
 # Set default actor
-flow tools beads config set actor "triage-agent"
+flow task config set actor "triage-agent"
 
 # Enable auto-commit
-flow tools beads config set dolt.auto-commit on
+flow task config set dolt.auto-commit on
 
 # Custom status workflow
-flow tools beads config set status.custom "pending-review:wip"
+flow task config set status.custom "pending-review:wip"
 ```

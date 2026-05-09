@@ -1,4 +1,4 @@
-# 测试报告模板 — v2 beads-native
+﻿# 测试报告模板 — v2 beads-native
 
 ---
 
@@ -58,5 +58,5 @@
 ### beads 状态更新
 
 ```bash
-flow tools beads update <id> --add-label phase:review --notes "Test report: {path}"
+flow task update <id> --add-label phase:review --notes "Test report: {path}"
 ```

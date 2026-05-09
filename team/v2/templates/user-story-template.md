@@ -1,4 +1,4 @@
-# 用户故事模板 — v2 beads-native
+﻿# 用户故事模板 — v2 beads-native
 
 > **位置**: `{DOCS_INTERNAL}/requirements/F{NNN}-{name}/USER_STORY.md`
 
@@ -55,5 +55,5 @@ Scenario: {场景名称}
 ## beads 状态更新
 
 ```bash
-flow tools beads update <id> --notes "User story defined: {story-summary}"
+flow task update <id> --notes "User story defined: {story-summary}"
 ```

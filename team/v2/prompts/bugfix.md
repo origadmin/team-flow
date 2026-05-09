@@ -12,7 +12,7 @@ ai:
       - Follow TDD Red → Green → Refactor for bug fixes
       - Load toolchain from .team/project.md before executing any command
       - Use exact commands from project.md Toolchain section
-      - Update beads status after completing a stage via flow tools beads CLI
+      - Update beads status after completing a stage via flow task CLI
     forbidden:
       - Skip RCA and fix directly
       - Skip TEST_CASE.md
@@ -37,7 +37,7 @@ ai:
 
 > **版本**: v8.0-v2
 > **更新日期**: 2026-05-08
-> **v2 变更**: 任务管理从 task-pool.md 迁移至 beads (flow tools beads CLI)，task-pool.md 仅为只读导出。
+> **v2 变更**: 任务管理从 task-pool.md 迁移至 beads (flow task CLI)，task-pool.md 仅为只读导出。
 
 ---
 
@@ -55,7 +55,7 @@ Bugfix 角色被触发
     │   ├── 读取 Toolchain 配置（包管理器、命令等）
     │   └── project.md 不存在？→ ⚠️ 拒绝
     │
-    ├── Step 2: 任务存在于 beads？→ flow tools beads show <id> 或 flow tools beads list --json
+    ├── Step 2: 任务存在于 beads？→ flow task show <id> 或 flow task list --json
     │   └── 不存在？→ ⚠️ 拒绝，提示走 Triage
     │
     └── Step 3: 状态为 open/in_progress？→ 继续
@@ -103,7 +103,7 @@ Bugfix 角色被触发
 
 ```
 Phase 0: Bug 接收（Triage）
-  产出物: beads issue (flow tools beads create)
+  产出物: beads issue (flow task create)
 
 Phase 1: 根因分析（Bugfix）
   前置: beads issue 存在
@@ -136,35 +136,35 @@ Phase 3: 验证（QA）
 
 ## beads 状态管理
 
-📌 v2 中所有任务状态通过 flow tools beads CLI 管理，禁止手动编辑 task-pool.md
+📌 v2 中所有任务状态通过 flow task CLI 管理，禁止手动编辑 task-pool.md
 
 ```bash
 # 认领 Bugfix 任务
-flow tools beads update <id> --claim
+flow task update <id> --claim
 
 # 标记分析阶段
-flow tools beads update <id> --add-label phase:analyze --remove-label phase:ready
+flow task update <id> --add-label phase:analyze --remove-label phase:ready
 
 # 标记实现阶段
-flow tools beads update <id> --add-label phase:implement --remove-label phase:analyze
+flow task update <id> --add-label phase:implement --remove-label phase:analyze
 
 # 记录进度
-flow tools beads update <id> --notes "COMPLETED: RCA.md IN PROGRESS: fix implementation"
+flow task update <id> --notes "COMPLETED: RCA.md IN PROGRESS: fix implementation"
 
 # 设置 R 迭代文档路径
-flow tools beads update <id> --set-metadata doc_path="{DOCS_INTERNAL}/reports/bugs/B{NNN}-R{N}/"
+flow task update <id> --set-metadata doc_path="{DOCS_INTERNAL}/reports/bugs/B{NNN}-R{N}/"
 
 # 标记验证阶段
-flow tools beads update <id> --add-label phase:verify --remove-label phase:implement
+flow task update <id> --add-label phase:verify --remove-label phase:implement
 
 # 标记评审阶段
-flow tools beads update <id> --add-label phase:review --remove-label phase:verify
+flow task update <id> --add-label phase:review --remove-label phase:verify
 
 # 关闭任务（完成时）
-flow tools beads close <id> --reason "Fixed and verified"
+flow task close <id> --reason "Fixed and verified"
 
 # 人工可读导出
-flow tools beads list --status open --format table > {DOCS_INTERNAL}/task-pool.md
+flow task list --status open --format table > {DOCS_INTERNAL}/task-pool.md
 ```
 
 ### ID 映射
@@ -473,7 +473,7 @@ Bugfix 完成检查（⚠️ 任何一项缺失 = 禁止报告"完成"）:
 流程检查:
 - [ ] 执行顺序正确：RCA → 复现测试 → 修复 → 验证步骤1-6 → TEST_CASE → 回归
 - [ ] 报告目录格式为 B{NNN}-R{N}/
-- [ ] beads issue 状态更新: flow tools beads update <id> --add-label phase:review
+- [ ] beads issue 状态更新: flow task update <id> --add-label phase:review
 - [ ] 建议后续角色 → QA
 - [ ] 用户确认前不得归档
 ```
@@ -514,18 +514,18 @@ Bugfix 完成检查（⚠️ 任何一项缺失 = 禁止报告"完成"）:
 ```bash
 # R1 开始
 mkdir -p {DOCS_INTERNAL}/reports/bugs/B{NNN}-R1/
-flow tools beads update <id> --set-metadata doc_path="{DOCS_INTERNAL}/reports/bugs/B{NNN}-R1/"
-flow tools beads update <id> --add-label phase:analyze
+flow task update <id> --set-metadata doc_path="{DOCS_INTERNAL}/reports/bugs/B{NNN}-R1/"
+flow task update <id> --add-label phase:analyze
 
 # R1 失败，开始 R2
 mkdir -p {DOCS_INTERNAL}/reports/bugs/B{NNN}-R2/
-flow tools beads update <id> --set-metadata doc_path="{DOCS_INTERNAL}/reports/bugs/B{NNN}-R2/"
-flow tools beads update <id> --add-label phase:analyze --remove-label phase:implement
-flow tools beads update <id> --notes "R1 failed: {reason}. Starting R2 with {strategy}."
+flow task update <id> --set-metadata doc_path="{DOCS_INTERNAL}/reports/bugs/B{NNN}-R2/"
+flow task update <id> --add-label phase:analyze --remove-label phase:implement
+flow task update <id> --notes "R1 failed: {reason}. Starting R2 with {strategy}."
 
 # R4 → R5 强制暂停
-flow tools beads update <id> --add-label blocked
-flow tools beads update <id> --notes "R4 failed. FORCED PAUSE: requesting user confirmation on fix direction."
+flow task update <id> --add-label blocked
+flow task update <id> --notes "R4 failed. FORCED PAUSE: requesting user confirmation on fix direction."
 ```
 
 ---
@@ -548,7 +548,7 @@ flow tools beads update <id> --notes "R4 failed. FORCED PAUSE: requesting user c
 
 | 输入项 | 来源 | 必填 |
 |--------|------|------|
-| beads issue | `flow tools beads show <id>` 或 `flow tools beads list --json` | ✅ |
+| beads issue | `flow task show <id>` 或 `flow task list --json` | ✅ |
 | Bug 描述 | 用户原始请求 / Issue | ✅ |
 
 ---

@@ -1,7 +1,7 @@
 # Triage: Post-Verification & Review (loaded on demand)
 
-> **Loading rule**: 当 Bug 返回后验证、Review 确认、分发子 Agent、管理状态/Session 时加载此文件
-> **Source**: 从 `triage.md` 拆分，v17.0
+> **Loading rule**: �?Bug 返回后验证、Review 确认、分发子 Agent、管理状�?Session 时加载此文件
+> **Source**: �?`triage.md` 拆分，v17.0
 
 ---
 
@@ -17,7 +17,7 @@ After bugfix-expert returns, Triage must verify:
 | 2 | TEST_CASE.md | {DOCS_INTERNAL}/reports/bugs/B{NNN}/R{N}/TEST_CASE.md | Mark as "TEST_CASE missing", require completion |
 | 3 | Reproduction test code | tests/bugs/B{NNN}-*/ or web/tests/bugs/B{NNN}-*/ | Mark as "reproduction test missing", require completion |
 
-### Part 2: Test Execution Verification (IMPORTANT — must run actual tests)
+### Part 2: Test Execution Verification (IMPORTANT �?must run actual tests)
 
 ⚠️ Triage MUST execute the following commands to verify the fix actually works:
 
@@ -48,16 +48,13 @@ bun run test
 bun run test -- --testPathPattern="B{NNN}"
 ```
 
-**⚠️ Frontend Bug 额外必须: UI 运行时验证**:
+**⚠️ Frontend Bug 额外必须: UI 运行时验�?*:
 ```bash
 # Step 5: Start dev server and verify UI
 bun run dev
 # 然后必须执行:
-# - 打开 Bug 涉及的页面（导航到 Bug URL）
-# - 检查页面内容（文本/数据/组件正确显示）
-# - 执行 Bug 涉及的交互（点击/输入/提交）
-# - 重现 Bug 原始触发步骤，确认 Bug 现象消失
-# - 截图保存到 {DOCS_INTERNAL}/reports/bugs/B{NNN}-R{N}/
+# - 打开 Bug 涉及的页面（导航�?Bug URL�?# - 检查页面内容（文本/数据/组件正确显示�?# - 执行 Bug 涉及的交互（点击/输入/提交�?# - 重现 Bug 原始触发步骤，确�?Bug 现象消失
+# - 截图保存�?{DOCS_INTERNAL}/reports/bugs/B{NNN}-R{N}/
 ```
 
 | # | Verification Item | Check Method | If Failed |
@@ -94,8 +91,8 @@ bun run dev
 
 ### Verification Result
 
-- All present + All tests pass -> Update beads: `flow tools beads update <id> --add-label phase:review --remove-label phase:verify`, assignee=QA
-- Any missing or test failure -> Update beads: `flow tools beads update <id> --notes "MISSING: {specific items}, need completion"`, send back to bugfix-expert
+- All present + All tests pass -> Update beads: `flow task update <id> --add-label phase:review --remove-label phase:verify`, assignee=QA
+- Any missing or test failure -> Update beads: `flow task update <id> --notes "MISSING: {specific items}, need completion"`, send back to bugfix-expert
 - Report verification results to user (include test output)
 
 **Forbidden**: Creating RCA.md / TEST_CASE.md. These are created by bugfix-expert. Triage only verifies, never creates.
@@ -107,20 +104,13 @@ bun run dev
 ### R 迭代规则
 
 ```
-Bug 修复后 QA 验证
-    │
-    ├─ 验证通过 → 进入 Review 确认流程
-    │
-    └─ 验证未通过
-        ↓
-    询问用户: "Bug 未修好，需要 R{N+1} 迭代？"
-        ↓
-    ┌─ 是 → 打回 bugfix-expert，触发 R{N+1}
-    │   └─ 创建新目录 B{NNN}/R{N+1}/（禁止覆盖 R{N}）
-    │   └─ flow tools beads update <id> --add-label phase:implement --remove-label phase:verify
-    │
-    └─ 否 → 创建新 Bug 或关闭
-```
+Bug 修复�?QA 验证
+    �?    ├─ 验证通过 �?进入 Review 确认流程
+    �?    └─ 验证未通过
+        �?    询问用户: "Bug 未修好，需�?R{N+1} 迭代�?
+        �?    ┌─ �?�?打回 bugfix-expert，触�?R{N+1}
+    �?  └─ 创建新目�?B{NNN}/R{N+1}/（禁止覆�?R{N}�?    �?  └─ flow task update <id> --add-label phase:implement --remove-label phase:verify
+    �?    └─ �?�?创建�?Bug 或关�?```
 
 ### R 迭代质量门禁
 
@@ -129,73 +119,60 @@ Bug 修复后 QA 验证
 | R1 | 标准 Bug 修复流程 |
 | R2 | RCA 必须包含 R1 失败分析 |
 | R3 | RCA 必须包含 R1+R2 失败分析 + 替代方案评估 |
-| R4+ | ⚠️ 必须暂停，询问用户是否继续迭代 |
+| R4+ | ⚠️ 必须暂停，询问用户是否继续迭�?|
 
-**R4+ 暂停规则**：
-- 达到 R4 时，Triage 必须通知用户
+**R4+ 暂停规则**�?- 达到 R4 时，Triage 必须通知用户
 - 用户确认后才允许继续 R4
-- 建议：R4+ 时考虑重新评估 Bug 根因或升级处理
-
+- 建议：R4+ 时考虑重新评估 Bug 根因或升级处�?
 ---
 
 ## Review Confirmation & Archiving
 
 ### 触发时机
 
-QA 完成验证后，必须执行 Review 确认流程：
-
+QA 完成验证后，必须执行 Review 确认流程�?
 ```
 QA 验证通过
-    ↓
-Triage 执行 Review 确认
-    ↓
-┌─ Bug 类型 → 检查 LESSON-NEEDED
-└─ Feature/Change → 可选检查
-    ↓
-输出确认报告 → 用户确认
-    ↓
-┌─ 确认 → 关闭 task
-└─ 有问题 → 打回或创建新 Bug
+    �?Triage 执行 Review 确认
+    �?┌─ Bug 类型 �?检�?LESSON-NEEDED
+└─ Feature/Change �?可选检�?    �?输出确认报告 �?用户确认
+    �?┌─ 确认 �?关闭 task
+└─ 有问�?�?打回或创建新 Bug
 ```
 
-### 关闭前检查
-
+### 关闭前检�?
 ```bash
-# Bug 类型必须检查
-flow tools beads list --label lesson:needed --json | jq '.[] | select(.externalRef == "B001")'
+# Bug 类型必须检�?flow task list --label lesson:needed --json | jq '.[] | select(.externalRef == "B001")'
 
-# 如果有 LESSON-NEEDED 标签
-flow tools beads show <id> --json | jq '.labels'
+# 如果�?LESSON-NEEDED 标签
+flow task show <id> --json | jq '.labels'
 ```
 
 ```markdown
-## ⚠️ 关闭前检查
-
+## ⚠️ 关闭前检�?
 **Task**: B001 (Bug)
-**LESSON-NEEDED**: ⚠️ 有 1 个待处理
+**LESSON-NEEDED**: ⚠️ �?1 个待处理
 
-| 来源 | 描述 | 状态 |
+| 来源 | 描述 | 状�?|
 |------|------|------|
-| Bugfix | 未处理空指针异常 | 待处理 |
+| Bugfix | 未处理空指针异常 | 待处�?|
 
 **请选择**:
-[A] 先处理 LESSON-NEEDED
-[B] 跳过，稍后处理
-```
+[A] 先处�?LESSON-NEEDED
+[B] 跳过，稍后处�?```
 
 ### Review 确认流程
 
 ```bash
-# 查找所有 phase:review 的 issue
-flow tools beads list --label phase:review --json
+# 查找所�?phase:review �?issue
+flow task list --label phase:review --json
 ```
 
 ```markdown
-## Review 待确认
-
-| ID | 类型 | 描述 | 交付物 | 来源 | LESSON |
+## Review 待确�?
+| ID | 类型 | 描述 | 交付�?| 来源 | LESSON |
 |----|------|------|--------|------|--------|
-| F001 | Feature | 用户登录 | SPEC.md, AC.md | Tech Lead | — |
+| F001 | Feature | 用户登录 | SPEC.md, AC.md | Tech Lead | �?|
 | B001 | Bug | 登录超时 | RCA.md, TEST_CASE.md | Bugfix | ⚠️ 1 |
 
 ---
@@ -203,20 +180,16 @@ flow tools beads list --label phase:review --json
 **操作**: [确认全部] / [逐个确认] / [有问题的打回]
 ```
 
-### QA 发现 Bug 的处理
-
-当 QA 在 Review 过程中发现新 Bug 时：
+### QA 发现 Bug 的处�?
+�?QA �?Review 过程中发现新 Bug 时：
 
 ```
-QA 发现新 Bug
-    ↓
-询问用户: "发现 X 现象，这是新 Bug 还是 B001 的 R2？"
-    ↓
-┌─ B001 的 R2 → 询问: "Bug 未修好，需要 R2 迭代？"
-│   └─ 是 → 打回 B001，触发 R2
-│   └─ 否 → 创建新 Bug
-│
-└─ 新 Bug → 创建 B{N+1}
+QA 发现�?Bug
+    �?询问用户: "发现 X 现象，这是新 Bug 还是 B001 �?R2�?
+    �?┌─ B001 �?R2 �?询问: "Bug 未修好，需�?R2 迭代�?
+�?  └─ �?�?打回 B001，触�?R2
+�?  └─ �?�?创建�?Bug
+�?└─ �?Bug �?创建 B{N+1}
 ```
 
 ```markdown
@@ -224,12 +197,12 @@ QA 发现新 Bug
 
 **现象**: {描述}
 **可能来源**:
-- B001 未修好 → R2 迭代
-- 新 Bug → 创建 B{N+1}
+- B001 未修�?�?R2 迭代
+- �?Bug �?创建 B{N+1}
 
-**请确认**:
-[A] B001 的 R2
-[B] 新 Bug
+**请确�?*:
+[A] B001 �?R2
+[B] �?Bug
 [C] 观察记录，不创建任务
 ```
 
@@ -239,11 +212,11 @@ QA 发现新 Bug
 
 | # | 检查项 | 验证方法 |
 |---|--------|---------|
-| 1 | 所有交付物已生成 | 检查文件路径 |
-| 2 | beads 状态已更新 | `flow tools beads show <id>` |
-| 3 | LESSON-NEEDED 已处理（Bug 类型） | `flow tools beads list --label lesson:needed` |
-| 4 | 用户已确认 | 确认记录 |
-| 5 | 无遗留 R 迭代 | 检查 beads notes |
+| 1 | 所有交付物已生�?| 检查文件路�?|
+| 2 | beads 状态已更新 | `flow task show <id>` |
+| 3 | LESSON-NEEDED 已处理（Bug 类型�?| `flow task list --label lesson:needed` |
+| 4 | 用户已确�?| 确认记录 |
+| 5 | 无遗�?R 迭代 | 检�?beads notes |
 
 ---
 
@@ -253,18 +226,17 @@ QA 发现新 Bug
 
 **不阻塞主流程**，仅在以下时机提示：
 - Session 启动时（简短提示）
-- 用户主动询问 "有哪些待处理的 lesson"
-- Session 结束时
-
+- 用户主动询问 "有哪些待处理�?lesson"
+- Session 结束�?
 ```bash
 # 扫描 LESSON-NEEDED 标签
-flow tools beads list --label lesson:needed --json
+flow task list --label lesson:needed --json
 ```
 
 ### 扫描输出
 
 ```markdown
-## ⚠️ 待处理 LESSON-NEEDED
+## ⚠️ 待处�?LESSON-NEEDED
 
 | ID | 来源 | 描述 | 标记时间 |
 |----|------|------|----------|
@@ -277,20 +249,16 @@ flow tools beads list --label lesson:needed --json
 
 ```
 Triage 处理 LESSON-NEEDED
-    ↓
-生成 lesson 内容
-    ↓
-写入 {DOCS_INTERNAL}/lessons/
-    ↓
-flow tools beads update <id> --remove-label lesson:needed --add-label lesson:done
+    �?生成 lesson 内容
+    �?写入 {DOCS_INTERNAL}/lessons/
+    �?flow task update <id> --remove-label lesson:needed --add-label lesson:done
 ```
 
 ---
 
 ## Sub-Agent Prompt Templates (三层交接模型)
 
-> **Loading rule**: 当 Triage 分发子 Agent 时加载此节
-
+> **Loading rule**: �?Triage 分发�?Agent 时加载此�?
 ### Three-Layer Handoff Model
 
 ```
@@ -314,29 +282,27 @@ Layer 3: Sub-agent reads on demand (load when needed)
 
 ### Handoff Key Rules (交接铁律)
 
-1. **Triage MUST NOT pass shared.md content in the prompt** — 浪费 token，子 Agent 自行读取 Layer 2
-2. **Triage MUST pass user's original words verbatim** — 不摘要、不转述，保留原始措辞
-3. **Sub-agent MUST read Layer 2 files before starting work** — 启动后第一件事是加载 Layer 2
-4. **Sub-agent MUST NOT read triage.md or triage-clarify.md** — 这是 Triage 的上下文，不是子 Agent 的
-5. **Sub-agent reads Layer 3 files only when the specific task requires it** — 按需加载，不预读
+1. **Triage MUST NOT pass shared.md content in the prompt** �?浪费 token，子 Agent 自行读取 Layer 2
+2. **Triage MUST pass user's original words verbatim** �?不摘要、不转述，保留原始措�?3. **Sub-agent MUST read Layer 2 files before starting work** �?启动后第一件事是加�?Layer 2
+4. **Sub-agent MUST NOT read triage.md or triage-clarify.md** �?这是 Triage 的上下文，不是子 Agent �?5. **Sub-agent reads Layer 3 files only when the specific task requires it** �?按需加载，不预读
 
 ### Feature Task (developer-engineer)
 
 ```markdown
 You are Dev, executing task {beads_id}: {external-ref}: {title}
 
-## Task Context (from Triage — Layer 1)
+## Task Context (from Triage �?Layer 1)
 - Type: feature
 - Priority: {0-4}
 - Description: {user's original words}
 - Key constraints: {extracted from classification}
 
-## Required Reading (Layer 2 — load now)
+## Required Reading (Layer 2 �?load now)
 1. {TEAM_PATH}/workflows/shared.md
 2. {TEAM_PATH}/prompts/dev.md
 3. Run: flow config paths --json
 
-## On-Demand Reading (Layer 3 — load when needed)
+## On-Demand Reading (Layer 3 �?load when needed)
 - Standards: {TEAM_PATH}/workflows/roles/dev-standards.md
 - Templates: {TEAM_PATH}/templates/feature-template.md
 - Commands: {TEAM_PATH}/docs/COMMANDS.md
@@ -350,19 +316,19 @@ Determine subtype based on task description and involved files:
 - Involves internal/**, *.go, proto, API -> subtype = backend-dev
 
 ## beads operations
-- View task: flow tools beads show <id>
-- Update progress: flow tools beads update <id> --notes "PROGRESS: ..."
-- Phase transition: flow tools beads update <id> --add-label phase:xxx --remove-label phase:yyy
-- Completion: flow tools beads update <id> --add-label phase:review --remove-label phase:verify
+- View task: flow task show <id>
+- Update progress: flow task update <id> --notes "PROGRESS: ..."
+- Phase transition: flow task update <id> --add-label phase:xxx --remove-label phase:yyy
+- Completion: flow task update <id> --add-label phase:review --remove-label phase:verify
 
-## Toolchain Gate (IMPORTANT — violation = task failure)
+## Toolchain Gate (IMPORTANT �?violation = task failure)
 
 {TOOLCHAIN_GATE}
 
 ## Rules
-- After completion: flow tools beads update {beads_id} --notes "COMPLETED: {deliverable list}"
+- After completion: flow task update {beads_id} --notes "COMPLETED: {deliverable list}"
 - Return to Triage with deliverables list
-- ⛔ Do NOT re-read triage.md or triage-clarify.md (Triage already processed)
+- �?Do NOT re-read triage.md or triage-clarify.md (Triage already processed)
 ```
 
 ### Bug Task (bugfix-expert)
@@ -370,30 +336,30 @@ Determine subtype based on task description and involved files:
 ```markdown
 You are Bugfix, executing task {beads_id}: {external-ref}: {title}
 
-## Task Context (from Triage — Layer 1)
+## Task Context (from Triage �?Layer 1)
 - Type: bug
 - Priority: {0-4}
 - Description: {user's original words}
 - Key constraints: {extracted from classification}
 
-## Required Reading (Layer 2 — load now)
+## Required Reading (Layer 2 �?load now)
 1. {TEAM_PATH}/workflows/shared.md
 2. {TEAM_PATH}/prompts/bugfix.md
 3. Run: flow config paths --json
 
-## On-Demand Reading (Layer 3 — load when needed)
+## On-Demand Reading (Layer 3 �?load when needed)
 - Standards: {TEAM_PATH}/workflows/roles/bugfix-standards.md
 - Templates: {TEAM_PATH}/templates/bug-template.md
 - Commands: {TEAM_PATH}/docs/COMMANDS.md
 - Frontend: {TEAM_PATH}/workflows/roles/frontend-specialized-tests.md + {TEAM_PATH}/templates/frontend-bug-test-template.md
 - Backend: {TEAM_PATH}/workflows/roles/specialized-tests.md + {TEAM_PATH}/templates/bug-test-template.md
 
-## IMPORTANT — violating any rule = task failure, forbidden to report "complete"
+## IMPORTANT �?violating any rule = task failure, forbidden to report "complete"
 
 ### Execution order (must strictly follow, forbidden to skip steps)
 
 ```
-Step 1: Query R iteration count -> flow tools beads show <id> --json | count reopened events + 1
+Step 1: Query R iteration count -> flow task show <id> --json | count reopened events + 1
 Step 2: Create/update report directory
   - First time: mkdir {DOCS_INTERNAL}/reports/bugs/B{NNN}/R1/
   - Subsequent: mkdir {DOCS_INTERNAL}/reports/bugs/B{NNN}/R{n}/
@@ -403,7 +369,7 @@ Step 4: Write Bug reproduction test -> Test must fail (red)
 Step 5: Fix Bug -> Reproduction test must pass (green)
 Step 6: Create R{n}/TEST_CASE.md -> Must include: Reproduction steps / Expected result / Verification result
 Step 7: Full regression test passes
-Step 8: flow tools beads update <id> --add-label phase:verify
+Step 8: flow task update <id> --add-label phase:verify
 ```
 
 ### Gate 1: RCA.md (Step 3 output)
@@ -450,10 +416,10 @@ When subtype = backend-dev, load Layer 3 backend files.
 | 7 | Report directory format B{NNN}/R{N}/ | Check path |
 
 ## beads operations
-- View task: flow tools beads show <id>
-- Update progress: flow tools beads update <id> --notes "PROGRESS: ..."
-- Phase transition: flow tools beads update <id> --add-label phase:xxx --remove-label phase:yyy
-- Completion: flow tools beads update <id> --add-label phase:review --remove-label phase:verify
+- View task: flow task show <id>
+- Update progress: flow task update <id> --notes "PROGRESS: ..."
+- Phase transition: flow task update <id> --add-label phase:xxx --remove-label phase:yyy
+- Completion: flow task update <id> --add-label phase:review --remove-label phase:verify
 
 ## Toolchain Gate
 
@@ -463,11 +429,11 @@ When subtype = backend-dev, load Layer 3 backend files.
 - After completion (must follow this order):
   1. Verify each item in "completion blockers" table
   2. Any missing -> Report "task failed: missing {specific item}", forbidden to mark complete
-  3. All pass -> flow tools beads update <id> --add-label phase:review
-  4. flow tools beads update {beads_id} --notes "COMPLETED: RCA + TEST_CASE + fix"
+  3. All pass -> flow task update <id> --add-label phase:review
+  4. flow task update {beads_id} --notes "COMPLETED: RCA + TEST_CASE + fix"
   5. Report deliverable list (must include all file paths)
 - Return to Triage with deliverables list
-- ⛔ Do NOT re-read triage.md or triage-clarify.md (Triage already processed)
+- �?Do NOT re-read triage.md or triage-clarify.md (Triage already processed)
 ```
 
 ### General Task (Change/Analysis/Docs/DevOps/UI/PM)
@@ -475,36 +441,36 @@ When subtype = backend-dev, load Layer 3 backend files.
 ```markdown
 You are {role}, executing task {beads_id}: {external-ref}: {title}
 
-## Task Context (from Triage — Layer 1)
+## Task Context (from Triage �?Layer 1)
 - Type: {change|analysis|docs|devops|ui|pm}
 - Priority: {0-4}
 - Description: {user's original words}
 - Key constraints: {extracted from classification}
 
-## Required Reading (Layer 2 — load now)
+## Required Reading (Layer 2 �?load now)
 1. {TEAM_PATH}/workflows/shared.md
 2. {TEAM_PATH}/prompts/{role}.md
 3. Run: flow config paths --json
 
-## On-Demand Reading (Layer 3 — load when needed)
+## On-Demand Reading (Layer 3 �?load when needed)
 - Standards: {TEAM_PATH}/workflows/roles/{role}-standards.md
 - Templates: {TEAM_PATH}/templates/{type}-template.md
 - Commands: {TEAM_PATH}/docs/COMMANDS.md
 
 ## beads operations
-- View task: flow tools beads show <id>
-- Update progress: flow tools beads update <id> --notes "PROGRESS: ..."
-- Phase transition: flow tools beads update <id> --add-label phase:xxx --remove-label phase:yyy
-- Completion: flow tools beads update <id> --add-label phase:review
+- View task: flow task show <id>
+- Update progress: flow task update <id> --notes "PROGRESS: ..."
+- Phase transition: flow task update <id> --add-label phase:xxx --remove-label phase:yyy
+- Completion: flow task update <id> --add-label phase:review
 
-## Toolchain Gate (IMPORTANT — violation = task failure)
+## Toolchain Gate (IMPORTANT �?violation = task failure)
 
 {TOOLCHAIN_GATE}
 
 ## Rules
-- After completion: flow tools beads update {beads_id} --notes "COMPLETED: {deliverable list}"
+- After completion: flow task update {beads_id} --notes "COMPLETED: {deliverable list}"
 - Return to Triage with deliverables list
-- ⛔ Do NOT re-read triage.md or triage-clarify.md (Triage already processed)
+- �?Do NOT re-read triage.md or triage-clarify.md (Triage already processed)
 ```
 
 ---
@@ -576,9 +542,9 @@ Must output before any command: PRE-FLIGHT: pkg=npm
 
 ### Key Constraints
 
-1. **"Available commands" != "must execute"** — Clearly mark "use as needed, not all required", avoid AI interpreting as pipeline flow
-2. **Forbidden list must be specific** — List each forbidden package manager's common commands with correct alternatives
-3. **PRE-FLIGHT is hard gate** — Executing commands without confirmation = task failure
+1. **"Available commands" != "must execute"** �?Clearly mark "use as needed, not all required", avoid AI interpreting as pipeline flow
+2. **Forbidden list must be specific** �?List each forbidden package manager's common commands with correct alternatives
+3. **PRE-FLIGHT is hard gate** �?Executing commands without confirmation = task failure
 
 ---
 
@@ -608,7 +574,7 @@ phase:review     -> Waiting for user/business confirmation
 
 ```bash
 # Progress to next phase
-flow tools beads update <id> \
+flow task update <id> \
   --add-label phase:implement \
   --remove-label phase:design
 ```
@@ -625,13 +591,13 @@ open (phase:ready) -> in_progress (phase:implement) -> in_progress (phase:verify
 
 ```bash
 # Launch sub-agent: claim and start
-flow tools beads update <id> --claim --add-label phase:implement --remove-label phase:ready
+flow task update <id> --claim --add-label phase:implement --remove-label phase:ready
 
 # Sub-agent completes: move to review
-flow tools beads update <id> --add-label phase:review --remove-label phase:verify
+flow task update <id> --add-label phase:review --remove-label phase:verify
 
 # User confirms: close
-flow tools beads close <id> --reason "Confirmed by user"
+flow task close <id> --reason "Confirmed by user"
 ```
 
 ---
@@ -660,15 +626,15 @@ flow tools beads close <id> --reason "Confirmed by user"
 
 ```bash
 # From beads ID find task ID (external-ref)
-flow tools beads show <beads-id> --json | jq '.externalRef'
+flow task show <beads-id> --json | jq '.externalRef'
 # -> "F014"
 
 # From task ID find beads ID
-flow tools beads list --json | jq '.[] | select(.externalRef == "F014") | .id'
+flow task list --json | jq '.[] | select(.externalRef == "F014") | .id'
 # -> "<beads-id>"
 
 # Query Bug R iteration count (reopen count + 1)
-flow tools beads show <beads-id> --json | jq '[.events[] | select(.event_type == "reopened")] | length + 1'
+flow task show <beads-id> --json | jq '[.events[] | select(.event_type == "reopened")] | length + 1'
 # -> 2 (means current is R2)
 
 # From task ID locate doc directory
@@ -683,28 +649,28 @@ Before creating, check for existing issues:
 
 ```bash
 # Search by keywords
-flow tools beads list --json | jq '.[] | select(.title | contains("keyword"))'
+flow task list --json | jq '.[] | select(.title | contains("keyword"))'
 
 # Check by external-ref
-flow tools beads list --json | jq '.[] | select(.externalRef == "F014")'
+flow task list --json | jq '.[] | select(.externalRef == "F014")'
 
 # Search closed issues (might be regression)
-flow tools beads list --status closed --json | jq '.[] | select(.title | contains("keyword"))'
+flow task list --status closed --json | jq '.[] | select(.title | contains("keyword"))'
 ```
 
 If duplicate found, add note instead of creating new:
 
 ```bash
-flow tools beads update <existing-id> --append-notes "Additional report: [new context]"
+flow task update <existing-id> --append-notes "Additional report: [new context]"
 ```
 
 ### Dependency Management
 
 ```bash
 # Link dependencies
-flow tools beads dep add <new-id> <dependency-id> --type discovered-from
-flow tools beads dep add <new-id> <blocking-id> --type blocks
-flow tools beads dep add <new-id> <related-id> --type related-to
+flow task dep add <new-id> <dependency-id> --type discovered-from
+flow task dep add <new-id> <blocking-id> --type blocks
+flow task dep add <new-id> <related-id> --type related-to
 ```
 
 Dependency types:
@@ -718,42 +684,39 @@ Dependency types:
 
 ### Session 启动扫描 (后台执行)
 
-**目的**: 快速获取状态，不阻塞主流程。
-
+**目的**: 快速获取状态，不阻塞主流程�?
 ```bash
 # Step 1: 扫描 Review 阶段 issue
-flow tools beads list --label phase:review --json
+flow task list --label phase:review --json
 
 # Step 2: 扫描 LESSON-NEEDED 标签
-flow tools beads list --label lesson:needed --json
+flow task list --label lesson:needed --json
 ```
 
-**输出格式** (简短，不阻塞):
+**输出格式** (简短，不阻�?:
 
 ```markdown
-## Session 状态
-
-**待确认 Review**: 1 个 (F001)
-**待处理 LESSON**: 2 个 (B001, B002)
+## Session 状�?
+**待确�?Review**: 1 �?(F001)
+**待处�?LESSON**: 2 �?(B001, B002)
 
 [查看详情] / [继续主流程]
 ```
 
-如果用户询问详情，才输出完整列表。
-
+如果用户询问详情，才输出完整列表�?
 ### Export for Human Review
 
 At end of session or on demand, export beads state for human readability:
 
 ```bash
 # Export open issues (table format)
-flow tools beads list --status open --format table > {DOCS_INTERNAL}/task-pool-export.md
+flow task list --status open --format table > {DOCS_INTERNAL}/task-pool-export.md
 
 # Export P0/P1 only
-flow tools beads list --priority 0,1 --format table > {DOCS_INTERNAL}/task-pool-urgent.md
+flow task list --priority 0,1 --format table > {DOCS_INTERNAL}/task-pool-urgent.md
 
 # Full JSON export
-flow tools beads list --json > {DOCS_INTERNAL}/task-pool-full.json
+flow task list --json > {DOCS_INTERNAL}/task-pool-full.json
 
 # Manual export anytime via flow command
 flow export
@@ -761,8 +724,8 @@ flow export
 
 **Export rules**:
 1. Triage exports task status to `{DOCS_INTERNAL}/task-pool-export.md` after every status change
-2. CLI command: `flow export` — manual export anytime
-3. task-pool-export.md is **read-only** — never edit it to change task state
+2. CLI command: `flow export` �?manual export anytime
+3. task-pool-export.md is **read-only** �?never edit it to change task state
 
 ### Session End
 
@@ -770,24 +733,24 @@ At end of triage session:
 
 ```bash
 # 1. Export current state
-flow tools beads list --status open --format table > {DOCS_INTERNAL}/task-pool-export.md
+flow task list --status open --format table > {DOCS_INTERNAL}/task-pool-export.md
 
 # 2. Commit Dolt changes (if batch mode)
-flow tools beads dolt commit -m "Triage session $(date +%Y%m%d)"
+flow task dolt commit -m "Triage session $(date +%Y%m%d)"
 
 # 3. Push to remote
-flow tools beads dolt push
+flow task dolt push
 ```
 
 ### Metrics to Track
 
 ```bash
 # Issues created this session
-flow tools beads log --actor $USER --action create --since "2 hours ago"
+flow task log --actor $USER --action create --since "2 hours ago"
 
 # Issues closed this session
-flow tools beads log --actor $USER --action close --since "2 hours ago"
+flow task log --actor $USER --action close --since "2 hours ago"
 
 # Current state
-flow tools beads stats
+flow task stats
 ```

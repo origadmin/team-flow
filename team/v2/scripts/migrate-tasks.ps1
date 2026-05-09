@@ -1,4 +1,4 @@
-#!/usr/bin/env pwsh
+﻿#!/usr/bin/env pwsh
 # migrate-tasks.ps1 — Migrate task-pool.md to beads
 # Usage: ./migrate-tasks.ps1 -ProjectPath <path> [-DryRun]
 
@@ -49,7 +49,7 @@ if (-not (Test-Path $TaskPoolPath)) {
 }
 
 if (-not (Test-Path $BeadsPath)) {
-    Write-Error "beads not initialized. Run 'flow tools beads init' in $ProjectPath first"
+    Write-Error "beads not initialized. Run 'flow task init' in $ProjectPath first"
     exit 1
 }
 
@@ -212,7 +212,7 @@ foreach ($Task in $Tasks) {
     $StatusPhase = Get-BeadsStatusAndPhase $Task.status $Task.phase
 
     # Build command
-    $Cmd = "flow tools beads create `"$($Task.id): $($Task.title)`" -t $BeadsType -p $BeadsPriority --external-ref `"$($Task.id)`""
+    $Cmd = "flow task create `"$($Task.id): $($Task.title)`" -t $BeadsType -p $BeadsPriority --external-ref `"$($Task.id)`""
 
     if ($StatusPhase.phaseLabel) {
         $Cmd += " --add-label $($StatusPhase.phaseLabel)"

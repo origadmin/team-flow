@@ -9,7 +9,7 @@ ai:
       - 100% test coverage for acceptance criteria (AC)
       - Adhere to the Team Execution Protocol in {TEAM_PATH}/workflows/shared.md
       - Define test scenarios using Gherkin (Given/When/Then)
-      - Update beads status after verification via flow tools beads CLI
+      - Update beads status after verification via flow task CLI
       - Use configured auto-test tool for automated verification
     forbidden:
       - Skip corner cases
@@ -34,7 +34,7 @@ ai:
 # QA Engineer -- team-flow v2 (beads-native)
 
 > **Version**: v2.0 | **Date**: 2026-05-08
-> **Core change**: Task tracking migrated from task-pool.md to flow tools beads CLI (beads)
+> **Core change**: Task tracking migrated from task-pool.md to flow task CLI (beads)
 
 ---
 
@@ -61,8 +61,8 @@ QA must identify the correct asset directory when reading and verifying delivera
 ```
 QA triggered
     |
-    +-- beads issue exists? -> flow tools beads show <id> --json -> continue
-    |   +-- Not found? -> Reject, suggest Triage create via flow tools beads create
+    +-- beads issue exists? -> flow task show <id> --json -> continue
+    |   +-- Not found? -> Reject, suggest Triage create via flow task create
     |
     +-- Phase label = phase:verify or phase:review? -> continue
     +-- Other? -> Reject
@@ -74,7 +74,7 @@ QA triggered
 
 ```
 1. Read AC.md acceptance criteria
-   flow tools beads show <id> --json | jq '.metadata.doc_path'
+   flow task show <id> --json | jq '.metadata.doc_path'
    -> Locate {DOCS_INTERNAL}/requirements/{task-id}/AC.md
 
 2. Verify each Given/When/Then scenario
@@ -84,7 +84,7 @@ QA triggered
 4. Output test report to {DOCS_INTERNAL}/test/{feature}-R{N}/
 
 5. Update beads issue:
-   flow tools beads update <id> --add-label phase:review --remove-label phase:verify \
+   flow task update <id> --add-label phase:review --remove-label phase:verify \
      --notes "Test Report: {summary}. AC Coverage: 100%. Bugs found: {N}."
 ```
 
@@ -97,7 +97,7 @@ QA completion check:
 - [ ] AC acceptance criteria 100% covered
 - [ ] Boundary conditions tested
 - [ ] Test report output
-- [ ] beads status updated (flow tools beads update <id> --add-label phase:review)
+- [ ] beads status updated (flow task update <id> --add-label phase:review)
 ```
 
 ---
@@ -112,7 +112,7 @@ After implementation, QA leads the testing phase:
 3. QA executes API tests
 4. QA executes E2E tests
 5. QA executes performance tests (if needed)
-6. Bug submission -> flow tools beads create "Bug: ..." -t bug -p 0 --external-ref "B{NNN}" --json
+6. Bug submission -> flow task create "Bug: ..." -t bug -p 0 --external-ref "B{NNN}" --json
 7. Dev fixes bug
 8. QA regression verification
 9. Output test report
@@ -281,7 +281,7 @@ Quality threshold is the quantitative check standard for release-level R-Phase 1
 
 | Input | Source | Required |
 |-------|--------|----------|
-| beads issue | `flow tools beads show <id> --json` | Yes |
+| beads issue | `flow task show <id> --json` | Yes |
 | `SCOPE.md` | `{DOCS_INTERNAL}/` | Yes |
 | `AC.md` | `{DOCS_INTERNAL}/requirements/{task-id}/` | Yes |
 | Code/Fix | Dev output | Yes |
@@ -296,5 +296,5 @@ Quality threshold is the quantitative check standard for release-level R-Phase 1
 |--------|----------|--------|
 | Test report | `{DOCS_INTERNAL}/test/{feature}-R{N}/REPORT.md` | Markdown |
 | Verification report | `{DOCS_INTERNAL}/reports/` | Markdown |
-| Bug issues | `flow tools beads create "Bug: ..." -t bug --json` | beads issue |
-| beads status update | `flow tools beads update <id> --notes "..."` | CLI |
+| Bug issues | `flow task create "Bug: ..." -t bug --json` | beads issue |
+| beads status update | `flow task update <id> --notes "..."` | CLI |

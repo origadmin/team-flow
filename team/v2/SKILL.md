@@ -4,13 +4,13 @@ version: 2.3
 description: |
   Multi-agent AI collaboration framework with beads-based task management.
   Provides Triage→TechLead→Dev→QA pipeline, three-layer gates, and 11 role definitions.
-  Task management via flow tools beads CLI.
+  Task management via flow task CLI (routes to beads v2 / docs v1).
   Path resolution via flow config paths --json.
   Compatible: Go backend + React/TypeScript frontend projects.
 tools:
-  - name: beads
+  - name: task
     required: true
-    commands: [create, update, close, list, show, ready, dep, dolt]
+    commands: [create, update, close, list, show, ready, append, dep, dolt, export]
 config:
   paths_source: "flow config paths --json"
   config_file: ".team/config.yaml"
@@ -23,7 +23,7 @@ evolution:
 # team-flow v2 SKILL.md — Entry Point
 
 > **Version**: v2.3 | **Date**: 2026-05-09
-> **Core change**: Frontmatter standardization + path resolution + flow tools beads unification
+> **Core change**: Frontmatter standardization + path resolution + flow task unification
 
 ## Status Line (MANDATORY — Highest Priority)
 
@@ -62,24 +62,24 @@ Example: `[Role: Triage | TaskPool: team-flow-6x9.15#1 | Phase: analyze | Asset:
 
 ## Overview
 
-team-flow v2 is the beads-native evolution of team-flow. `flow tools beads` CLI is installed and verified during `flow init`. Triage uses flow tools beads exclusively for all task creation, tracking, and status updates. The `task-pool-export.md` file is a human-readable export (read-only).
+team-flow v2 is the beads-native evolution of team-flow. `flow task` CLI is the unified AI-facing command, installed and verified during `flow init`. It routes based on `.team/version`: v1→docs, v2→beads. Triage uses flow task exclusively for all task creation, tracking, and status updates. The `task-pool-export.md` file is a human-readable export (read-only).
 
-## Beads Availability (v2)
+## Task Command Availability
 
-flow tools beads CLI is always available after `flow init` (which installs, verifies, and adds to PATH). If flow tools beads not found on PATH:
+`flow task` is always available after `flow init` (which installs, verifies, and adds to PATH). It internally routes to the correct backend based on `.team/version` (v1→docs, v2→beads). If flow task not found on PATH:
 
 ```bash
-# Verify flow tools beads installation
+# Verify flow task installation
 flow doctor
 
-# If flow tools beads found but not on PATH, re-run init to fix PATH
+# If flow task found but not on PATH, re-run init to fix PATH
 flow init --force
 
-# Or manually discover flow tools beads path
-where.exe flow tools beads 2>$null; Get-ChildItem "$env:LOCALAPPDATA\Programs\flow\flow.exe" -ErrorAction SilentlyContinue
+# Or manually discover flow task path
+where.exe flow task 2>$null; Get-ChildItem "$env:LOCALAPPDATA\Programs\flow\flow.exe" -ErrorAction SilentlyContinue
 ```
 
-**flow tools beads is ALWAYS installed** — `flow init` guarantees it. If shell can't find flow tools beads, use the full path reported by flow doctor.
+**flow task is ALWAYS installed** — `flow init` guarantees it. If shell can't find flow task, use the full path reported by flow doctor.
 
 ## Path Resolution
 
@@ -124,11 +124,25 @@ flow config paths --json
 **Current variables** (new, not legacy):
 - `{TMP_DIR}` → AI temporary files directory (default: `{PROJECT}/.team/tmp/`)
 
+## Task Command Routing
+
+`flow task` is the unified AI-facing command. It routes based on `.team/version`:
+
+| Stage | .team/version | `flow task create` routes to | `flow task list` reads from |
+|-------|---------------|------------------------------|----------------------------|
+| v1 | 1 | task-pool.md (docs) | task-pool.md |
+| v2 | 2 | beads (.beads/) | beads (.beads/) |
+| v3 | 3 | configurable (beads/git/other) | configurable |
+
+**Auto-timestamps**: `flow task create` auto-sets `created_at`. `flow task update` auto-sets `updated_at`. AI never needs to manually write timestamps — the tool handles it.
+
+**Conversation records**: `flow task append {id} --speaker {role} --content "..."` auto-increments cr-index and sets timestamp.
+
 ## Human-Readable Export
 
 beads is AI-managed. Humans need readable exports.
 
-- Source of truth: beads `.beads/` (via `flow tools beads` commands)
+- Source of truth: beads `.beads/` (via `flow task` commands)
 - Human-readable export: `flow export > .team/task-pool-export.md`
 - task-pool-export.md is **read-only** — never edit it to change task state
 
@@ -136,10 +150,10 @@ beads is AI-managed. Humans need readable exports.
 
 ```bash
 # 1. Check beads status
-cd {PROJECT} && flow tools beads ready --json
+cd {PROJECT} && flow task ready --json
 
 # 2. Read task pool
-cd {PROJECT} && flow tools beads list --status open --priority 0,1 --json | ConvertTo-Json -Depth 5
+cd {PROJECT} && flow task list --status open --priority 0,1 --json | ConvertTo-Json -Depth 5
 
 # 3. Read latest AI guidance
 type {PROJECT}/.team/ai-context.md
@@ -149,13 +163,13 @@ type {PROJECT}/.team/ai-context.md
 
 | Aspect | v1 | v2 |
 |--------|----|----|
-| Triage writes | task-pool.md (manual) | flow tools beads create/update (beads) |
+| Triage writes | task-pool.md (manual) | flow task create/update (beads) |
 | Task source of truth | task-pool.md | beads `.beads/` |
 | task-pool.md | Active + writable | Read-only export |
 | ID format | F/B/C/A-NNN | `<beads-id>` (beads auto) |
-| Status tracking | task-pool.md columns | flow tools beads status |
+| Status tracking | task-pool.md columns | flow task status |
 | Multi-agent sync | task-pool.md git conflicts | Dolt git-native |
-| Export | N/A | flow tools beads export --format table |
+| Export | N/A | flow task export --format table |
 
 ## Directory Structure
 
@@ -246,26 +260,26 @@ When output exceeds 100 lines or covers 3+ independent topics:
 ### v2 Task Lifecycle
 
 ```
-flow tools beads create "Title" -t bug|feature|task -p 0-4 --json
+flow task create "Title" -t bug|feature|task -p 0-4 --json
     ↓
-flow tools beads update <id> --claim   (status → in_progress)
+flow task update <id> --claim   (status → in_progress)
     ↓
-flow tools beads update <id> --notes "COMPLETED: ... IN PROGRESS: ..."
+flow task update <id> --notes "COMPLETED: ... IN PROGRESS: ..."
     ↓
-flow tools beads close <id> --reason "Done" --json
+flow task close <id> --reason "Done" --json
 ```
 
 ### ID Mapping
 
 - task ID (F001, B061, etc.) lives in the `external-ref` field of the beads issue
-- Use flow tools beads list --json | ConvertFrom-Json | Where-Object { $_.externalRef -match 'F001' } to find by task ID
-- Export: flow tools beads list --json includes externalRef for cross-reference
+- Use flow task list --json | ConvertFrom-Json | Where-Object { $_.externalRef -match 'F001' } to find by task ID
+- Export: flow task list --json includes externalRef for cross-reference
 
 ### DO NOT
 
 - ❌ Edit task-pool.md manually during task operations
 - ❌ Create tasks in task-pool.md that aren't also in beads
-- ❌ Skip flow tools beads dolt push after significant status changes
+- ❌ Skip flow task dolt push after significant status changes
 - ❌ Write to `{TEAM_PATH}/v1/` (framework-original, read-only reference)
 - ❌ Dump deliverable content into beads notes — see `{TEAM_PATH}/workflows/shared.md` §文件空间定义
 - ❌ Modify `{TEAM_PATH}/` rules to solve project-specific problems — use `.team/project.md §CONSTRAINTS` and `_docs/.../lessons/` instead
@@ -289,8 +303,8 @@ _docs/.../lessons/ = Project lessons (Dev/Bugfix reads)
 ```
 Role triggered
     │
-    ├── Issue exists in beads? → flow tools beads ready --json → continue
-    │   └── Not found? → ⚠️ Reject, suggest Triage create via flow tools beads create
+    ├── Issue exists in beads? → flow task ready --json → continue
+    │   └── Not found? → ⚠️ Reject, suggest Triage create via flow task create
     │
     ├── Issue type matches role? → continue
     │   └── Mismatch? → ⚠️ Hand off to correct role
@@ -311,7 +325,7 @@ Phase transition
     │   └── Failing? → ⚠️ Fix before proceeding
     │
     └── beads issue updated? → continue
-        └── Not updated? → ⚠️ flow tools beads update before proceeding
+        └── Not updated? → ⚠️ flow task update before proceeding
 ```
 
 ### Layer 3: Completion Gate (Before Closing)
@@ -328,8 +342,8 @@ Task complete
     ├── No regressions? → continue
     │   └── Regressions found? → ⚠️ Fix or document known issues
     │
-    └── beads issue closable? → flow tools beads close
-        └── Not ready? → flow tools beads update --notes with remaining items
+    └── beads issue closable? → flow task close
+        └── Not ready? → flow task update --notes with remaining items
 ```
 
 ### Completion Checklists
@@ -408,9 +422,9 @@ Task complete
 
 ```
 You are {role_name}, executing task {task_id}: {task_description}
-Rules: {TEAM_PATH}/prompts/{role}.md | Shared: {TEAM_PATH}/workflows/shared.md | Tracking: flow tools beads CLI
-⛔ v2: Never edit task-pool.md manually. All status updates via flow tools beads CLI.
-After completion: flow tools beads update <id> --notes "COMPLETED: ..." --add-label phase:review → Report deliverables → Return to Triage
+Rules: {TEAM_PATH}/prompts/{role}.md | Shared: {TEAM_PATH}/workflows/shared.md | Tracking: flow task CLI
+⛔ v2: Never edit task-pool.md manually. All status updates via flow task CLI.
+After completion: flow task update <id> --notes "COMPLETED: ..." --add-label phase:review → Report deliverables → Return to Triage
 ```
 
 ## Core Protocol

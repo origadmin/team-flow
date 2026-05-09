@@ -1,4 +1,4 @@
-# team-flow v2 — Beads-Native Task Management
+﻿# team-flow v2 — Beads-Native Task Management
 
 > **Status**: Ready for testing | **Version**: v2.0 | **Date**: 2026-05-02
 
@@ -33,7 +33,7 @@
 
 ```bash
 cd projects/your-project
-flow tools beads init --prefix <proj>
+flow task init --prefix <proj>
 ```
 
 ### 2. Load v2 rules
@@ -54,16 +54,16 @@ Load team-flow rules: {TEAM_PATH}/v2/SKILL.md
 
 ```bash
 # Create task
-flow tools beads create "Fix login bug" -t bug -p 0 --add-label phase:ready --json
+flow task create "Fix login bug" -t bug -p 0 --add-label phase:ready --json
 
 # List tasks
-flow tools beads list --status open --priority 0,1
+flow task list --status open --priority 0,1
 
 # Update task
-flow tools beads update <id> --claim --add-label phase:implement
+flow task update <id> --claim --add-label phase:implement
 
 # Close task
-flow tools beads close <id> --reason "Fixed in commit abc123"
+flow task close <id> --reason "Fixed in commit abc123"
 ```
 
 ## Directory Structure
@@ -110,15 +110,15 @@ flow tools beads close <id> --reason "Fixed in commit abc123"
 ```
 User Input
     ↓
-Triage → flow tools beads create (phase:ready)
+Triage → flow task create (phase:ready)
     ↓
-Tech Lead → flow tools beads update (phase:analyze → phase:design)
+Tech Lead → flow task update (phase:analyze → phase:design)
     ↓
-Dev → flow tools beads update --claim (phase:implement)
+Dev → flow task update --claim (phase:implement)
     ↓
-QA → flow tools beads update (phase:verify)
+QA → flow task update (phase:verify)
     ↓
-User Confirmation → flow tools beads close
+User Confirmation → flow task close
 ```
 
 ## Phase Labels
@@ -145,15 +145,15 @@ phase:review     → Waiting for confirmation
 
 ```bash
 # beads CLI help
-flow tools beads --help
-flow tools beads <command> --help
+flow task --help
+flow task <command> --help
 
 # Check beads status
-flow tools beads stats
-flow tools beads ready
+flow task stats
+flow task ready
 
 # Dolt help
-flow tools beads dolt --help
+flow task dolt --help
 ```
 
 ## Feedback

@@ -10,7 +10,7 @@ ai:
       - Data-driven decisions based on Analysis input
       - Define clear architecture boundaries and module dependencies
       - Adhere to the Team Execution Protocol in {TEAM_PATH}/workflows/shared.md
-      - Update beads status after design via flow tools beads CLI
+      - Update beads status after design via flow task CLI
       - 收到 Change 任务后，判断是否影响交付，反馈 Triage
       - Design with security-first mindset
       - Design for observability
@@ -32,7 +32,7 @@ ai:
 
 > **版本**: v8.0-v2
 > **更新日期**: 2026-05-08
-> **v2 变更**: 任务管理从 task-pool.md 迁移至 beads (flow tools beads CLI)，task-pool.md 仅为只读导出。
+> **v2 变更**: 任务管理从 task-pool.md 迁移至 beads (flow task CLI)，task-pool.md 仅为只读导出。
 
 📌 Tech Lead 负责技术设计和架构决策，是乙方技术侧的入口
 
@@ -55,7 +55,7 @@ ai:
 
 📌 **资产包路径**：`{DOCS_INTERNAL}/requirements/{feature-name}-R{N}/`
 
-📌 external-ref 存储在 beads issue 的 `external_ref` 字段，通过 `flow tools beads list --json` 可查询
+📌 external-ref 存储在 beads issue 的 `external_ref` 字段，通过 `flow task list --json` 可查询
 
 ---
 
@@ -64,7 +64,7 @@ ai:
 ```
 Tech Lead 被触发
     │
-    ├── 任务 ID 存在于 beads？→ flow tools beads show <id> 或 flow tools beads list --json
+    ├── 任务 ID 存在于 beads？→ flow task show <id> 或 flow task list --json
     │   └── 不存在？→ ⚠️ 拒绝，提示走 Triage
     │
     ├── 任务类型为 feature？→ 执行 Feature 设计流程
@@ -76,33 +76,33 @@ Tech Lead 被触发
 
 ## beads 状态管理
 
-📌 v2 中所有任务状态通过 flow tools beads CLI 管理，禁止手动编辑 task-pool.md
+📌 v2 中所有任务状态通过 flow task CLI 管理，禁止手动编辑 task-pool.md
 
 ```bash
 # 认领设计任务
-flow tools beads update <id> --claim
+flow task update <id> --claim
 
 # 标记分析阶段
-flow tools beads update <id> --add-label phase:analyze --remove-label phase:ready
+flow task update <id> --add-label phase:analyze --remove-label phase:ready
 
 # 标记设计阶段
-flow tools beads update <id> --add-label phase:design --remove-label phase:analyze
+flow task update <id> --add-label phase:design --remove-label phase:analyze
 
 # 记录进度
-flow tools beads update <id> --notes "COMPLETED: R0_NAVIGATION_MATRIX IN PROGRESS: SPEC.md"
+flow task update <id> --notes "COMPLETED: R0_NAVIGATION_MATRIX IN PROGRESS: SPEC.md"
 
 # 设置文档路径元数据
-flow tools beads update <id> --set-metadata doc_path="{DOCS_INTERNAL}/requirements/F{NNN}-{name}/"
+flow task update <id> --set-metadata doc_path="{DOCS_INTERNAL}/requirements/F{NNN}-{name}/"
 
 # 设计完成，移交开发
-flow tools beads update <id> --add-label phase:implement --remove-label phase:design
-flow tools beads update <id> --assignee "backend-dev"
+flow task update <id> --add-label phase:implement --remove-label phase:design
+flow task update <id> --assignee "backend-dev"
 
 # 关闭任务（Change 评估不影响交付时）
-flow tools beads close <id> --reason "Change evaluated: no delivery impact"
+flow task close <id> --reason "Change evaluated: no delivery impact"
 
 # 人工可读导出
-flow tools beads list --status open --format table > {DOCS_INTERNAL}/task-pool.md
+flow task list --status open --format table > {DOCS_INTERNAL}/task-pool.md
 ```
 
 ### ID 映射
@@ -117,7 +117,7 @@ flow tools beads list --status open --format table > {DOCS_INTERNAL}/task-pool.m
 
 **收到 Feature 任务后必须执行**:
 
-1. 读取 beads issue: `flow tools beads show <id>` 获取任务描述
+1. 读取 beads issue: `flow task show <id>` 获取任务描述
 2. 创建资产包目录: `{DOCS_INTERNAL}/requirements/{feature-name}-R{N}/`
 3. **创建 R0_NAVIGATION_MATRIX.md（导航与入口矩阵，必须最先创建）**
    - 定义所有功能入口（类型、位置、交互方式）
@@ -131,9 +131,9 @@ flow tools beads list --status open --format table > {DOCS_INTERNAL}/task-pool.m
 8. 创建 R3_API_CONTRACT.md（接口定义、请求/响应示例）
 9. 更新 beads issue:
    ```bash
-   flow tools beads update <id> --add-label phase:implement --remove-label phase:design
-   flow tools beads update <id> --set-metadata doc_path="{DOCS_INTERNAL}/requirements/{feature-name}-R{N}/"
-   flow tools beads update <id> --assignee "dev"
+   flow task update <id> --add-label phase:implement --remove-label phase:design
+   flow task update <id> --set-metadata doc_path="{DOCS_INTERNAL}/requirements/{feature-name}-R{N}/"
+   flow task update <id> --assignee "dev"
    ```
 
 **R0 入口类型定义**（详见 shared.md）:
@@ -165,21 +165,21 @@ flow tools beads list --status open --format table > {DOCS_INTERNAL}/task-pool.m
 
 📌 Change 采用保守策略，默认影响交付，除非 Tech Lead 判断不影响
 
-1. 读取 beads issue: `flow tools beads show <id>` 获取变更描述
+1. 读取 beads issue: `flow task show <id>` 获取变更描述
 2. 分析变更对交付的影响
 3. 判断:
    - 影响交付 → beads issue 保持 open，反馈 Triage 更新状态
      ```bash
-     flow tools beads update <id> --add-label blocked
-     flow tools beads update <id> --notes "Change impacts delivery: {reason}"
+     flow task update <id> --add-label blocked
+     flow task update <id> --notes "Change impacts delivery: {reason}"
      ```
    - 不影响交付 → 关闭 beads issue，反馈 Triage
      ```bash
-     flow tools beads close <id> --reason "Change evaluated: no delivery impact"
+     flow task close <id> --reason "Change evaluated: no delivery impact"
      ```
 4. 如果影响交付，更新相关资产包（SPEC.md / AC.md / R1/R2/R3）
    ```bash
-   flow tools beads update <id> --notes "Updated SPEC.md and AC.md for change impact"
+   flow task update <id> --notes "Updated SPEC.md and AC.md for change impact"
    ```
 
 ---
@@ -335,8 +335,8 @@ Feature 完成检查:
 - [ ] R2_STATE_MACHINE.md 存在且非空
 - [ ] R3_API_CONTRACT.md 存在且非空
 - [ ] ADR 已撰写（如需要）
-- [ ] beads issue 状态更新: flow tools beads update <id> --add-label phase:implement
-- [ ] 建议后续角色已设为 Dev: flow tools beads update <id> --assignee "dev"
+- [ ] beads issue 状态更新: flow task update <id> --add-label phase:implement
+- [ ] 建议后续角色已设为 Dev: flow task update <id> --assignee "dev"
 ```
 
 ---
@@ -352,14 +352,14 @@ Feature 完成检查:
 - [ ] R2_STATE_MACHINE.md: {DOCS_INTERNAL}/requirements/{name}-R1/R2_STATE_MACHINE.md
 - [ ] R3_API_CONTRACT.md: {DOCS_INTERNAL}/requirements/{name}-R1/R3_API_CONTRACT.md
 - [ ] ADR (if needed): {DOCS_INTERNAL}/design/{name}/ADR/
-- [ ] beads: flow tools beads update <id> --add-label phase:implement --assignee "dev"
+- [ ] beads: flow task update <id> --add-label phase:implement --assignee "dev"
 ```
 
 ---
 
 ## 相关文档
 - 团队协议: `{TEAM_PATH}/workflows/shared.md`
-- beads CLI: `flow tools beads --help`, `flow tools beads <command> --help`
+- beads CLI: `flow task --help`, `flow task <command> --help`
 - beads 集成指南: `{TEAM_PATH}/docs/BEADS_INTEGRATION.md`
 
 ---
@@ -370,7 +370,7 @@ Feature 完成检查:
 
 | 输入项 | 来源 | 必填 |
 |--------|------|------|
-| beads issue | `flow tools beads show <id>` 或 `flow tools beads list --json` | ✅ |
+| beads issue | `flow task show <id>` 或 `flow task list --json` | ✅ |
 | 分类报告 | Triage 输出 | ✅ |
 | 需求描述 | 用户原始请求 | ✅ |
 

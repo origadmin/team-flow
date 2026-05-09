@@ -1,4 +1,4 @@
-# SCOPE.md 模板
+﻿# SCOPE.md 模板
 
 > Machine-Readable Change Report
 
@@ -66,6 +66,6 @@ summary: |
 生成 SCOPE.md 后执行：
 
 ```bash
-flow tools beads update <issue-id> --notes "SCOPE: {summary}"
-flow tools beads update <issue-id> --add-label phase:review --remove-label phase:verify
+flow task update <issue-id> --notes "SCOPE: {summary}"
+flow task update <issue-id> --add-label phase:review --remove-label phase:verify
 ```

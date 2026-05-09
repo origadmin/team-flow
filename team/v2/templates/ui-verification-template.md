@@ -1,4 +1,4 @@
-# B{NNN}-R{N}: UI Verification Report
+﻿# B{NNN}-R{N}: UI Verification Report
 
 > **Template**: ui-verification-template.md
 > **Usage**: Frontend Bug fix MUST produce this document with screenshots as evidence.
@@ -215,5 +215,5 @@ B{NNN}-R{N}-{step_number}-{action}-{state}.png
 ## beads Status Update
 
 ```bash
-flow tools beads update <id> --notes "UI_VERIFICATION: B{NNN}-R{N} {PASS/FAIL}. Screenshots: {N}. Bug symptom: {gone/present}"
+flow task update <id> --notes "UI_VERIFICATION: B{NNN}-R{N} {PASS/FAIL}. Screenshots: {N}. Bug symptom: {gone/present}"
 ```

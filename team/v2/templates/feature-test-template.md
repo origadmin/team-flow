@@ -1,4 +1,4 @@
-# {Fxxx}: {功能名称} — 测试覆盖声明
+﻿# {Fxxx}: {功能名称} — 测试覆盖声明
 
 ## beads 关联
 
@@ -159,6 +159,6 @@
 完成测试后执行：
 
 ```bash
-flow tools beads update <issue-id> --notes "TEST_COVERAGE: {x}/7 categories covered, {pass}/{fail} results"
-flow tools beads update <issue-id> --add-label phase:verify --remove-label phase:implement
+flow task update <issue-id> --notes "TEST_COVERAGE: {x}/7 categories covered, {pass}/{fail} results"
+flow task update <issue-id> --add-label phase:verify --remove-label phase:implement
 ```

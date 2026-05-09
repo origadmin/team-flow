@@ -1,4 +1,4 @@
-# B{xxx}-R{n}: {Bug 标题} — 复现测试用例
+﻿# B{xxx}-R{n}: {Bug 标题} — 复现测试用例
 
 ## beads 关联
 
@@ -153,6 +153,6 @@
 完成测试后执行：
 
 ```bash
-flow tools beads update <issue-id> --notes "TEST_CASE: B{xxx}-R{n} verified, regression passed"
-flow tools beads update <issue-id> --add-label phase:verify --remove-label phase:implement
+flow task update <issue-id> --notes "TEST_CASE: B{xxx}-R{n} verified, regression passed"
+flow task update <issue-id> --add-label phase:verify --remove-label phase:implement
 ```

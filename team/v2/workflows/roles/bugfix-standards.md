@@ -498,7 +498,7 @@ Bug 分析
 
 | 触发条件 | 判断者 | 必须动作 |
 |---------|-------|--------|
-| Phase 3 验证结果为"未通过" | 执行角色（Bugfix/Dev） | 1. 创建 `{bug-id}-R{N+1}/` 目录 2. 通过 `flow tools beads update` 重置阶段为 Phase 1 3. 更新 beads issue 的 doc_path 为 R{N+1} 目录 |
+| Phase 3 验证结果为"未通过" | 执行角色（Bugfix/Dev） | 1. 创建 `{bug-id}-R{N+1}/` 目录 2. 通过 `flow task update` 重置阶段为 Phase 1 3. 更新 beads issue 的 doc_path 为 R{N+1} 目录 |
 | 用户反馈"还没修好" | 执行角色 | 同上 |
 | AI 自测发现修复方向错误 | 执行角色 | 同上 |
 
@@ -509,8 +509,8 @@ Bug 分析
     │
     ├── Step 1: 在当前 R 目录完成 SUMMARY.md（记录本轮失败原因）
     ├── Step 2: 创建新目录 {bug-id}-R{N+1}/
-    ├── Step 3: flow tools beads update <task-id> --add-label phase:analyze（重置为 Phase 1）
-    ├── Step 4: flow tools beads update <task-id> --set-metadata doc_path="...R{N+1}/"
+    ├── Step 3: flow task update <task-id> --add-label phase:analyze（重置为 Phase 1）
+    ├── Step 4: flow task update <task-id> --set-metadata doc_path="...R{N+1}/"
     ├── Step 5: 在新 R 目录中进行新的 RCA 分析（不可跳过）
     └── Step 6: 继续修复流程
 ```
@@ -752,7 +752,7 @@ B019-R1/ (Phase 1: RCA → Phase 2: Fix → Phase 3: Verify)
 
 ```bash
 # R iteration tracking in beads
-flow tools beads update B019 --add-label "iteration:R2" --remove-label "iteration:R1"
-flow tools beads update B019 --set-metadata doc_path="{DOCS_INTERNAL}/reports/bugs/B019-R2/"
-flow tools beads update B019 --add-label phase:analyze --remove-label phase:verify
+flow task update B019 --add-label "iteration:R2" --remove-label "iteration:R1"
+flow task update B019 --set-metadata doc_path="{DOCS_INTERNAL}/reports/bugs/B019-R2/"
+flow task update B019 --add-label phase:analyze --remove-label phase:verify
 ```

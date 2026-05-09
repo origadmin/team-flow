@@ -1,14 +1,27 @@
-# Flow Tools Beads 命令参考
+# Flow Task 命令参考
+
+## 统一命令接口
+
+`flow task` 是 AI 统一使用的命令接口。根据 `.team/version` 自动路由：
+
+| Stage | .team/version | 后端 |
+|-------|---------------|------|
+| v1 | 1 | task-pool.md (文档) |
+| v2 | 2 | beads (.beads/) |
+| v3 | 3 | 可配置 (beads/git/other) |
+
+AI 始终使用 `flow task`，无需关心底层实现。
 
 ## 任务生命周期命令
 
 ```bash
-flow tools beads create "Title" -t {bug|feature|task|epic} -p {0-4} --parent {id} --labels "label1,label2" --silent
-flow tools beads update {id} --claim|--notes "..."|--add-label key:value|--remove-label key:value
-flow tools beads close {id} --reason "..."
-flow tools beads list [--status open|closed|all] [--json] [--format table]
-flow tools beads show {id}
-flow tools beads ready [--json]
+flow task create "Title" -t {bug|feature|task|epic} -p {0-4} --parent {id} --labels "label1,label2" --silent
+flow task update {id} --claim|--notes "..."|--add-label key:value|--remove-label key:value
+flow task close {id} --reason "..."
+flow task list [--status open|closed|all] [--json] [--format table]
+flow task show {id}
+flow task ready [--json]
+flow task append {id} --speaker {role} --content "..."
 ```
 
 | 参数 | 说明 |
@@ -26,13 +39,25 @@ flow tools beads ready [--json]
 | `--status` | 筛选状态：open / closed / all |
 | `--json` | JSON 格式输出 |
 | `--format` | 输出格式：table |
+| `--speaker` | 对话记录发言者角色 |
+| `--content` | 对话记录内容 |
+
+## 自动时间戳
+
+`flow task` 自动管理时间戳，AI 无需手动写入：
+
+| 操作 | 自动添加 |
+|------|----------|
+| `flow task create` | `created_at` |
+| `flow task update` | `updated_at` |
+| `flow task append` | `timestamp` + `cr-index` 自增 |
 
 ## 依赖管理命令
 
 ```bash
-flow tools beads dep add {id} {depends-on|blocks} {target-id}
-flow tools beads dep remove {id} {depends-on|blocks} {target-id}
-flow tools beads dep list {id}
+flow task dep add {id} {depends-on|blocks} {target-id}
+flow task dep remove {id} {depends-on|blocks} {target-id}
+flow task dep list {id}
 ```
 
 | 关系类型 | 说明 |
@@ -43,15 +68,15 @@ flow tools beads dep list {id}
 ## 数据命令
 
 ```bash
-flow tools beads dolt push
-flow tools beads dolt pull
+flow task dolt push
+flow task dolt pull
 flow export > .team/task-pool-export.md
 ```
 
 | 命令 | 说明 |
 |------|------|
-| `dolt push` | 推送 beads 数据到远程仓库 |
-| `dolt pull` | 拉取远程 beads 数据 |
+| `dolt push` | 推送数据到远程仓库 |
+| `dolt pull` | 拉取远程数据 |
 | `flow export` | 导出任务池为 Markdown 文件 |
 
 ## 路径解析命令
@@ -72,14 +97,15 @@ flow config paths --validate
 
 | 操作 | 命令 |
 |------|------|
-| 创建任务 | `flow tools beads create "Title" -t {type} -p {0-4}` |
-| 认领任务 | `flow tools beads update {id} --claim` |
-| 更新阶段 | `flow tools beads update {id} --add-label phase:xxx` |
-| 关闭任务 | `flow tools beads close {id} --reason "..."` |
-| 查看任务 | `flow tools beads show {id}` |
-| 查找工作 | `flow tools beads ready --json` |
-| 列出任务 | `flow tools beads list --status open --format table` |
-| 添加依赖 | `flow tools beads dep add {id} depends-on {target-id}` |
-| 推送数据 | `flow tools beads dolt push` |
+| 创建任务 | `flow task create "Title" -t {type} -p {0-4}` |
+| 认领任务 | `flow task update {id} --claim` |
+| 更新阶段 | `flow task update {id} --add-label phase:xxx` |
+| 关闭任务 | `flow task close {id} --reason "..."` |
+| 查看任务 | `flow task show {id}` |
+| 查找工作 | `flow task ready --json` |
+| 列出任务 | `flow task list --status open --format table` |
+| 追加对话 | `flow task append {id} --speaker {role} --content "..."` |
+| 添加依赖 | `flow task dep add {id} depends-on {target-id}` |
+| 推送数据 | `flow task dolt push` |
 | 导出任务 | `flow export > .team/task-pool-export.md` |
 | 解析路径 | `flow config paths --json` |

@@ -1,4 +1,4 @@
-# API 问题报告模板 — v2 beads-native
+﻿# API 问题报告模板 — v2 beads-native
 
 > **位置**: `{DOCS_INTERNAL}/reports/api/API_ISSUE_{id}.md`
 
@@ -68,5 +68,5 @@ Authorization: Bearer {token}
 ## beads 状态更新
 
 ```bash
-flow tools beads create "API Issue: {endpoint}" -t bug -p 1
+flow task create "API Issue: {endpoint}" -t bug -p 1
 ```
