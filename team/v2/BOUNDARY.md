@@ -16,7 +16,7 @@
 
 **Rules**:
 - AI reads from here
-- AI **NEVER** writes to here
+- AI **⛔ NEVER** writes to here
 - Projects inherit via `project/.team/SKILL.md` pointing here
 - To modify: update framework, then propagate to all projects
 
@@ -123,22 +123,7 @@
 
 **ID 查找规则**:
 
-### Deliverable Write Separation (v1 Lesson)
-
-> **v1 教训**: AI 把根因分析、设计决策、测试结果等详情内容全部写入 task-pool.md，导致文件从 75 行膨胀到 1822 行，且大量 Bug 缺少独立 RCA.md。v2 中同样的风险会转移到 beads notes。
-
-**原则**: 状态追踪是轻量表，详情内容必须写入独立成果物文件。
-
-| 内容类型 | ✅ 正确位置 | ❌ 禁止位置 |
-|---------|-----------|-----------|
-| 根因分析 | `{DOCS_INTERNAL}/reports/bugs/B{NNN}/R{n}/RCA.md` | beads notes / task-pool-export.md |
-| 复现测试 | `{DOCS_INTERNAL}/reports/bugs/B{NNN}/R{n}/TEST_CASE.md` | beads notes / task-pool-export.md |
-| 变更报告 | `{DOCS_INTERNAL}/reports/changes/C{NNN}-R{n}/SCOPE.md` | beads notes / task-pool-export.md |
-| 需求规格 | `{DOCS_INTERNAL}/requirements/F{NNN}-{name}/SPEC.md` | beads notes / task-pool-export.md |
-| 设计决策 | `{DOCS_INTERNAL}/requirements/F{NNN}-{name}/R1-R5.md` | beads notes / task-pool-export.md |
-| 进度摘要 | `flow tools beads update <id> --notes "COMPLETED: X IN PROGRESS: Y"` | — (notes 只写进度，不写详情) |
-
-**beads notes 用途**: 只记录进度摘要和交接信息，**禁止**写入根因分析、代码片段、测试结果等详情。
+> **Deliverable Write Separation**: See `{TEAM_PATH}/workflows/shared.md` §文件空间定义
 
 **ID 查找规则**:
 
@@ -172,8 +157,8 @@ flow tools beads show <beads-id> --json | jq '[.events[] | select(.event_type ==
 
 **Rules**:
 - AI interacts via `flow tools beads` CLI only
-- **NEVER** directly edit `.beads/*.db`
-- **NEVER** directly edit `.beads/issues.jsonl`
+- **⛔ NEVER** directly edit `.beads/*.db`
+- **⛔ NEVER** directly edit `.beads/issues.jsonl`
 - Use `flow tools beads create/update/close` for all modifications
 
 ### Layer 4: Implementation (AI workspace)
@@ -204,13 +189,13 @@ flow tools beads show <beads-id> --json | jq '[.events[] | select(.event_type ==
 
 ## Forbidden Actions
 
-❌ **NEVER**:
+❌ **⛔ NEVER**:
 - Write to `{TEAM_PATH}/v2/` (framework layer)
 - Edit `.beads/*.db` directly
 - Edit `.beads/issues.jsonl` directly
 - Create task state outside beads
 - Mix project configs across projects
-- Dump deliverable content (root cause analysis, design decisions, test results) into beads notes or task-pool-export.md — **always write to independent deliverable files**
+- Dump deliverable content into beads notes or task-pool-export.md — see `{TEAM_PATH}/workflows/shared.md` §文件空间定义
 - Add "Task Details" / "Deliverable Tracking" / "Current Status" sections to task-pool-export.md
 - Modify `{TEAM_PATH}/` rules to solve project-specific problems — project constraints go to `.team/project.md §CONSTRAINTS` and `{DOCS_INTERNAL}/lessons/`
 

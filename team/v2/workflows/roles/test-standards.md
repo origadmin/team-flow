@@ -480,3 +480,48 @@ Feature: 用户登录
 | E2E 截图 | `e2e/screenshots/` |
 | 性能测试数据 | `perf/{version}/` |
 | Bug 报告 | `{docs_internal}/bugs/BUG-{id}.md` |
+
+---
+
+## 13. Auto-Test Tool Integration
+
+> **来源**: 从 `{TEAM_PATH}/workflows/shared.md` 提取
+> **Purpose**: QA Engineer and Frontend Dev must use the configured auto-test tool for automated verification.
+
+### Tool Selection
+
+Read from `.team/project.md` → `test_tool` field:
+
+| `test_tool` value | Tool | Description |
+|-------------------|------|-------------|
+| `playwright-mcp` | Playwright MCP Server | Browser automation via MCP protocol (Default) |
+| `agentester` | AgenTester | AI-powered test agent |
+| `qa-autotest-ai` | qa-autotest-ai | AI QA automation tool |
+| *(not set)* | Playwright MCP Server | Default fallback |
+
+### Usage Requirements
+
+**QA Engineer**:
+- Must use configured tool for Phase 3 verification
+- Must attach auto-test results to test report
+- Must verify both happy path and error scenarios
+
+**Frontend Dev**:
+- Must use configured tool for runtime verification of UI bugs
+- Must verify page rendering and core interactions work
+- Must not rely solely on component mock tests
+
+**Dev (Backend)**:
+- Must use configured tool for HTTP request verification of backend bugs
+- Must verify complete request chain, not just unit tests
+
+### Integration Commands
+
+```bash
+# Playwright MCP Server (default)
+# Called via MCP protocol from AI agent
+# See: .team/project.md → test_tool config
+
+# Export test results for test report
+flow export --test-results > {DOCS_INTERNAL}/test/{TASK_ID}-test-report.md
+```

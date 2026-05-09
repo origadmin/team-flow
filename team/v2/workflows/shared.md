@@ -252,7 +252,7 @@ R-Phase 3: 上线部署（DevOps）
 ### Bugfix 完成门禁
 
 ```
-⛔ 测试验证执行（HARD GATE — 必须展示实际命令输出）:
+⚠️ 测试验证执行（IMPORTANT — 必须展示实际命令输出）:
 - [ ] 后端Bug: go build ./... 编译通过（展示输出）
 - [ ] 后端Bug: go test ./... 全部通过（展示通过数量）
 - [ ] 前端Bug: bun run typecheck 类型检查通过（展示输出）
@@ -386,164 +386,14 @@ R-Phase 3: 上线部署（DevOps）
 
 ---
 
-## ⛔ R0 导航与入口矩阵（Feature 强制）
+## ⚠️ R0 导航与入口矩阵（Feature 强制）
 
 > **核心原则**: 功能没有入口等于不存在。设计必须从"用户如何触达"开始，而非从"数据如何存储"开始。
-
-### 为什么 R0 是强制的
-
-历史教训：多个功能实现后遗漏入口，导致功能"存在但不可达"：
-- 频道创建: 实现了 CreateChannelDialog 但没有入口按钮
-- 订阅Tab: 实现了 SubscriptionsTabContent 但没有导航入口
-- "我的"菜单: 实现了 navigation.ts 配置但 Header 用户菜单没有对应项
-
-**根因**: 设计从数据/API出发，不从用户旅程出发。入口是最后补的，不是最先设计的。
-
-### 入口类型定义
-
-| 入口类型 | 形式 | 交互方式 | 适用场景 | 示例 |
-|---------|------|---------|---------|------|
-| **导航项** | Sidebar 菜单项 / Header 菜单项 | 点击跳转页面 | 功能有独立页面 | Sidebar "我的频道" → /me/channels |
-| **操作按钮** | Button / IconButton | 点击触发动作 | 功能是当前页面的操作 | "创建频道" 按钮 → 打开对话框 |
-| **上下文入口** | 卡片内按钮 / 行内链接 | 点击触发动作 | 功能与当前内容相关 | 频道卡片 "查看频道" / "设置" |
-| **空状态引导** | CTA 按钮 + 说明文字 | 点击触发动作 | 用户首次使用或无数据时 | "您还没有频道" + "创建频道" 按钮 |
-| **流程引导** | 拦截页 / 对话框 | 阻断或引导 | 用户操作依赖前置条件 | 上传页检测无频道 → 引导创建 |
-| **URL 直访** | 直接输入 URL | 浏览器地址栏 | 高级用户 / 分享链接 | /@username /me/channels |
-| **快捷入口** | Header 图标 / FAB | 点击触发动作 | 高频操作 | Header "+" 上传按钮 |
-
-### 入口可达性规则
-
-**规则 1: 最少 2 个入口原则**
-每个功能必须至少有 2 个不同类型的入口，防止单一入口失效。
-
-| 功能级别 | 最少入口数 | 必须包含 |
-|---------|-----------|---------|
-| 核心功能（创建/发布/管理） | 3 | 导航项 + 操作按钮 + 空状态引导 |
-| 次要功能（设置/编辑/查看） | 2 | 导航项 + 上下文入口 |
-| 辅助功能（分享/导出/通知） | 1 | 上下文入口 |
-
-**规则 2: 入口层级覆盖**
-功能入口必须覆盖以下层级中的至少 2 个：
-
-| 层级 | 位置 | 说明 |
-|------|------|------|
-| L1 全局 | Header / Sidebar | 始终可见，不依赖上下文 |
-| L2 区域 | 页面内固定位置 | 在特定页面可见 |
-| L3 上下文 | 卡片/列表项内 | 与具体内容关联 |
-| L4 引导 | 空状态/流程拦截 | 条件触发 |
-
-**规则 3: 新用户首次可达**
-新注册用户必须能在 3 次点击内从首页到达任何核心功能。
-
-### R0 文档模板
-
-```markdown
-# R0 导航与入口矩阵: {功能名称}
-
-## 1. 功能入口表
-
-| 功能 | 入口类型 | 位置 | 交互 | 优先级 | 状态 |
-|------|---------|------|------|--------|------|
-| 创建频道 | 导航项 | Sidebar "你"区域 | 点击 → /me/channels | P0 | ☐ |
-| 创建频道 | 操作按钮 | /me/channels 页面右上角 | 点击 → 打开对话框 | P0 | ☐ |
-| 创建频道 | 操作按钮 | Header 用户菜单 | 点击 → /me/channels | P0 | ☐ |
-| 创建频道 | 空状态引导 | /me/channels 无频道时 | 点击 → 打开对话框 | P0 | ☐ |
-| 创建频道 | 流程引导 | /me/upload 无频道时 | 点击 → 打开对话框 | P1 | ☐ |
-| 创建频道 | 空状态引导 | /@username 无频道用户资料页 | 点击 → 打开对话框 | P1 | ☐ |
-
-## 2. 用户旅程图
-
-```
-首页 → Sidebar "我的频道" → /me/channels → 点击 "创建频道" → CreateChannelDialog → 创建成功 → /@handle
-首页 → Header 用户菜单 → "我的频道" → /me/channels → ...
-上传页 → 检测无频道 → 引导创建 → CreateChannelDialog → 创建成功 → 返回上传
-/@username → 无频道用户资料页 → "创建频道" CTA → CreateChannelDialog → 创建成功 → /@handle
-```
-
-## 3. 入口可达性检查
-
-- [ ] 核心功能 ≥ 3 个入口
-- [ ] 入口覆盖 ≥ 2 个层级（L1/L2/L3/L4）
-- [ ] 新用户 3 次点击内可达
-- [ ] 每个入口类型已明确定义（导航项/按钮/引导等）
-
-## 4. 入口与组件映射
-
-| 入口 | 触发组件 | 目标组件/页面 |
-|------|---------|-------------|
-| Sidebar "我的频道" | NavItem | /me/channels → MyChannels.tsx |
-| Header "我的频道" | MenuItem | /me/channels → MyChannels.tsx |
-| "创建频道" 按钮 | Button | CreateChannelDialog.tsx |
-| 上传引导 | 拦截页 | CreateChannelDialog.tsx |
-```
-
-### 设计流程变更
-
-```
-旧流程:  R1 数据 → R2 状态 → R3 API → R4 组件 → R5 计划 → (入口最后补)
-新流程:  R0 入口 → R1 数据 → R2 状态 → R3 API → R4 组件 → R5 计划
-```
-
-R0 必须在 R1 之前完成，因为：
-1. 入口决定用户旅程，用户旅程决定页面结构，页面结构决定组件设计
-2. 先设计入口可以避免"功能实现但无法触达"的问题
-3. 入口矩阵是 AC 验收的核心依据
+> See {TEAM_PATH}/templates/r0-navigation-matrix-template.md
 
 ### ⛔ Bug R-迭代跟踪规则（强制）
 
-> Bug 修复几乎不可能一次成功（特别是 AI），必须通过 R1→R2→R3... 持续跟踪。
-
-**核心原则：一个 Bug 一个 ID，用 R 后缀跟踪修复轮次。禁止为同一 Bug 的不同修复尝试分配新 B-ID。**
-
-| 场景 | 正确做法 | ❌ 错误做法 |
-|------|---------|------------|
-| B019 第一轮修复 | 创建 `B019-R1/` 目录 | — |
-| B019 修复未通过，需重试 | 创建 `B019-R2/`，关联文档改为 `B019-R2/` | 新建 B026 |
-| B019 修复导致新子问题 | 子问题记入 B019 当前 R 的 SCOPE.md | 新建 B022 |
-| B019 R1 验证中发现新现象 | 补充到 B019 的 TEST_CASE.md | 新建 B023 |
-
-**R 迭代流程**：
-
-```
-B019-R1/ (Phase 1: RCA → Phase 2: Fix → Phase 3: Verify)
-  ├── 验证通过 → Done → beads status closed → 用户确认 → Archived
-  └── 验证失败 → ⛔ 强制触发 R 递增（见下方规则）
-       └── B019-R2/ (回到 Phase 1，新 RCA 分析失败原因)
-            ├── R2 验证通过 → Done
-            └── R2 验证失败 → ⛔ 强制触发 R 递增 → B019-R3/ ...
-```
-
-**⛔ R 递增强制触发规则（新增）**：
-
-> **强制要求**：当 Bug 修复验证未通过时，执行角色**必须**创建 R{N+1} 目录并重置阶段，**禁止在当前 R 目录内覆盖修改**。
-
-| 触发条件 | 判断者 | 必须动作 |
-|---------|-------|--------|
-| Phase 3 验证结果为"未通过" | 执行角色（Bugfix/Dev） | 1. 创建 `{bug-id}-R{N+1}/` 目录 2. beads phase 重置为 analyze 3. doc_path metadata 更新为 R{N+1} 目录 |
-| 用户反馈"还没修好" | 执行角色 | 同上 |
-| AI 自测发现修复方向错误 | 执行角色 | 同上 |
-
-**禁止**：
-- ❌ 验证未通过时继续在当前 R 目录内修改（必须开新 R）
-- ❌ 跳过 RCA 直接在新 R 目录中重试（每轮 R 必须重新分析失败原因）
-- ❌ 未更新 beads doc_path metadata 就创建新 R 目录
-
-**beads 中的体现**：
-
-- beads task ID 永远是基础 ID（`B019`），不随 R 变化
-- `doc_path` metadata 指向当前最新的 R 目录（`B019-R2/`）
-- phase label 格式：`phase:analyze (R2)` — 结构化可解析
-- 状态反映最新 R 的阶段（R2 在 analyze → 状态就是 in_progress）
-- 所有历史 R 目录保留不删除
-
-```bash
-# R iteration tracking in beads
-flow tools beads update B019 --add-label "iteration:R2" --remove-label "iteration:R1"
-flow tools beads update B019 --set-metadata doc_path="{DOCS_INTERNAL}/reports/bugs/B019-R2/"
-flow tools beads update B019 --add-label phase:analyze --remove-label phase:verify
-```
-
----
+> See {TEAM_PATH}/workflows/roles/bugfix-standards.md §十六
 
 ## 文件空间定义
 
@@ -593,17 +443,7 @@ framework/
 
 ## MILESTONES 同步
 
-📌 MILESTONES 是甲方需求清单，Triage 根据 beads task 状态自动同步
-
-| beads Task 事件 | MILESTONES 操作 |
-|-----------------|------------------|
-| 创建 Feature 任务 | 对应 Milestone 新增任务卡片 |
-| 创建阻断性 Bug | 对应 Milestone 新增 Bug 卡片 |
-| 任务 → in_progress | 状态更新为 🔄 进行中 |
-| 任务 → closed (Review) | 状态更新为 ⏳ 待确认 |
-| 任务 → Archived | 状态更新为 ✅ 已完成 |
-
----
+> See {TEAM_PATH}/docs/milestones-sync.md
 
 ## ID 命名
 
@@ -620,7 +460,7 @@ framework/
 | D001 | Documentation | ❌ 不带 |
 | A001 | Analysis | ❌ 不带 |
 
-### ⛔ 强制规则
+### ⚠️ 强制规则
 
 1. **TYPE 只允许 F/B/C/D/A 五种**，禁止自创前缀（FE-/BE-/BF-/TASK-/UI- 等）
 2. **SEQUENCE 从 001 递增**，禁止跳号、禁止复用已归档 ID
@@ -795,47 +635,7 @@ flow tools beads dolt pull
 
 ## Auto-Test Tool Integration
 
-> **Purpose**: QA Engineer and Frontend Dev must use the configured auto-test tool for automated verification.
-
-### Tool Selection
-
-Read from `.team/project.md` → `test_tool` field:
-
-| `test_tool` value | Tool | Description |
-|-------------------|------|-------------|
-| `playwright-mcp` | Playwright MCP Server | Browser automation via MCP protocol (Default) |
-| `agentester` | AgenTester | AI-powered test agent |
-| `qa-autotest-ai` | qa-autotest-ai | AI QA automation tool |
-| *(not set)* | Playwright MCP Server | Default fallback |
-
-### Usage Requirements
-
-**QA Engineer**:
-- Must use configured tool for Phase 3 verification
-- Must attach auto-test results to test report
-- Must verify both happy path and error scenarios
-
-**Frontend Dev**:
-- Must use configured tool for runtime verification of UI bugs
-- Must verify page rendering and core interactions work
-- Must not rely solely on component mock tests
-
-**Dev (Backend)**:
-- Must use configured tool for HTTP request verification of backend bugs
-- Must verify complete request chain, not just unit tests
-
-### Integration Commands
-
-```bash
-# Playwright MCP Server (default)
-# Called via MCP protocol from AI agent
-# See: .team/project.md → test_tool config
-
-# Export test results for test report
-flow export --test-results > {DOCS_INTERNAL}/test/{TASK_ID}-test-report.md
-```
-
----
+> See {TEAM_PATH}/workflows/roles/test-standards.md
 
 ## 相关模板
 

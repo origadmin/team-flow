@@ -54,25 +54,25 @@ PATHS:
     ├── 命令属于前端任务？
     │   ├── 命令开头匹配 TOOLCHAIN.frontend.package_manager？→ ✅ 放行
     │   └── 不匹配？
-    │       ├── 发现 npm/pnpm/yarn → ⛔ STOP
+    │       ├── 发现 npm/pnpm/yarn → ⚠️ STOP
     │       │   提示: "本项目前端使用 {package_manager}，禁止 {detected}"
     │       │   修正: 使用 {package_manager} 替代
     │       └── 其他未知命令 → 检查 TOOLCHAIN.frontend.pipeline 是否有对应条目
     │
     └── 命令属于后端任务？
         ├── 命令开头匹配 TOOLCHAIN.backend.pipeline？→ ✅ 放行
-        └── 不匹配 → ⛔ STOP，修正命令
+        └── 不匹配 → ⚠️ STOP，修正命令
 ```
 
 **具体拦截规则**（以 bun 项目为例）：
 
 | 输入 | 判定 | 正确替代 |
 |------|------|---------|
-| `npm install` | ⛔ | `bun install` |
-| `npm run build` | ⛔ | `bun run build` |
-| `npx vite build` | ⛔ | `bun run build`（本项目使用 Rsbuild，禁止 Vite） |
-| `pnpm add lodash` | ⛔ | `bun add lodash` |
-| `yarn dev` | ⛔ | `bun run dev` |
+| `npm install` | ⚠️ | `bun install` |
+| `npm run build` | ⚠️ | `bun run build` |
+| `npx vite build` | ⚠️ | `bun run build`（本项目使用 Rsbuild，禁止 Vite） |
+| `pnpm add lodash` | ⚠️ | `bun add lodash` |
+| `yarn dev` | ⚠️ | `bun run dev` |
 | `bun run build` | ✅ | — |
 | `go build ./cmd/...` | ✅ | — |
 
@@ -126,7 +126,7 @@ PowerShell 管道写入文件时，会随机破坏文件编码（UTF-8 BOM 乱�
 - **风险**：如果这个假设错了，最坏的结果是什么？
 - **澄清**：有没有我应该先问清楚的点？
 
-> 如有任何不确定 → ⛔ 停止，先提问，不要凭记忆继续。
+> 如有任何不确定 → ⚠️ 停止，先提问，不要凭记忆继续。
 
 ---
 

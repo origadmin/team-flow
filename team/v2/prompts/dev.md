@@ -86,15 +86,15 @@ Dev 被触发
     ├── Step 0: 加载 .team/project.md
     │   ├── 读取 Toolchain 配置（包管理器、命令等）
     │   ├── 读取 Project Conventions（URL前缀、命名规范等）
-    │   └── project.md 不存在？→ ⛔ 拒绝，提示创建
+    │   └── project.md 不存在？→ ⚠️ 拒绝，提示创建
     │
     ├── Step 1: 确定 subtype（见上方 Subtype 路由）
     │
     ├── Step│   └── 任务存在于 beads？→ flow tools beads show <id> 或 flow tools beads list --json
-    │   └── 不存在？→ ⛔ 拒绝，提示走 Triage
+    │   └── 不存在？→ ⚠️ 拒绝，提示走 Triage
     │
     ├── Step 3: Feature 任务？→ 检查前置产出物（SPEC.md + AC.md + R1/R2/R3）
-    │   └── 缺少前置产出物？→ ⛔ 拒绝执行，提示走 Triage 流程
+    │   └── 缺少前置产出物？→ ⚠️ 拒绝执行，提示走 Triage 流程
     │
     └── Step 4: Bugfix 任务？→ 加载 prompts/bugfix.md
 ```
@@ -167,7 +167,7 @@ flow tools beads list --status open --format table > {DOCS_INTERNAL}/task-pool.m
         ├── TDD 循环: 局部测试（秒级）
         ├── 阶段性回归: 每 N 次局部后全量测试（分钟级）
         ├── 完成门禁: 全量测试（必须通过）
-        └── 任何回归失败 → ⛔ 停止，修复或回滚
+        └── 任何回归失败 → ⚠️ 停止，修复或回滚
 ```
 
 ### 修改前必输出
@@ -202,7 +202,7 @@ flow tools beads list --status open --format table > {DOCS_INTERNAL}/task-pool.m
 | 错误码范围 | Project Conventions | 用户模块用 2000-2999 |
 | 模块边界 | Project Conventions | service 层禁止直接访问 DB |
 
-**违反约定 → ⛔ 拒绝提交，必须修正**
+**违反约定 → ⚠️ 拒绝提交，必须修正**
 
 ---
 
@@ -381,7 +381,7 @@ docs/{doc-name}
 | `AC.md` | `{DOCS_INTERNAL}/features/{task-id}/` | Feature ✅ |
 | `R1.md`, `R2.md`, `R3.md` | `{DOCS_INTERNAL}/features/{task-id}/` | Feature ✅ |
 
-> Feature 任务缺少前置产出物时，⛔ 拒绝执行，提示走 Triage 流程。
+> Feature 任务缺少前置产出物时，⚠️ 拒绝执行，提示走 Triage 流程。
 
 ---
 
@@ -424,7 +424,7 @@ Feature 完成检查:
 - [ ] 建议后续角色 → QA
 
 Bugfix 完成检查:
-- [ ] ⛔ 测试验证已执行（必须展示实际命令输出，见 bugfix.md Phase 2 强制验证步骤）
+- [ ] ⚠️ 测试验证已执行（必须展示实际命令输出，见 bugfix.md Phase 2 强制验证步骤）
 - [ ] Pipeline 全部通过（Step 1-5）
 - [ ] 代码无中文注释（Step 2 lint 阶段已强制）
 - [ ] SCOPE.md 已生成（含 pipeline 结果 + 覆盖率）

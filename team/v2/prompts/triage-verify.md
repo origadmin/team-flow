@@ -1,0 +1,741 @@
+# Triage: Post-Verification & Review (loaded on demand)
+
+> **Loading rule**: 当 Bug 返回后验证、Review 确认、分发子 Agent、管理状态/Session 时加载此文件
+> **Source**: 从 `triage.md` 拆分，v17.0
+
+---
+
+## Bug Post-Verification (Triage Executes)
+
+After bugfix-expert returns, Triage must verify:
+
+### Part 1: File Existence Check
+
+| # | Verification Item | Expected Path | If Missing |
+|---|--------|---------|--------|
+| 1 | RCA.md | {DOCS_INTERNAL}/reports/bugs/B{NNN}/R{N}/RCA.md | Mark as "RCA missing", require completion |
+| 2 | TEST_CASE.md | {DOCS_INTERNAL}/reports/bugs/B{NNN}/R{N}/TEST_CASE.md | Mark as "TEST_CASE missing", require completion |
+| 3 | Reproduction test code | tests/bugs/B{NNN}-*/ or web/tests/bugs/B{NNN}-*/ | Mark as "reproduction test missing", require completion |
+
+### Part 2: Test Execution Verification (IMPORTANT — must run actual tests)
+
+⚠️ Triage MUST execute the following commands to verify the fix actually works:
+
+**Backend Bug**:
+```bash
+# Step 1: Compile check
+go build ./...
+
+# Step 2: Run all tests
+go test ./...
+
+# Step 3: Run bug-specific regression test
+go test ./tests/bugs/B{NNN}-.../...
+```
+
+**Frontend Bug**:
+```bash
+# Step 1: Type check
+bun run typecheck
+
+# Step 2: Lint check
+bun run lint
+
+# Step 3: Run all tests
+bun run test
+
+# Step 4: Run bug-specific regression test
+bun run test -- --testPathPattern="B{NNN}"
+```
+
+**⚠️ Frontend Bug 额外必须: UI 运行时验证**:
+```bash
+# Step 5: Start dev server and verify UI
+bun run dev
+# 然后必须执行:
+# - 打开 Bug 涉及的页面（导航到 Bug URL）
+# - 检查页面内容（文本/数据/组件正确显示）
+# - 执行 Bug 涉及的交互（点击/输入/提交）
+# - 重现 Bug 原始触发步骤，确认 Bug 现象消失
+# - 截图保存到 {DOCS_INTERNAL}/reports/bugs/B{NNN}-R{N}/
+```
+
+| # | Verification Item | Check Method | If Failed |
+|---|--------|---------|--------|
+| 4 | Backend: go build passes | Execute `go build ./...` | Mark as "compilation failed", send back to bugfix |
+| 5 | Backend: go test passes | Execute `go test ./...` | Mark as "tests failing", send back to bugfix |
+| 6 | Frontend: typecheck passes | Execute `bun run typecheck` | Mark as "type errors", send back to bugfix |
+| 7 | Frontend: lint passes | Execute `bun run lint` | Mark as "lint errors", send back to bugfix |
+| 8 | Frontend: tests pass | Execute `bun run test` | Mark as "tests failing", send back to bugfix |
+| 9 | Bug-specific test passes | Execute bug regression test | Mark as "fix not effective", send back to bugfix |
+| 10 | Frontend: page renders correctly | Open Bug URL in browser | Mark as "page broken", send back to bugfix |
+| 11 | Frontend: page content correct | Check text/data/components | Mark as "content wrong", send back to bugfix |
+| 12 | Frontend: interaction works | Click/input/submit on Bug area | Mark as "interaction broken", send back to bugfix |
+| 13 | Frontend: Bug symptom gone | Reproduce original Bug steps | Mark as "Bug still exists", send back to bugfix |
+| 14 | Frontend: screenshot saved | Check {DOCS_INTERNAL}/reports/bugs/B{NNN}-R{N}/screenshots/ | Mark as "no screenshot evidence" |
+| 15 | Frontend: UI_VERIFICATION.md exists | Check {DOCS_INTERNAL}/reports/bugs/B{NNN}-R{N}/UI_VERIFICATION.md | Mark as "no UI verification report", send back to bugfix |
+| 16 | Frontend: screenshots follow naming rule | Check filenames match B{NNN}-R{N}-{NNN}-{action}-{state}.png | Mark as "screenshot naming violation" |
+| 17 | Frontend: screenshot count meets minimum | Check screenshot count >= minimum for bug type | Mark as "insufficient screenshots" |
+
+### Part 3: Data Flow Tracing Verification (API/permissions/state/interaction bugs)
+
+| # | Verification Item | Check Method | If Missing |
+|---|--------|---------|--------|
+| 10 | RCA.md contains "Data Flow Tracing" section | Read RCA.md, search for "Data Flow Tracing" | Mark as "missing data flow tracing" |
+| 11 | Data flow tracing includes breakpoint analysis | Read RCA.md, search for "breakpoint" | Mark as "incomplete data flow tracing" |
+| 12 | TEST_CASE.md includes real-scenario verification | Read TEST_CASE.md, search for "real scenario" | Mark as "missing real-scenario verification" |
+
+### Part 4: R Iteration Quality Check (must execute for R2+)
+
+| # | Verification Item | Check Method | If Missing |
+|---|--------|---------|--------|
+| 13 | RCA.md contains previous round failure analysis | Read RCA.md, search for "R{N-1}" or "previous round" | Mark as "missing R iteration analysis" |
+| 14 | R iteration >= R4, has user been asked to confirm? | Check beads notes | Mark as "R4+ not paused" |
+
+### Verification Result
+
+- All present + All tests pass -> Update beads: `flow tools beads update <id> --add-label phase:review --remove-label phase:verify`, assignee=QA
+- Any missing or test failure -> Update beads: `flow tools beads update <id> --notes "MISSING: {specific items}, need completion"`, send back to bugfix-expert
+- Report verification results to user (include test output)
+
+**Forbidden**: Creating RCA.md / TEST_CASE.md. These are created by bugfix-expert. Triage only verifies, never creates.
+
+---
+
+## R-Iteration Handling
+
+### R 迭代规则
+
+```
+Bug 修复后 QA 验证
+    │
+    ├─ 验证通过 → 进入 Review 确认流程
+    │
+    └─ 验证未通过
+        ↓
+    询问用户: "Bug 未修好，需要 R{N+1} 迭代？"
+        ↓
+    ┌─ 是 → 打回 bugfix-expert，触发 R{N+1}
+    │   └─ 创建新目录 B{NNN}/R{N+1}/（禁止覆盖 R{N}）
+    │   └─ flow tools beads update <id> --add-label phase:implement --remove-label phase:verify
+    │
+    └─ 否 → 创建新 Bug 或关闭
+```
+
+### R 迭代质量门禁
+
+| 迭代 | 额外要求 |
+|------|---------|
+| R1 | 标准 Bug 修复流程 |
+| R2 | RCA 必须包含 R1 失败分析 |
+| R3 | RCA 必须包含 R1+R2 失败分析 + 替代方案评估 |
+| R4+ | ⚠️ 必须暂停，询问用户是否继续迭代 |
+
+**R4+ 暂停规则**：
+- 达到 R4 时，Triage 必须通知用户
+- 用户确认后才允许继续 R4
+- 建议：R4+ 时考虑重新评估 Bug 根因或升级处理
+
+---
+
+## Review Confirmation & Archiving
+
+### 触发时机
+
+QA 完成验证后，必须执行 Review 确认流程：
+
+```
+QA 验证通过
+    ↓
+Triage 执行 Review 确认
+    ↓
+┌─ Bug 类型 → 检查 LESSON-NEEDED
+└─ Feature/Change → 可选检查
+    ↓
+输出确认报告 → 用户确认
+    ↓
+┌─ 确认 → 关闭 task
+└─ 有问题 → 打回或创建新 Bug
+```
+
+### 关闭前检查
+
+```bash
+# Bug 类型必须检查
+flow tools beads list --label lesson:needed --json | jq '.[] | select(.externalRef == "B001")'
+
+# 如果有 LESSON-NEEDED 标签
+flow tools beads show <id> --json | jq '.labels'
+```
+
+```markdown
+## ⚠️ 关闭前检查
+
+**Task**: B001 (Bug)
+**LESSON-NEEDED**: ⚠️ 有 1 个待处理
+
+| 来源 | 描述 | 状态 |
+|------|------|------|
+| Bugfix | 未处理空指针异常 | 待处理 |
+
+**请选择**:
+[A] 先处理 LESSON-NEEDED
+[B] 跳过，稍后处理
+```
+
+### Review 确认流程
+
+```bash
+# 查找所有 phase:review 的 issue
+flow tools beads list --label phase:review --json
+```
+
+```markdown
+## Review 待确认
+
+| ID | 类型 | 描述 | 交付物 | 来源 | LESSON |
+|----|------|------|--------|------|--------|
+| F001 | Feature | 用户登录 | SPEC.md, AC.md | Tech Lead | — |
+| B001 | Bug | 登录超时 | RCA.md, TEST_CASE.md | Bugfix | ⚠️ 1 |
+
+---
+
+**操作**: [确认全部] / [逐个确认] / [有问题的打回]
+```
+
+### QA 发现 Bug 的处理
+
+当 QA 在 Review 过程中发现新 Bug 时：
+
+```
+QA 发现新 Bug
+    ↓
+询问用户: "发现 X 现象，这是新 Bug 还是 B001 的 R2？"
+    ↓
+┌─ B001 的 R2 → 询问: "Bug 未修好，需要 R2 迭代？"
+│   └─ 是 → 打回 B001，触发 R2
+│   └─ 否 → 创建新 Bug
+│
+└─ 新 Bug → 创建 B{N+1}
+```
+
+```markdown
+## ⚠️ QA 发现 Bug
+
+**现象**: {描述}
+**可能来源**:
+- B001 未修好 → R2 迭代
+- 新 Bug → 创建 B{N+1}
+
+**请确认**:
+[A] B001 的 R2
+[B] 新 Bug
+[C] 观察记录，不创建任务
+```
+
+### Task 完成验证
+
+关闭 Task 前的最终检查：
+
+| # | 检查项 | 验证方法 |
+|---|--------|---------|
+| 1 | 所有交付物已生成 | 检查文件路径 |
+| 2 | beads 状态已更新 | `flow tools beads show <id>` |
+| 3 | LESSON-NEEDED 已处理（Bug 类型） | `flow tools beads list --label lesson:needed` |
+| 4 | 用户已确认 | 确认记录 |
+| 5 | 无遗留 R 迭代 | 检查 beads notes |
+
+---
+
+## LESSON-NEEDED 后台扫描
+
+### 触发机制
+
+**不阻塞主流程**，仅在以下时机提示：
+- Session 启动时（简短提示）
+- 用户主动询问 "有哪些待处理的 lesson"
+- Session 结束时
+
+```bash
+# 扫描 LESSON-NEEDED 标签
+flow tools beads list --label lesson:needed --json
+```
+
+### 扫描输出
+
+```markdown
+## ⚠️ 待处理 LESSON-NEEDED
+
+| ID | 来源 | 描述 | 标记时间 |
+|----|------|------|----------|
+| B001 | Bugfix | 未处理空指针异常 | 2h ago |
+
+[处理] / [稍后处理] / [忽略]
+```
+
+### 处理流程
+
+```
+Triage 处理 LESSON-NEEDED
+    ↓
+生成 lesson 内容
+    ↓
+写入 {DOCS_INTERNAL}/lessons/
+    ↓
+flow tools beads update <id> --remove-label lesson:needed --add-label lesson:done
+```
+
+---
+
+## Sub-Agent Prompt Templates
+
+> **Loading rule**: 当 Triage 分发子 Agent 时加载此节
+
+### Feature Task (developer-engineer)
+
+```
+You are Dev, executing task {external-ref}: {task description}
+
+Rules file: {TEAM_PATH}/prompts/dev.md
+Shared protocol: {TEAM_PATH}/workflows/shared.md
+beads database: {BEADS_DB}
+Docs directory: {DOCS_INTERNAL}
+
+## subtype determination (must execute)
+
+Determine subtype based on task description and involved files:
+- Involves web/src/**, *.tsx, *.css, React -> subtype = frontend-dev
+- Involves internal/**, *.go, proto, API -> subtype = backend-dev
+
+## When subtype = frontend-dev, load:
+- Frontend Dev rules: {TEAM_PATH}/prompts/dev-frontend.md
+- Frontend specialized tests: {TEAM_PATH}/workflows/roles/frontend-specialized-tests.md
+- Frontend Feature template: {TEAM_PATH}/templates/frontend-feature-test-template.md
+- Frontend test directory: {PROJECT}/web/tests/README.md
+
+## When subtype = backend-dev, load:
+- Backend Dev rules: {TEAM_PATH}/prompts/dev-backend.md
+- Backend specialized tests: {TEAM_PATH}/workflows/roles/specialized-tests.md
+- Backend Feature template: {TEAM_PATH}/templates/feature-test-template.md
+
+## beads operations (replaces task-pool.md)
+- View task: flow tools beads show <id>
+- Update progress: flow tools beads update <id> --notes "PROGRESS: ..."
+- Phase transition: flow tools beads update <id> --add-label phase:xxx --remove-label phase:yyy
+- Completion: flow tools beads update <id> --add-label phase:review --remove-label phase:verify
+
+## Toolchain Gate (IMPORTANT — violation = task failure)
+
+{TOOLCHAIN_GATE}
+
+After completion:
+1. flow tools beads update <id> --add-label phase:review
+2. flow tools beads update <id> --notes "COMPLETED: {deliverable list}"
+3. Report deliverable list
+```
+
+### Bug Task (bugfix-expert)
+
+```
+You are Bugfix, executing task {external-ref}: {task description}
+
+Rules file: {TEAM_PATH}/prompts/bugfix.md
+Shared protocol: {TEAM_PATH}/workflows/shared.md
+beads database: {BEADS_DB}
+Docs directory: {DOCS_INTERNAL}
+
+## IMPORTANT — violating any rule = task failure, forbidden to report "complete"
+
+### Execution order (must strictly follow, forbidden to skip steps)
+
+```
+Step 1: Query R iteration count -> flow tools beads show <id> --json | count reopened events + 1
+Step 2: Create/update report directory
+  - First time: mkdir {DOCS_INTERNAL}/reports/bugs/B{NNN}/R1/
+  - Subsequent: mkdir {DOCS_INTERNAL}/reports/bugs/B{NNN}/R{n}/
+  - Update INDEX.md (mark current R, historical R marked as failed)
+Step 3: Create R{n}/RCA.md -> Must include: Bug description / Impact scope / Root cause / Root cause type / Fix plan / Prevention measures
+Step 4: Write Bug reproduction test -> Test must fail (red)
+Step 5: Fix Bug -> Reproduction test must pass (green)
+Step 6: Create R{n}/TEST_CASE.md -> Must include: Reproduction steps / Expected result / Verification result
+Step 7: Full regression test passes
+Step 8: flow tools beads update <id> --add-label phase:verify
+```
+
+### Gate 1: RCA.md (Step 3 output)
+- Path: {DOCS_INTERNAL}/reports/bugs/B{NNN}/R{N}/RCA.md
+- RCA.md not created -> Forbidden to start fix code
+- Writing RCA after fix code -> Forbidden, must write RCA first then fix
+
+### Gate 2: Bug reproduction test (Step 4 output)
+- Backend: {PROJECT}/tests/bugs/B{NNN}-{name}/regression_*.go
+- Frontend: {PROJECT}/web/tests/bugs/B{NNN}-{name}/regression_*.test.{ts,tsx}
+- No reproduction test -> Forbidden to report "complete"
+
+### Gate 3: TEST_CASE.md (Step 6 output)
+- Path: {DOCS_INTERNAL}/reports/bugs/B{NNN}/R{N}/TEST_CASE.md
+- TEST_CASE.md not created -> Forbidden to report "complete"
+
+### Gate 4: R iteration rules
+- First fix -> B{NNN}/R1/
+- R1 verification fails -> B{NNN}/R2/ (forbidden to overwrite R1)
+- Forbidden to create directory without R subdirectory
+
+### Gate 5: subtype determination + conditional loading
+- Involves web/src/**, *.tsx -> subtype = frontend-dev
+- Involves internal/**, *.go -> subtype = backend-dev
+
+When subtype = frontend-dev, load:
+- {TEAM_PATH}/workflows/roles/frontend-specialized-tests.md
+- {TEAM_PATH}/templates/frontend-bug-test-template.md
+- {PROJECT}/web/tests/README.md
+
+When subtype = backend-dev, load:
+- {TEAM_PATH}/workflows/roles/specialized-tests.md
+- {TEAM_PATH}/templates/bug-test-template.md
+
+### Gate 6: Full regression (Step 7)
+- Backend: go test ./... must pass
+- Frontend: bun run test + bun run typecheck must pass
+- Full test failure -> Forbidden to report "complete"
+
+## Completion blockers (any missing = forbidden to report "complete")
+
+| # | Check Item | Verification Method |
+|---|--------|---------|
+| 1 | INDEX.md exists and current_iteration points to current R | Read file to confirm |
+| 2 | R{n}/RCA.md file exists | Read file to confirm |
+| 3 | R{n}/TEST_CASE.md file exists | Read file to confirm |
+| 4 | Bug reproduction test code exists | Read file to confirm |
+| 5 | Reproduction test passes | Execute test to confirm |
+| 6 | Full regression test passes | Execute test to confirm |
+| 7 | Report directory format B{NNN}/R{N}/ | Check path |
+
+## beads operations (replaces task-pool.md)
+- View task: flow tools beads show <id>
+- Update progress: flow tools beads update <id> --notes "PROGRESS: ..."
+- Phase transition: flow tools beads update <id> --add-label phase:xxx --remove-label phase:yyy
+- Completion: flow tools beads update <id> --add-label phase:review --remove-label phase:verify
+
+## Toolchain Gate
+
+{TOOLCHAIN_GATE}
+
+After completion (must follow this order):
+1. Verify each item in "completion blockers" table
+2. Any missing -> Report "task failed: missing {specific item}", forbidden to mark complete
+3. All pass -> flow tools beads update <id> --add-label phase:review
+4. flow tools beads update <id> --notes "COMPLETED: RCA + TEST_CASE + fix"
+5. Report deliverable list (must include all file paths)
+```
+
+### General Task (Change/Analysis/Docs/DevOps/UI/PM)
+
+```
+You are {role name}, executing task {external-ref}: {task description}
+
+Rules file: {TEAM_PATH}/prompts/{role}.md
+Shared protocol: {TEAM_PATH}/workflows/shared.md
+beads database: {BEADS_DB}
+Docs directory: {DOCS_INTERNAL}
+
+## beads operations (replaces task-pool.md)
+- View task: flow tools beads show <id>
+- Update progress: flow tools beads update <id> --notes "PROGRESS: ..."
+- Phase transition: flow tools beads update <id> --add-label phase:xxx --remove-label phase:yyy
+- Completion: flow tools beads update <id> --add-label phase:review
+
+## Toolchain Gate (IMPORTANT — violation = task failure)
+
+{TOOLCHAIN_GATE}
+
+After completion:
+1. flow tools beads update <id> --add-label phase:review
+2. flow tools beads update <id> --notes "COMPLETED: {deliverable list}"
+3. Report deliverable list
+```
+
+---
+
+## TOOLCHAIN_GATE Dynamic Construction Rules
+
+When Triage dispatches, read `.team/project.md TOOLCHAIN` section and dynamically fill `{TOOLCHAIN_GATE}`:
+
+### Construction Steps
+
+```
+1. Read project.md TOOLCHAIN section
+   -> frontend.package_manager = {pkg}  (bun/npm/pnpm/yarn)
+   -> frontend.pipeline = {available command mapping}
+
+2. Construct forbidden list:
+   -> List all package manager commands other than {pkg} as forbidden
+
+3. Construct available command list:
+   -> Extract from pipeline, only list command names and usage (does not imply execution order)
+
+4. Generate PRE-FLIGHT confirmation requirement
+```
+
+### Template (bun example)
+
+```
+This project uses bun for frontend.
+
+Forbidden:
+- npm install / npm run / npm test -> Use bun install / bun run / bun test
+- npx xxx -> Use bunx xxx
+- pnpm add / pnpm run -> Use bun add / bun run
+- yarn dev / yarn build -> Use bun run dev / bun run build
+
+Available commands (use as needed, not all required):
+- bun run format      Formatting
+- bun run lint        Code style check
+- bun run lint:fix    Auto-fix style issues
+- bun run typecheck   Type check
+- bun run build       Build
+- bun run test        Unit tests
+- bun run test:watch  Watch mode tests
+- bun run test:coverage Coverage report
+- bun run check       Comprehensive check
+
+Must output before any command: PRE-FLIGHT: pkg=bun
+```
+
+### Template (npm example)
+
+```
+This project uses npm for frontend.
+
+Forbidden:
+- bun install / bun run -> Use npm install / npm run
+- pnpm add / pnpm run -> Use npm install / npm run
+- yarn dev / yarn build -> Use npm run dev / npm run build
+- npx xxx -> Use npx xxx (npm projects allow npx)
+
+Available commands (use as needed, not all required):
+- npm run format      Formatting
+- npm run lint        Code style check
+- npm run build       Build
+- npm test            Unit tests
+
+Must output before any command: PRE-FLIGHT: pkg=npm
+```
+
+### Key Constraints
+
+1. **"Available commands" != "must execute"** — Clearly mark "use as needed, not all required", avoid AI interpreting as pipeline flow
+2. **Forbidden list must be specific** — List each forbidden package manager's common commands with correct alternatives
+3. **PRE-FLIGHT is hard gate** — Executing commands without confirmation = task failure
+
+---
+
+## Status Management
+
+### Status Values
+
+| Status | Meaning | Transitions |
+|--------|---------|-------------|
+| `open` | Ready to pick up | -> in_progress, blocked |
+| `in_progress` | Being worked on | -> blocked, closed |
+| `blocked` | Waiting on dependency | -> open, in_progress |
+| `closed` | Done | -> open (reopen) |
+
+### Phase Tracking (via Labels)
+
+Use labels to track fine-grained phases:
+
+```
+phase:ready      -> Just created, ready for dispatch
+phase:analyze    -> Under investigation (Tech Lead)
+phase:design     -> Writing spec/design doc
+phase:implement  -> Development in progress
+phase:verify     -> Testing/QA phase
+phase:review     -> Waiting for user/business confirmation
+```
+
+```bash
+# Progress to next phase
+flow tools beads update <id> \
+  --add-label phase:implement \
+  --remove-label phase:design
+```
+
+### Status Flow (Triage Responsible)
+
+```
+open (phase:ready) -> in_progress (phase:implement) -> in_progress (phase:verify) -> in_progress (phase:review) -> closed
+```
+
+- **open -> in_progress**: When Triage launches sub-agent
+- **in_progress (verify) -> in_progress (review)**: After sub-agent completes deliverables
+- **in_progress (review) -> closed**: After user confirms, Triage archives
+
+```bash
+# Launch sub-agent: claim and start
+flow tools beads update <id> --claim --add-label phase:implement --remove-label phase:ready
+
+# Sub-agent completes: move to review
+flow tools beads update <id> --add-label phase:review --remove-label phase:verify
+
+# User confirms: close
+flow tools beads close <id> --reason "Confirmed by user"
+```
+
+---
+
+## Beads Storage Layer
+
+### Path Protection (Highest Priority)
+
+> **beads database must be in project directory `.beads/`, forbidden to write to framework layer `{TEAM_PATH}/`.**
+>
+> | Item | Correct Path (USE THIS) | WRONG Path (NEVER) |
+> |------|------------------------|-------------------|
+> | beads DB | `{PROJECT}/.beads/` | `{TEAM_PATH}/.beads/` |
+> | task-pool-export | `{DOCS_INTERNAL}/task-pool-export.md` | `{TEAM_PATH}/task-pool-export.md` |
+>
+> `{TEAM_PATH}/` is framework layer, cross-project shared, AI read-only at runtime. Wrong path = cross-project contamination.
+
+### Storage Locations
+
+```
+{PROJECT}/.beads/                <- beads database (single source of truth)
+{DOCS_INTERNAL}/task-pool-export.md       <- Human-readable export (read-only)
+```
+
+### ID Lookup Rules
+
+```bash
+# From beads ID find task ID (external-ref)
+flow tools beads show <beads-id> --json | jq '.externalRef'
+# -> "F014"
+
+# From task ID find beads ID
+flow tools beads list --json | jq '.[] | select(.externalRef == "F014") | .id'
+# -> "<beads-id>"
+
+# Query Bug R iteration count (reopen count + 1)
+flow tools beads show <beads-id> --json | jq '[.events[] | select(.event_type == "reopened")] | length + 1'
+# -> 2 (means current is R2)
+
+# From task ID locate doc directory
+# F014 -> {DOCS_INTERNAL}/requirements/F014-unified-pagination/
+# B001 -> {DOCS_INTERNAL}/reports/bugs/B001/  (directory without R suffix)
+# A008 -> {DOCS_INTERNAL}/reports/analysis/A008-quality-check-enhancement.md
+```
+
+### Duplicate Detection
+
+Before creating, check for existing issues:
+
+```bash
+# Search by keywords
+flow tools beads list --json | jq '.[] | select(.title | contains("keyword"))'
+
+# Check by external-ref
+flow tools beads list --json | jq '.[] | select(.externalRef == "F014")'
+
+# Search closed issues (might be regression)
+flow tools beads list --status closed --json | jq '.[] | select(.title | contains("keyword"))'
+```
+
+If duplicate found, add note instead of creating new:
+
+```bash
+flow tools beads update <existing-id> --append-notes "Additional report: [new context]"
+```
+
+### Dependency Management
+
+```bash
+# Link dependencies
+flow tools beads dep add <new-id> <dependency-id> --type discovered-from
+flow tools beads dep add <new-id> <blocking-id> --type blocks
+flow tools beads dep add <new-id> <related-id> --type related-to
+```
+
+Dependency types:
+- `discovered-from`: This issue was found while investigating another
+- `blocks`: This issue must be done before the other can proceed
+- `related-to`: Loosely related, informational
+
+---
+
+## Session Operations
+
+### Session 启动扫描 (后台执行)
+
+**目的**: 快速获取状态，不阻塞主流程。
+
+```bash
+# Step 1: 扫描 Review 阶段 issue
+flow tools beads list --label phase:review --json
+
+# Step 2: 扫描 LESSON-NEEDED 标签
+flow tools beads list --label lesson:needed --json
+```
+
+**输出格式** (简短，不阻塞):
+
+```markdown
+## Session 状态
+
+**待确认 Review**: 1 个 (F001)
+**待处理 LESSON**: 2 个 (B001, B002)
+
+[查看详情] / [继续主流程]
+```
+
+如果用户询问详情，才输出完整列表。
+
+### Export for Human Review
+
+At end of session or on demand, export beads state for human readability:
+
+```bash
+# Export open issues (table format)
+flow tools beads list --status open --format table > {DOCS_INTERNAL}/task-pool-export.md
+
+# Export P0/P1 only
+flow tools beads list --priority 0,1 --format table > {DOCS_INTERNAL}/task-pool-urgent.md
+
+# Full JSON export
+flow tools beads list --json > {DOCS_INTERNAL}/task-pool-full.json
+
+# Manual export anytime via flow command
+flow export
+```
+
+**Export rules**:
+1. Triage exports task status to `{DOCS_INTERNAL}/task-pool-export.md` after every status change
+2. CLI command: `flow export` — manual export anytime
+3. task-pool-export.md is **read-only** — never edit it to change task state
+
+### Session End
+
+At end of triage session:
+
+```bash
+# 1. Export current state
+flow tools beads list --status open --format table > {DOCS_INTERNAL}/task-pool-export.md
+
+# 2. Commit Dolt changes (if batch mode)
+flow tools beads dolt commit -m "Triage session $(date +%Y%m%d)"
+
+# 3. Push to remote
+flow tools beads dolt push
+```
+
+### Metrics to Track
+
+```bash
+# Issues created this session
+flow tools beads log --actor $USER --action create --since "2 hours ago"
+
+# Issues closed this session
+flow tools beads log --actor $USER --action close --since "2 hours ago"
+
+# Current state
+flow tools beads stats
+```

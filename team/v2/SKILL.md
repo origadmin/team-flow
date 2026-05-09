@@ -36,7 +36,7 @@ Every AI response MUST start with: `[Role: {role} | TaskPool: {id|ref|❌unread}
 | Phase | ready / analyze / design / implement / verify / review / -(N/A) | Current phase |
 | Asset | project name or -(N/A) | Current project |
 
-**⛔ TRIAGE-INBOX**: Session 启动时，检查/创建 `TRIAGE-INBOX` 作为统一入口。所有输入在 Inbox 中分析，**分析完成后必须拆分**。
+**⚠️ TRIAGE-INBOX**: Session 启动时，检查/创建 `TRIAGE-INBOX` 作为统一入口。所有输入在 Inbox 中分析，**分析完成后必须拆分**。
 
 **Phase 与 TaskPool 同步**: Phase 是 `analyze`/`design`/`implement` 等时，TaskPool 必须显示正式 task ID（如 `(F001)`），禁止还显示 `(INBOX)`。
 
@@ -167,6 +167,12 @@ type {PROJECT}/.team/ai-context.md
    - Asset: `ok` / `missing` / `-(N/A)`
 4. **No-role guard**: When `Role: -`, only clarification answers allowed, no project modifications.
 
+### Triage Loading Rules
+
+- Core: `{TEAM_PATH}/prompts/triage.md` (always loaded)
+- Clarify: `{TEAM_PATH}/prompts/triage-clarify.md` (load when classifying requirements)
+- Verify: `{TEAM_PATH}/prompts/triage-verify.md` (load when bug returns, review needed, dispatching sub-agent, or managing session)
+
 ### Dispatch Guard (same priority as Regression Guard)
 
 > **AI bypassing dispatch is the most common behavioral deviation. Triage must dispatch, never execute directly.**
@@ -234,7 +240,7 @@ flow tools beads close <id> --reason "Done" --json
 - ❌ Create tasks in task-pool.md that aren't also in beads
 - ❌ Skip flow tools beads dolt push after significant status changes
 - ❌ Write to `{TEAM_PATH}/v1/` (framework-original, read-only reference)
-- ❌ Dump deliverable content into beads notes — write to independent files (RCA.md, SPEC.md, etc.)
+- ❌ Dump deliverable content into beads notes — see `{TEAM_PATH}/workflows/shared.md` §文件空间定义
 - ❌ Modify `{TEAM_PATH}/` rules to solve project-specific problems — use `.team/project.md §CONSTRAINTS` and `_docs/.../lessons/` instead
 
 ### Core Principle: Framework ≠ Project
@@ -257,13 +263,13 @@ _docs/.../lessons/ = Project lessons (Dev/Bugfix reads)
 Role triggered
     │
     ├── Issue exists in beads? → flow tools beads ready --json → continue
-    │   └── Not found? → ⛔ Reject, suggest Triage create via flow tools beads create
+    │   └── Not found? → ⚠️ Reject, suggest Triage create via flow tools beads create
     │
     ├── Issue type matches role? → continue
-    │   └── Mismatch? → ⛔ Hand off to correct role
+    │   └── Mismatch? → ⚠️ Hand off to correct role
     │
     └── Required docs loaded? → continue
-        └── Missing? → ⛔ Load before proceeding
+        └── Missing? → ⚠️ Load before proceeding
 ```
 
 ### Layer 2: Phase Gate (Between Phases)
@@ -272,13 +278,13 @@ Role triggered
 Phase transition
     │
     ├── Current phase deliverables complete? → continue
-    │   └── Incomplete? → ⛔ Complete before transitioning
+    │   └── Incomplete? → ⚠️ Complete before transitioning
     │
     ├── Tests passing? → continue
-    │   └── Failing? → ⛔ Fix before proceeding
+    │   └── Failing? → ⚠️ Fix before proceeding
     │
     └── beads issue updated? → continue
-        └── Not updated? → ⛔ flow tools beads update before proceeding
+        └── Not updated? → ⚠️ flow tools beads update before proceeding
 ```
 
 ### Layer 3: Completion Gate (Before Closing)
@@ -287,13 +293,13 @@ Phase transition
 Task complete
     │
     ├── All deliverables produced? → continue
-    │   └── Missing? → ⛔ Produce before closing
+    │   └── Missing? → ⚠️ Produce before closing
     │
     ├── All tests passing? → continue
-    │   └── Failing? → ⛔ Fix before closing
+    │   └── Failing? → ⚠️ Fix before closing
     │
     ├── No regressions? → continue
-    │   └── Regressions found? → ⛔ Fix or document known issues
+    │   └── Regressions found? → ⚠️ Fix or document known issues
     │
     └── beads issue closable? → flow tools beads close
         └── Not ready? → flow tools beads update --notes with remaining items
@@ -363,8 +369,8 @@ Task complete
 - **Delete Permission: DISABLED** — Never delete files unless explicitly asked
 - **Framework ≠ Project** — Project problems solved at project layer, never patch framework
 - **No secrets in code** — Never expose or log secrets/keys
-- **NEVER commit unless user asks** — Explicit confirmation required
-- **NEVER use PowerShell Set-Content / Out-File** — these add UTF-8 BOM, corrupting source files
+- **⚠️ NEVER commit unless user asks** — Explicit confirmation required
+- **⛔ NEVER use PowerShell Set-Content / Out-File** — these add UTF-8 BOM, corrupting source files
   - Use Write tool (built-in, guarantees UTF-8 without BOM)
   - Use SearchReplace tool (built-in, precise replacement)
   - If must use command line: `[System.IO.File]::WriteAllText('path', $content, [System.Text.UTF8Encoding]::new($false))`

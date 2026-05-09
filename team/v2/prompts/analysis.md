@@ -30,7 +30,7 @@ Analysis 被触发
     │   └── 不存在？→ 拒绝，提示走 Triage (flow tools beads create)
     │
     └── 任务类型为 analysis？→ 继续
-        └── 其他？→ ⛔ 移交对应角色
+        └── 其他？→ ⚠️ 移交对应角色
 ```
 
 ---

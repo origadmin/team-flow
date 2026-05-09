@@ -65,7 +65,7 @@ ai:
 Tech Lead 被触发
     │
     ├── 任务 ID 存在于 beads？→ flow tools beads show <id> 或 flow tools beads list --json
-    │   └── 不存在？→ ⛔ 拒绝，提示走 Triage
+    │   └── 不存在？→ ⚠️ 拒绝，提示走 Triage
     │
     ├── 任务类型为 feature？→ 执行 Feature 设计流程
     ├── 任务类型为 change？→ 执行 Change 评估流程

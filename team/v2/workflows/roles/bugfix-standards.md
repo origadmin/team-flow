@@ -688,7 +688,7 @@ Bug 分析
 
 ---
 
-## 十六、⛔ 禁止项
+## 八、⚠️ 禁止项
 
 - ❌ 中文注释
 - ❌ 跳过 RCA / SCOPE / 验收标准
@@ -700,3 +700,59 @@ Bug 分析
 ## beads Status Management
 
 > beads 状态管理命令见 `{TEAM_PATH}/workflows/shared.md` §beads Status Management
+
+---
+
+## 十六、R 迭代跟踪规则（来自 shared.md）
+
+> Bug 修复几乎不可能一次成功（特别是 AI），必须通过 R1→R2→R3... 持续跟踪。
+
+**核心原则：一个 Bug 一个 ID，用 R 后缀跟踪修复轮次。禁止为同一 Bug 的不同修复尝试分配新 B-ID。**
+
+| 场景 | 正确做法 | ❌ 错误做法 |
+|------|---------|------------|
+| B019 第一轮修复 | 创建 `B019-R1/` 目录 | — |
+| B019 修复未通过，需重试 | 创建 `B019-R2/`，关联文档改为 `B019-R2/` | 新建 B026 |
+| B019 修复导致新子问题 | 子问题记入 B019 当前 R 的 SCOPE.md | 新建 B022 |
+| B019 R1 验证中发现新现象 | 补充到 B019 的 TEST_CASE.md | 新建 B023 |
+
+**R 迭代流程**：
+
+```
+B019-R1/ (Phase 1: RCA → Phase 2: Fix → Phase 3: Verify)
+  ├── 验证通过 → Done → beads status closed → 用户确认 → Archived
+  └── 验证失败 → ⛔ 强制触发 R 递增（见下方规则）
+       └── B019-R2/ (回到 Phase 1，新 RCA 分析失败原因)
+            ├── R2 验证通过 → Done
+            └── R2 验证失败 → ⛔ 强制触发 R 递增 → B019-R3/ ...
+```
+
+**⛔ R 递增强制触发规则（新增）**：
+
+> **强制要求**：当 Bug 修复验证未通过时，执行角色**必须**创建 R{N+1} 目录并重置阶段，**禁止在当前 R 目录内覆盖修改**。
+
+| 触发条件 | 判断者 | 必须动作 |
+|---------|-------|--------|
+| Phase 3 验证结果为"未通过" | 执行角色（Bugfix/Dev） | 1. 创建 `{bug-id}-R{N+1}/` 目录 2. beads phase 重置为 analyze 3. doc_path metadata 更新为 R{N+1} 目录 |
+| 用户反馈"还没修好" | 执行角色 | 同上 |
+| AI 自测发现修复方向错误 | 执行角色 | 同上 |
+
+**禁止**：
+- ❌ 验证未通过时继续在当前 R 目录内修改（必须开新 R）
+- ❌ 跳过 RCA 直接在新 R 目录中重试（每轮 R 必须重新分析失败原因）
+- ❌ 未更新 beads doc_path metadata 就创建新 R 目录
+
+**beads 中的体现**：
+
+- beads task ID 永远是基础 ID（`B019`），不随 R 变化
+- `doc_path` metadata 指向当前最新的 R 目录（`B019-R2/`）
+- phase label 格式：`phase:analyze (R2)` — 结构化可解析
+- 状态反映最新 R 的阶段（R2 在 analyze → 状态就是 in_progress）
+- 所有历史 R 目录保留不删除
+
+```bash
+# R iteration tracking in beads
+flow tools beads update B019 --add-label "iteration:R2" --remove-label "iteration:R1"
+flow tools beads update B019 --set-metadata doc_path="{DOCS_INTERNAL}/reports/bugs/B019-R2/"
+flow tools beads update B019 --add-label phase:analyze --remove-label phase:verify
+```

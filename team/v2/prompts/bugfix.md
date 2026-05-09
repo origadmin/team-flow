@@ -53,13 +53,13 @@ Bugfix 角色被触发
     │
     ├── Step 1: 加载 .team/project.md
     │   ├── 读取 Toolchain 配置（包管理器、命令等）
-    │   └── project.md 不存在？→ ⛔ 拒绝
+    │   └── project.md 不存在？→ ⚠️ 拒绝
     │
     ├── Step 2: 任务存在于 beads？→ flow tools beads show <id> 或 flow tools beads list --json
-    │   └── 不存在？→ ⛔ 拒绝，提示走 Triage
+    │   └── 不存在？→ ⚠️ 拒绝，提示走 Triage
     │
     └── Step 3: 状态为 open/in_progress？→ 继续
-        └── closed？→ ⛔ 已完成
+        └── closed？→ ⚠️ 已完成
 ```
 
 ---
@@ -77,7 +77,7 @@ Bugfix 角色被触发
     │
     └── 工具链校验
         ├── 命令匹配 project.md 定义？→ ✅ 放行
-        └── 不匹配？→ ⛔ 拒绝执行
+        └── 不匹配？→ ⚠️ 拒绝执行
 ```
 
 ---
@@ -124,7 +124,7 @@ Phase 3: 验证（QA）
 任务 ID: B001 (beads: `<beads-id>`)
 当前阶段: Phase {N}
 前置产出物: {列出前置文件}
-前置文件全部存在？→ ✅ 进入 / ⛔ 拒绝，列出缺失
+前置文件全部存在？→ ✅ 进入 / ⚠️ 拒绝，列出缺失
 ```
 
 **禁止**:
@@ -261,7 +261,7 @@ RCA.md 数据流追踪模板：
 | 预期结果 | 修复后应达到的状态 |
 | 验证结果 | ✅ 通过 / ❌ 失败 |
 
-### ⛔ 强制测试验证流程（HARD GATE — 跳过 = 任务失败）
+### ⚠️ 强制测试验证流程（IMPORTANT — 跳过 = 任务失败）
 
 > **核心问题**: AI修复前端Bug后经常不运行测试就报告完成。以下步骤必须按顺序执行，每步必须看到实际输出。
 
@@ -271,27 +271,27 @@ RCA.md 数据流追踪模板：
 Step 1: 编译检查
   命令: go build ./...
   通过标准: 无编译错误
-  ⛔ 编译失败 → 修复后重新执行 Step 1
+  ⚠️ 编译失败 → 修复后重新执行 Step 1
 
 Step 2: 单元测试
   命令: go test ./...
   通过标准: 所有测试通过，0 failures
-  ⛔ 测试失败 → 修复后重新执行 Step 2
+  ⚠️ 测试失败 → 修复后重新执行 Step 2
 
 Step 3: Bug 复现测试
   命令: go test ./tests/bugs/B{NNN}-.../...
   通过标准: 复现测试通过（修复前应失败，修复后应通过）
-  ⛔ 复现测试仍失败 → 修复未生效，回到 Phase 1 重新分析
+  ⚠️ 复现测试仍失败 → 修复未生效，回到 Phase 1 重新分析
 
 Step 4: 全量回归
   命令: go test ./...
   通过标准: 无回归（之前通过的测试仍然通过）
-  ⛔ 出现回归 → 修复引入新问题，回滚或修复
+  ⚠️ 出现回归 → 修复引入新问题，回滚或修复
 
 Step 5: 运行时验证（涉及 API/权限/状态/交互的 Bug 必须）
   命令: go test -run TestB{NNN}... ./... （httptest 级别）
   通过标准: HTTP 请求验证通过，完整链路可达
-  ⛔ 仅 UseCase 测试通过 → 不够，必须 httptest 级别验证
+  ⚠️ 仅 UseCase 测试通过 → 不够，必须 httptest 级别验证
 ```
 
 **前端 Bug (subtype = frontend-dev) 验证步骤**:
@@ -300,33 +300,33 @@ Step 5: 运行时验证（涉及 API/权限/状态/交互的 Bug 必须）
 Step 1: 类型检查
   命令: bun run typecheck
   通过标准: 0 errors
-  ⛔ 类型错误 → 修复后重新执行 Step 1
+  ⚠️ 类型错误 → 修复后重新执行 Step 1
 
 Step 2: 代码检查
   命令: bun run lint
   通过标准: 0 errors（warnings 可接受）
-  ⛔ lint 错误 → 修复后重新执行 Step 2
+  ⚠️ lint 错误 → 修复后重新执行 Step 2
 
 Step 3: 单元测试
   命令: bun run test
   通过标准: 所有测试通过，0 failures
-  ⛔ 测试失败 → 修复后重新执行 Step 3
+  ⚠️ 测试失败 → 修复后重新执行 Step 3
 
 Step 4: Bug 复现测试
   命令: bun run test -- --testPathPattern="B{NNN}"
   通过标准: 复现测试通过（修复前应失败，修复后应通过）
-  ⛔ 复现测试仍失败 → 修复未生效，回到 Phase 1 重新分析
+  ⚠️ 复现测试仍失败 → 修复未生效，回到 Phase 1 重新分析
 
 Step 5: 全量回归
   命令: bun run test
   通过标准: 无回归（之前通过的测试仍然通过）
-  ⛔ 出现回归 → 修复引入新问题，回滚或修复
+  ⚠️ 出现回归 → 修复引入新问题，回滚或修复
 
 Step 6: UI 运行时验证（前端 Bug 必须 — 不是可选的）
   方式: 启动 dev server + Playwright MCP（或手动浏览器验证）
   文档: 使用 `{TEAM_PATH}/templates/ui-verification-template.md` 生成 UI_VERIFICATION.md
   
-  ⛔ 必须执行以下全部验证动作并记录到 UI_VERIFICATION.md:
+  ⚠️ 必须执行以下全部验证动作并记录到 UI_VERIFICATION.md:
   
   6a. 启动 dev server
     命令: bun run dev
@@ -364,14 +364,14 @@ Step 6: UI 运行时验证（前端 Bug 必须 — 不是可选的）
   - 最少截图数: 交互Bug 3张，渲染Bug 2张，多步骤Bug N+1张
   - 格式: PNG，1280x720最低，必须显示URL栏
   
-  ⛔ 仅组件 mock 测试通过 → 不够，必须实际打开页面验证
-  ⛔ 跳过 6c/6d/6e 中的任何一项 → 等于没验证
-  ⛔ 只启动 dev server 不检查页面 → 等于没验证
-  ⛔ 没有截图 → 等于没验证
-  ⛔ 没有生成 UI_VERIFICATION.md → 等于没验证
+  ⚠️ 仅组件 mock 测试通过 → 不够，必须实际打开页面验证
+  ⚠️ 跳过 6c/6d/6e 中的任何一项 → 等于没验证
+  ⚠️ 只启动 dev server 不检查页面 → 等于没验证
+  ⚠️ 没有截图 → 等于没验证
+  ⚠️ 没有生成 UI_VERIFICATION.md → 等于没验证
 ```
 
-**⛔ 验证输出要求**:
+**⚠️ 验证输出要求**:
 - 每个步骤必须展示**实际命令输出**（不是"已执行"）
 - 测试通过必须展示**通过数量**（如 "Tests: 12 passed, 0 failed"）
 - 禁止跳过任何步骤
@@ -424,7 +424,7 @@ Step 6: UI 运行时验证（前端 Bug 必须 — 不是可选的）
 ## 完成门禁
 
 ```
-Bugfix 完成检查（⛔ 任何一项缺失 = 禁止报告"完成"）:
+Bugfix 完成检查（⚠️ 任何一项缺失 = 禁止报告"完成"）:
 
 文档检查:
 - [ ] {DOCS_INTERNAL}/reports/bugs/B{NNN}-R{N}/RCA.md 存在
@@ -432,7 +432,7 @@ Bugfix 完成检查（⛔ 任何一项缺失 = 禁止报告"完成"）:
 - [ ] RCA.md 包含：现象/根因/影响/预防
 - [ ] TEST_CASE.md 包含：复现步骤/预期/验证结果
 
-⛔ 测试验证执行检查（必须展示实际命令输出）:
+⚠️ 测试验证执行检查（必须展示实际命令输出）:
 - [ ] 后端: go build ./... 编译通过（展示输出）
 - [ ] 后端: go test ./... 全部通过（展示通过数量）
 - [ ] 前端: bun run typecheck 类型检查通过（展示输出）
