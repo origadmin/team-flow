@@ -156,6 +156,7 @@ All deliverables produced? → All tests passing? → No regressions? → beads 
 - **No secrets in code** — Never expose or log secrets/keys
 - **⚠️ NEVER commit unless user asks** — Explicit confirmation required
 - **⛔ NEVER use PowerShell Set-Content / Out-File** — these add UTF-8 BOM, corrupting source files
+- **⛔ Toolchain Gate** — Read `.team/project.md` TOOLCHAIN section before ANY build/test/lint command. Use exact commands from project.md, never default to npm. If project.md says `bun`, using `npm`/`pnpm`/`yarn` is a hard violation.
 
 ## Sub-agent Prompt Template
 
