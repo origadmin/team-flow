@@ -11,7 +11,7 @@
 
 **Feature Version**: v{version}
 **Related Requirement**: `{docs_internal}/requirements/Fxxx/`
-**Test Code Path**: `{PROJECT_PATH}/web/tests/features/F{xxx}-{short-name}/`
+**Test Code Path**: `{PROJECT}/web/tests/features/F{xxx}-{short-name}/`
 **Tech Stack**: Bun + Rsbuild + Jest + React + Playwright
 
 ---
@@ -140,8 +140,8 @@ export const handlers = [
 |------|------|
 | Requirement | `_docs/.../requirements/Fxxx/SPEC.md` |
 | API Contract | `_docs/.../requirements/Fxxx/R3_API_CONTRACT.md` |
-| Test code | `{PROJECT_PATH}/web/tests/features/F{xxx}-{short-name}/` |
-| MSW handlers | `{PROJECT_PATH}/web/tests/mocks/handlers.ts` |
+| Test code | `{PROJECT}/web/tests/features/F{xxx}-{short-name}/` |
+| MSW handlers | `{PROJECT}/web/tests/mocks/handlers.ts` |
 
 ---
 

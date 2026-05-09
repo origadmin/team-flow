@@ -102,7 +102,7 @@ flow tools beads update <id> --assignee "backend-dev"
 flow tools beads close <id> --reason "Change evaluated: no delivery impact"
 
 # 人工可读导出
-flow tools beads list --status open --format table > {DOCS_PATH}/task-pool.md
+flow tools beads list --status open --format table > {DOCS_INTERNAL}/task-pool.md
 ```
 
 ### ID 映射

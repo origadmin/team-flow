@@ -1,78 +1,52 @@
+---
+name: team-flow
+version: 2.3
+description: |
+  Multi-agent AI collaboration framework with beads-based task management.
+  Provides Triage→TechLead→Dev→QA pipeline, three-layer gates, and 11 role definitions.
+  Task management via flow tools beads CLI.
+  Path resolution via flow config paths --json.
+  Compatible: Go backend + React/TypeScript frontend projects.
+tools:
+  - name: beads
+    required: true
+    commands: [create, update, close, list, show, ready, dep, dolt]
+config:
+  paths_source: "flow config paths --json"
+  config_file: ".team/config.yaml"
+  project_file: ".team/project.md"
+evolution:
+  v2: "beads migration, task management centralization"
+  v3: "flow as center, tools/plugins/rules unified management"
+---
+
 # team-flow v2 SKILL.md — Entry Point
 
-> **Version**: v2.2 | **Date**: 2026-05-08
-> **Core change**: TRIAGE-INBOX 统一入口 + 拆分机制
+> **Version**: v2.3 | **Date**: 2026-05-09
+> **Core change**: Frontmatter standardization + path resolution + flow tools beads unification
 
 ## Status Line (MANDATORY — Highest Priority)
 
-Every AI response MUST start with a status line. This is the FIRST thing output, before any other content.
-
-```
-[Role: {role} | TaskPool: {id|ref|❌unread} | Phase: {phase} | Asset: {project-name}]
-```
+Every AI response MUST start with: `[Role: {role} | TaskPool: {id|ref|❌unread} | Phase: {phase} | Asset: {project-name}]`
 
 | Field | Values | Description |
 |-------|--------|-------------|
-| Role | Triage / TechLead / Dev / QA / PM / DevOps / Analysis / UIDesigner | **Role Switching**: Triage dispatches sub-agent → Role changes to sub-agent's role (e.g., `Role: Dev`). Sub-agent completes → Role returns to Triage for result summary. |
-| TaskPool | `abc-123 (INBOX)` 或 beads ID + ref (e.g., `abc-456 (F001)`) | Current task ID + source |
-| Phase | ready / analyze / design / implement / verify / review / -(N/A) | Current phase of the task |
-| Asset | project name (e.g., `orig-cms`) or -(N/A) | Current project |
-
-**Example**:
-```
-[Role: Triage | TaskPool: abc-123 (INBOX) | Phase: -(N/A) | Asset: team-flow]
-→ Session started, inbox active. All inputs go through TRIAGE-INBOX.
-
-[Role: Triage | TaskPool: abc-456 (F001) | Phase: ready | Asset: orig-cms]
-→ Task split from inbox, awaiting classification confirmation.
-
-[Role: Dev | TaskPool: abc-789 (F001) | Phase: implement | Asset: orig-cms]
-→ Working on F001
-```
+| Role | Triage / TechLead / Dev / QA / PM / DevOps / Analysis / UIDesigner | Changes when sub-agent executes, returns to Triage on completion |
+| TaskPool | `abc-123 (INBOX)` or beads ID + ref | Current task ID + source |
+| Phase | ready / analyze / design / implement / verify / review / -(N/A) | Current phase |
+| Asset | project name or -(N/A) | Current project |
 
 **⛔ TRIAGE-INBOX**: Session 启动时，检查/创建 `TRIAGE-INBOX` 作为统一入口。所有输入在 Inbox 中分析，**分析完成后必须拆分**。
 
-**Phase 与 TaskPool 同步规则**：
+**Phase 与 TaskPool 同步**: Phase 是 `analyze`/`design`/`implement` 等时，TaskPool 必须显示正式 task ID（如 `(F001)`），禁止还显示 `(INBOX)`。
 
-| 当前 Phase | TaskPool 来源 | 说明 |
-|-----------|--------------|------|
-| `-(N/A)` 或 `triaging` | `(INBOX)` | Triage 在分析 |
-| `ready` 及以后 | `(F001)` / `(B001)` 等 | 已拆分到正式 task |
-
-**禁止**: Phase 是 `analyze`/`design`/`implement` 等时，TaskPool 还显示 `(INBOX)`。详见 `prompts/triage.md`。
-
-## Role Switching (角色切换)
-
-**Role 随子 Agent 执行而变化**：
+## Role Switching
 
 ```
-[Triage] 分析 → 分发
-    ↓
-启动子 Agent → [Role: Tech Lead] / [Role: Dev] / [Role: Bugfix] / [Role: QA]
-    ↓
-子 Agent 执行 → Status Line 实时反映当前角色
-    ↓
-子 Agent 完成 → [Role: Triage] 汇总结果
+[Triage] 分析 → 分发 → [Sub-agent: TechLead/Dev/QA/...] 执行 → [Triage] 汇总结果
 ```
 
-**角色切换示例**：
-
-```
-1. [Role: Triage | TaskPool: abc-456 (F001) | Phase: ready | Asset: orig-cms]
-   → 分析完成，分发到 Tech Lead
-
-2. [Role: TechLead | TaskPool: abc-456 (F001) | Phase: design | Asset: orig-cms]
-   → Tech Lead 开始设计
-
-3. [Role: Dev | TaskPool: abc-456 (F001) | Phase: implement | Asset: orig-cms]
-   → Dev 开始开发
-
-4. [Role: QA | TaskPool: abc-456 (F001) | Phase: verify | Asset: orig-cms]
-   → QA 开始验证
-
-5. [Role: Triage | TaskPool: abc-456 (F001) | Phase: review | Asset: orig-cms]
-   → QA 完成，回到 Triage 汇报
-```
+Example: `[Role: Triage | ...]` → `[Role: Dev | TaskPool: abc-456 (F001) | Phase: implement | Asset: orig-cms]` → `[Role: Triage | ...]`
 
 ## Overview
 
@@ -95,51 +69,60 @@ where.exe flow tools beads 2>$null; Get-ChildItem "$env:LOCALAPPDATA\Programs\fl
 
 **flow tools beads is ALWAYS installed** — `flow init` guarantees it. If shell can't find flow tools beads, use the full path reported by flow doctor.
 
-## Path Variables
+## Path Resolution
 
-```yaml
-{TEAM_PATH}:     .trae/skills/team-flow/       # Skill installation path (IDE-relative)
-{PROJECT_PATH}:  {project-path}/            # Current project
-{BEADS_DB}:      {PROJECT_PATH}/.beads/     # beads data directory
-{DOCS_PATH}:     (read from .team/project.md docs_path, fallback: _docs/{project-name}/ or .team/docs/)
-{VERSION}:       .team/version                 # Read for active version (v1 or v2)
+AI must resolve all paths at startup via `flow config paths --json`. This is the **single source of truth** for path variables — AI must never self-resolve relative paths.
+
+**Startup sequence**:
+```bash
+flow config paths --json
 ```
+
+**Path variables** (from `flow config paths --json` output):
+
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `{WORKSPACE}` | Multi-project workspace root | yes |
+| `{PROJECT}` | Current project root directory | yes |
+| `{DOCS_INTERNAL}` | Internal docs (team-only, not public) | no |
+| `{DOCS_EXTERNAL}` | External docs (public, open-source documentation) | no |
+| `{BEADS_DB}` | beads database directory | yes |
+| `{TEAM_PATH}` | Skill installation path | yes |
+
+**Path anchor rules** (in `.team/config.yaml` or `.team/project.md`):
+
+| Prefix | Anchor | Example | Resolves to |
+|--------|--------|---------|-------------|
+| `_` | workspace root | `_docs/orig-cms/` | `{WORKSPACE}/_docs/orig-cms/` |
+| other | project root | `docs/` | `{PROJECT}/docs/` |
+| not configured | — | — | path not available |
+
+⚠️ If `docs_internal` or `docs_external` not in output → not available, AI must not use those paths.
+⚠️ AI must never self-resolve relative paths. Always use flow-resolved absolute paths.
+
+**Legacy variables** (deprecated, use flow config paths instead):
+- `{DOCS_PATH}` → replaced by `{DOCS_INTERNAL}`
+- `{PROJECT_PATH}` → replaced by `{PROJECT}`
 
 ## Human-Readable Export
 
 beads is AI-managed. Humans need readable exports.
 
-**Configuration** (in `.team/project.md`):
-```yaml
-## Paths
-docs_path: _docs/{project-name}/    # User-configurable
-```
-
-**Export rules**:
-1. Triage updates task status via flow tools beads update (source of truth: beads `.beads/`)
-2. Export to human-readable: flow tools beads list --status open --format table > {DOCS_PATH}/task-pool-export.md`
-3. CLI command: `flow export` — manual export anytime
-4. task-pool-export.md is **read-only** — never edit it to change task state
-5. If `docs_path` not configured: fallback to `.team/docs/`
-
-**Resolution order**:
-```
-1. .team/project.md → docs_path value
-2. _docs/{project-name}/           (default convention)
-3. .team/docs/                     (minimal fallback)
-```
+- Source of truth: beads `.beads/` (via `flow tools beads` commands)
+- Human-readable export: `flow export > .team/task-pool-export.md`
+- task-pool-export.md is **read-only** — never edit it to change task state
 
 ## Quick Start (First Session)
 
 ```bash
 # 1. Check beads status
-cd {PROJECT_PATH} && flow tools beads ready --json
+cd {PROJECT} && flow tools beads ready --json
 
 # 2. Read task pool
-cd {PROJECT_PATH} && flow tools beads list --status open --priority 0,1 --json | ConvertTo-Json -Depth 5
+cd {PROJECT} && flow tools beads list --status open --priority 0,1 --json | ConvertTo-Json -Depth 5
 
 # 3. Read latest AI guidance
-type {PROJECT_PATH}/.team/ai-context.md
+type {PROJECT}/.team/ai-context.md
 ```
 
 ## v2 vs v1 Key Differences
@@ -160,64 +143,15 @@ type {PROJECT_PATH}/.team/ai-context.md
 {TEAM_PATH}/
 ├── SKILL.md              ← You are here
 ├── BOUNDARY.md           # Layer architecture definition
-├── prompts/              # Role execution rules (v2, beads-native)
-│   ├── triage.md
-│   ├── dev.md
-│   ├── dev-backend.md
-│   ├── dev-frontend.md
-│   ├── bugfix.md
-│   ├── tech-lead.md
-│   ├── qa-engineer.md
-│   ├── pm.md
-│   ├── analysis.md       # Analysis Expert (v2 补足)
-│   ├── devops.md         # DevOps Engineer (v2 补足)
-│   ├── ui-designer.md    # UI Designer (v2 补足)
-│   └── framework-architect.md  # Framework Architect (v2 补足)
+├── prompts/              # Role execution rules (11 roles)
 ├── workflows/            # Shared workflows + role standards
-│   ├── shared.md
-│   ├── framework-workflow.md    # Framework dev workflow (v2 补足)
-│   ├── pre-flight.md            # Pre-flight checks (v2 补足)
-│   ├── roles/
-│   │   ├── triage-standards.md
-│   │   ├── development-standards.md
-│   │   ├── bugfix-standards.md
-│   │   ├── devtestops.md
-│   │   ├── test-levels.md
-│   │   ├── specialized-tests.md
-│   │   ├── frontend-specialized-tests.md
-│   │   ├── analysis-standards.md      # (v2 补足)
-│   │   ├── architecture-standards.md  # (v2 补足)
-│   │   ├── devops-standards.md        # (v2 补足)
-│   │   ├── ui-standards.md            # (v2 补足)
-│   │   ├── review-standards.md        # (v2 补足)
-│   │   ├── requirements-standards.md  # (v2 补足)
-│   │   ├── test-standards.md          # (v2 补足)
-│   │   └── checklist.md               # (v2 补足)
-│   └── meta/
-│       └── TEAM_ROLES.md              # (v2 补足)
-├── templates/            # Document templates
-│   ├── README.md
-│   ├── feature-test-template.md
-│   ├── bug-test-template.md
-│   ├── frontend-feature-test-template.md
-│   ├── frontend-bug-test-template.md
-│   ├── scope-template.md
-│   ├── test-report-template.md
-│   ├── closed-loop-verification-template.md
-│   ├── gherkin-feature-template.md
-│   ├── architecture-template.md
-│   ├── prd-template.md
-│   ├── ui-design-template.md
-│   ├── api-issue-template.md
-│   ├── user-story-template.md
-│   └── bug-index-template.md
+│   ├── shared.md         # Three-layer gates + lifecycle + handoff
+│   ├── framework-workflow.md
+│   ├── pre-flight.md
+│   └── roles/            # Per-role standards (15 files)
+├── templates/            # Document templates (14 files)
 ├── scripts/              # Automation
-│   ├── migrate-tasks.ps1
-│   └── export-task-pool.ps1
-├── docs/
-│   ├── MIGRATION.md
-│   └── BEADS_INTEGRATION.md
-└── BOUNDARY.md
+└── docs/                 # MIGRATION.md, BEADS_INTEGRATION.md
 ```
 
 ## Critical Rules
@@ -262,74 +196,19 @@ type {PROJECT_PATH}/.team/ai-context.md
 
 ### Regression Guard (highest priority)
 
-> **AI breaking existing functionality is the most frequent issue. These rules have priority over all development instructions.**
+> See `{TEAM_PATH}/workflows/shared.md` §质量门（强制） and `{TEAM_PATH}/workflows/roles/bugfix-standards.md` for full details.
 
-#### Rule 1: Must read before modifying
-- Before modifying any existing code file, **must read the complete file first**
-- Never modify based on partial view or diff range only
-
-#### Rule 2: Must search before changing exported symbols
-- Before changing exported function/method/interface/type, **must search all reference points**
-- Command: `grep -r "SymbolName" --include="*.go"` or equivalent
-- Changing exported symbols without searching references -> forbidden
-
-#### Rule 3: Layered testing - local first, then full
-- **During TDD cycle**: only run current module tests
-  - Backend: `go test ./internal/features/xxx/...`
-  - Frontend: `bun run test -- --testPathPattern="xxx"`
-- **After modification (regression verification)**: run full tests
-  - Backend: `go test ./...`
-  - Frontend: `bun run test`
-- **Zero regression tolerance**: any previously passing test fails -> stop, fix or rollback
-- **High-frequency modification**: after every N local tests, run full suite (recommended N=3)
-
-```
-Development flow:
-  TDD red->green->refactor: local tests (seconds)
-       ↓ repeat N times
-  Periodic regression:     full tests (minutes)
-       ↓
-  Completion gate:         full tests (must pass)
-       ↓
-  Frontend extra:         bun run typecheck (must pass)
-```
-
-#### Rule 4: Breaking changes must be compatible
-- Changing interface signatures, deleting methods, modifying return value structures = Breaking Change
-- Breaking changes must provide compatibility solution (new function / versioned interface / deprecation marker)
-- Never change interface without updating all callers
-
-#### Rule 5: Add tests before modifying untested code
-- Before modifying existing code without test coverage, **add tests first**
-- Only modify after tests pass
-
-#### Rule 6: TanStack Router parent routes with child routes must use Outlet
-- When a route has child routes, parent **must render `<Outlet/>`**, otherwise child route URL matches but page doesn't switch
-- Correct: `xxx/route.tsx` -> `<Outlet/>` + `xxx/index.tsx` -> list component
-- Wrong: `xxx.tsx` -> render component directly (child routes cannot display)
-- Always check for child routes when creating new routes
-
-#### Rule 7: Phenomenon first - Bug investigation must confirm phenomenon first
-- When user reports visual/interaction issues, **must check rendering code to confirm phenomenon first**, never skip to data layer
-- Investigation order: **Rendering layer -> API layer -> Business layer -> Data layer** (top-down)
-- Never assume the problem is in the data layer without confirming the phenomenon
-
-#### Rule 8: UI code self-check - must check for duplicate rendering
-- After writing UI components, **must check if same data is rendered multiple times**
-- **Compilation passing != logic correct**, UI code must be manually reviewed
-- Check method: `grep "formatDate\|formatDuration\|t('"` target file, confirm each data rendered once
-
-#### Rule 9: Data flow tracing - Bug fixes must trace runtime data flow
-- For bugs involving API/permissions/state/interaction, **must trace complete data flow from source to sink**, never "guess where the problem is and fix there"
-- Trace steps: define start/end -> list each step -> verify each step to find breakpoint -> fix breakpoint -> verify complete chain
-- **Compilation passing != fix complete**, mock test passing != functionality available
-- Detailed spec: `{TEAM_PATH}/workflows/roles/bugfix-standards.md`
-
-#### Rule 10: Real scenario verification - mock test passing != functionality available
-- For bugs involving API/permissions/state/interaction, **must perform real scenario verification** (HTTP request / page-level), not just mock tests
-- Backend bugs: at minimum use httptest to send real HTTP requests, not just test UseCase
-- Frontend bugs: at minimum verify page renders normally + core interactions work, not just test components
-- R-iteration > 4 must force pause, ask user to confirm fix direction
+**Core principles** (summary):
+1. Must read before modifying — never edit based on partial view
+2. Must search before changing exported symbols
+3. Layered testing — local first, then full
+4. Breaking changes must be compatible
+5. Add tests before modifying untested code
+6. TanStack Router: parent routes with children must use `<Outlet/>`
+7. Bug investigation: confirm phenomenon first (top-down)
+8. UI code: check for duplicate rendering
+9. Data flow tracing: trace runtime data flow, never guess
+10. Real scenario verification: mock test passing ≠ functionality available
 
 ### v2 Task Lifecycle
 
@@ -360,17 +239,15 @@ flow tools beads close <id> --reason "Done" --json
 
 ### Core Principle: Framework ≠ Project
 
-> **v1 教训: AI 在修复项目问题时，把项目规则写入了 `{TEAM_PATH}/`（框架层），等于篡改了 AI 的大脑来适应项目问题。
+> See `{TEAM_PATH}/workflows/shared.md` §文件空间定义 for full details.
 
 ```
-{TEAM_PATH}/        = AI 框架规则（跨项目共享，只读）
-                   → 只有开发 AI SKILL 本身时才能修改
-
-.team/project.md = 项目约束（Triage 读取并遵守）
-_docs/.../lessons/ = 项目经验教训（Dev/Bugfix 读取）
+{TEAM_PATH}/        = AI framework rules (cross-project, read-only) → Only modify when developing the skill itself
+.team/project.md = Project constraints (Triage reads and follows)
+_docs/.../lessons/ = Project lessons (Dev/Bugfix reads)
 ```
 
-**项目问题 → 在项目层解决，绝不在框架层打补丁**
+**Project problems → solve at project layer, never patch framework**
 
 ## Three-Layer Gates
 
@@ -422,68 +299,21 @@ Task complete
         └── Not ready? → flow tools beads update --notes with remaining items
 ```
 
-### Feature Completion Checklist (19 items)
+### Completion Checklists
 
-```
-- [ ] Code implemented per SPEC.md requirements
-- [ ] Unit tests written and passing (TDD red→green)
-- [ ] Integration tests passing (if applicable)
-- [ ] No lint/typecheck errors
-- [ ] No regressions in existing tests
-- [ ] API contract unchanged or backward-compatible
-- [ ] Error handling covers edge cases
-- [ ] Logging/observability added (if applicable)
-- [ ] Configuration documented (if new config introduced)
-- [ ] Migration script provided (if DB schema changed)
-- [ ] Frontend: No duplicate rendering (铁律8)
-- [ ] Frontend: Responsive rules verified
-- [ ] Frontend: Accessibility checked
-- [ ] Documentation updated (if applicable)
-- [ ] SCOPE.md written
-- [ ] beads issue updated with deliverables
-- [ ] Code reviewed (self-review or peer)
-- [ ] Pre-modification checklist completed (铁律1-2)
-- [ ] Impact radius verified (flow graph impact or Grep)
-```
+> See `{TEAM_PATH}/workflows/shared.md` §Layer 3: 完成门禁 for full checklists.
 
-### Bugfix Completion Checklist (18 items)
-
-```
-- [ ] Root cause identified (not just symptom)
-- [ ] Data flow traced from source to sink (铁律9)
-- [ ] Fix targets root cause, not symptom
-- [ ] Unit test reproduces the bug (TDD red→green)
-- [ ] Integration test verifies end-to-end (if applicable)
-- [ ] No regressions in existing tests
-- [ ] No new lint/typecheck errors
-- [ ] API contract unchanged or backward-compatible
-- [ ] Error message is actionable
-- [ ] Frontend: Visual issue confirmed before fix (铁律7)
-- [ ] Frontend: No duplicate rendering after fix (铁律8)
-- [ ] Frontend: MSW mock updated (if API changed)
-- [ ] Real scenario verified (not just mock) (铁律10)
-- [ ] RCA.md written (for P0/P1 bugs)
-- [ ] SCOPE.md written
-- [ ] beads issue updated with root cause and fix
-- [ ] R-iteration count ≤ 4 (if >4, pause for user confirmation)
-- [ ] Impact radius verified (flow graph impact or Grep)
-```
+**Feature** (19 items): Code + tests + no regressions + API compatible + docs + SCOPE.md + beads updated
+**Bugfix** (18 items): Root cause + data flow traced + fix targets cause + tests + real scenario verified + RCA.md + SCOPE.md + R-iteration ≤ 4
 
 ## Context Checkpoint
 
-> **Every conversation turn must output the following context block.**
+> See `{TEAM_PATH}/workflows/shared.md` §Session Protocol for session start/end/during templates.
 
+**Every conversation turn must output**:
 ```
-[Task Context]
-  Task: {beads issue ID + title}
-  Phase: {ready|analyze|design|implement|verify|review}
-  Required Docs: {list files loaded}
-  Toolchain: {go|bun|python} {version}
-  Mode: {v1-compat|v2-native}
-[/Task Context]
+[Task Context] Task: {beads ID + title} | Phase: {phase} | Docs: {loaded} | Toolchain: {go|bun} | Mode: {v2-native} [/Task Context]
 ```
-
-This ensures AI maintains context across turns and prevents task drift.
 
 ## Agent Mapping
 
@@ -541,20 +371,13 @@ This ensures AI maintains context across turns and prevents task drift.
 
 ## Sub-agent Prompt Template
 
+> See `{TEAM_PATH}/workflows/shared.md` §Role Handoff Protocol for detailed handoff format.
+
 ```
 You are {role_name}, executing task {task_id}: {task_description}
-
-Rules: {TEAM_PATH}/prompts/{role}.md
-Shared protocol: {TEAM_PATH}/workflows/shared.md
-Task tracking: flow tools beads CLI (v2 only)
-Docs: {DOCS_INTERNAL}
-
-⛔ v2 禁止手动编辑 task-pool.md，所有状态更新通过 flow tools beads CLI
-
-After completion:
-1. flow tools beads update <id> --notes "COMPLETED: ..." --add-label phase:review
-2. Report deliverables list
-3. Return to Triage
+Rules: {TEAM_PATH}/prompts/{role}.md | Shared: {TEAM_PATH}/workflows/shared.md | Tracking: flow tools beads CLI
+⛔ v2: Never edit task-pool.md manually. All status updates via flow tools beads CLI.
+After completion: flow tools beads update <id> --notes "COMPLETED: ..." --add-label phase:review → Report deliverables → Return to Triage
 ```
 
 ## Core Protocol

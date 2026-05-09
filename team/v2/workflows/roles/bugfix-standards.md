@@ -684,7 +684,7 @@ Bug 分析
 | 批量报告 | `{DOCS_INTERNAL}/reports/bugs/BATCH-{date}.md` |
 | 修复代码 | `internal/features/{feature}/` |
 | 新增测试 | `xxx_test.go` |
-| **测试覆盖文档** | `{PROJECT_PATH}/tests/bugs/B{xxx}/TEST_CASE.md` | ← 使用 `bug-test-template.md` |
+| **测试覆盖文档** | `{PROJECT}/tests/bugs/B{xxx}/TEST_CASE.md` | ← 使用 `bug-test-template.md` |
 
 ---
 

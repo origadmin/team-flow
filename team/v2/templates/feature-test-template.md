@@ -11,7 +11,7 @@
 
 **功能版本**: v{version}
 **关联需求**: `{docs_internal}/requirements/Fxxx/`
-**测试代码路径**: `{PROJECT_PATH}/tests/features/F{xxx}-{short-name}/`
+**测试代码路径**: `{PROJECT}/tests/features/F{xxx}-{short-name}/`
 
 ---
 
@@ -150,7 +150,7 @@
 |------|------|
 | 需求文档 | `_docs/.../requirements/Fxxx/SPEC.md` |
 | 接口契约 | `_docs/.../requirements/Fxxx/R3_API_CONTRACT.md` |
-| 测试代码目录 | `{PROJECT_PATH}/tests/features/F{xxx}-{short-name}/` |
+| 测试代码目录 | `{PROJECT}/tests/features/F{xxx}-{short-name}/` |
 
 ---
 

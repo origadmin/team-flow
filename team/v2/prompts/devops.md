@@ -52,7 +52,7 @@ flow tools beads update <id> --add-label phase:verify --remove-label phase:imple
 ## 输出
 
 - 部署/运维文档: `{DOCS_INTERNAL}/design/DEPLOY-{id}.md`
-- CI/CD 配置: `{PROJECT_PATH}/.github/workflows/xxx.yml`
+- CI/CD 配置: `{PROJECT}/.github/workflows/xxx.yml`
 - 更新 beads issue
 
 ---
@@ -92,4 +92,4 @@ flow tools beads update <id> --add-label phase:verify --remove-label phase:imple
 | 输出项 | 存放位置 | 格式 |
 |--------|----------|------|
 | 部署报告 | `{DOCS_INTERNAL}/reports/` | Markdown |
-| CI/CD 配置 | `{PROJECT_PATH}/.github/workflows/` | YAML |
+| CI/CD 配置 | `{PROJECT}/.github/workflows/` | YAML |

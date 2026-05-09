@@ -30,7 +30,7 @@ Run v1 and v2 in parallel for 1-2 weeks before switching fully.
 #### 1.1 Initialize beads in project
 
 ```bash
-cd {PROJECT_PATH}
+cd {PROJECT}
 flow tools beads init --prefix cms
 ```
 
@@ -40,10 +40,10 @@ Use the migration script:
 
 ```powershell
 # From framework root
-{TEAM_PATH}/v2/scripts/migrate-tasks.ps1 -ProjectPath "{PROJECT_PATH}" -DryRun
+{TEAM_PATH}/v2/scripts/migrate-tasks.ps1 -ProjectPath "{PROJECT}" -DryRun
 
 # Review output, then run for real
-{TEAM_PATH}/v2/scripts/migrate-tasks.ps1 -ProjectPath "{PROJECT_PATH}"
+{TEAM_PATH}/v2/scripts/migrate-tasks.ps1 -ProjectPath "{PROJECT}"
 ```
 
 Migration script will:
@@ -69,7 +69,7 @@ flow tools beads list --json | jq '.[] | select(.externalRef == "F014")'
 Point to v2 SKILL.md:
 
 ```markdown
-<!-- In {PROJECT_PATH}/CLAUDE.md -->
+<!-- In {PROJECT}/CLAUDE.md -->
 Load team-flow rules: {TEAM_PATH}/v2/SKILL.md
 ```
 
@@ -161,7 +161,7 @@ bun install -g beads
 Solution: Initialize beads in project
 
 ```bash
-cd {PROJECT_PATH}
+cd {PROJECT}
 flow tools beads init --prefix cms
 ```
 
@@ -180,7 +180,7 @@ dolt remote add origin <remote-url>
 Solution: Run migration script with `--force` to recreate mapping
 
 ```powershell
-{TEAM_PATH}/v2/scripts/migrate-tasks.ps1 -ProjectPath "{PROJECT_PATH}" -Force
+{TEAM_PATH}/v2/scripts/migrate-tasks.ps1 -ProjectPath "{PROJECT}" -Force
 ```
 
 ### Issue: "Phase labels not showing"

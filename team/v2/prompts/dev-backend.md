@@ -125,7 +125,7 @@ Step 6: SCOPE.md              <- Generate change report
 ## Directory Structure
 
 ```
-{PROJECT_PATH}/
+{PROJECT}/
 +-- internal/features/{feature}/
 |   +-- biz/          <- Business logic layer (with tests)
 |   +-- data/         <- Data access layer
@@ -178,7 +178,7 @@ Feature completion check:
 
 | Output | Location | Format |
 |--------|----------|--------|
-| Code | `{PROJECT_PATH}/internal/features/` | Go |
-| Test code | `{PROJECT_PATH}/tests/` | Go |
+| Code | `{PROJECT}/internal/features/` | Go |
+| Test code | `{PROJECT}/tests/` | Go |
 | `SCOPE.md` | `{DOCS_INTERNAL}/requirements/{task-id}/` | Markdown |
 | beads status update | `flow tools beads update <id> --notes "..."` | CLI |

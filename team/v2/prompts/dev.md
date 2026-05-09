@@ -50,8 +50,8 @@ ai:
     - {DOCS_INTERNAL}/design/patterns.md
     - {DOCS_INTERNAL}/design/assets.md
     # Lessons learned (pre-read if exists)
-    - {DOCS_PATH}/lessons/dev-common.md
-    - {DOCS_PATH}/lessons/dev-{subtype}-common.md
+    - {DOCS_INTERNAL}/lessons/dev-common.md
+    - {DOCS_INTERNAL}/lessons/dev-{subtype}-common.md
 ---
 
 # Dev — team-flow v2 (beads-native)
@@ -128,7 +128,7 @@ flow tools beads update <id> --set-metadata doc_path="{DOCS_INTERNAL}/features/F
 flow tools beads close <id> --reason "Implemented and verified"
 
 # 人工可读导出
-flow tools beads list --status open --format table > {DOCS_PATH}/task-pool.md
+flow tools beads list --status open --format table > {DOCS_INTERNAL}/task-pool.md
 ```
 
 ### ID 映射
@@ -402,7 +402,7 @@ docs/{doc-name}
 |--------|----------|------|
 | `SCOPE.md` | `{DOCS_INTERNAL}/features/{task-id}/` | Markdown |
 | `RCA.md` | `{DOCS_INTERNAL}/reports/bugs/{bug-id}-R{N}/` | Markdown |
-| 代码实现 | `{PROJECT_PATH}/` | Go/TS |
+| 代码实现 | `{PROJECT}/` | Go/TS |
 
 > SCOPE.md 必须包含：变更文件清单、Pipeline 执行结果、测试覆盖率数据。
 > 文档与实现必须一致（Anti-Drift），实现偏离设计时先更新源文档。

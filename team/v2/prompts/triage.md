@@ -103,7 +103,7 @@ Triage 分析 → 输出分类报告
 
 When acting as Triage:
 1. Load this file + `{TEAM_PATH}/workflows/shared.md` + `{TEAM_PATH}/workflows/roles/triage-standards.md`
-2. Ensure you're in the project directory: `cd {PROJECT_PATH}`
+2. Ensure you're in the project directory: `cd {PROJECT}`
 3. Verify flow: `flow tools beads --version`
 
 ---
@@ -257,7 +257,7 @@ About to execute an operation
 QA 执行前端验证
     │
     ├─ Step 1: 启动开发服务器
-    │   cd {PROJECT_PATH}/web && bun run dev
+    │   cd {PROJECT}/web && bun run dev
     │
     ├─ Step 2: 打开 Bug/Feature 涉及页面
     │   - 导航到 Bug/Feature URL
@@ -276,7 +276,7 @@ QA 执行前端验证
     │   - 确认 Bug 现象消失
     │
     └─ Step 6: 保存验证证据
-        - 截图保存到 {DOCS_PATH}/reports/bugs/B{NNN}/R{N}/screenshots/
+        - 截图保存到 {DOCS_INTERNAL}/reports/bugs/B{NNN}/R{N}/screenshots/
         - 命名规则: B{NNN}-R{N}-{NNN}-{action}-{state}.png
 ```
 
@@ -657,8 +657,8 @@ After bugfix-expert returns, Triage must verify:
 
 | # | Verification Item | Expected Path | If Missing |
 |---|--------|---------|--------|
-| 1 | RCA.md | {DOCS_PATH}/reports/bugs/B{NNN}/R{N}/RCA.md | Mark as "RCA missing", require completion |
-| 2 | TEST_CASE.md | {DOCS_PATH}/reports/bugs/B{NNN}/R{N}/TEST_CASE.md | Mark as "TEST_CASE missing", require completion |
+| 1 | RCA.md | {DOCS_INTERNAL}/reports/bugs/B{NNN}/R{N}/RCA.md | Mark as "RCA missing", require completion |
+| 2 | TEST_CASE.md | {DOCS_INTERNAL}/reports/bugs/B{NNN}/R{N}/TEST_CASE.md | Mark as "TEST_CASE missing", require completion |
 | 3 | Reproduction test code | tests/bugs/B{NNN}-*/ or web/tests/bugs/B{NNN}-*/ | Mark as "reproduction test missing", require completion |
 
 #### Part 2: Test Execution Verification (CRITICAL — must run actual tests)
@@ -919,7 +919,7 @@ You are Dev, executing task {external-ref}: {task description}
 Rules file: {TEAM_PATH}/prompts/dev.md
 Shared protocol: {TEAM_PATH}/workflows/shared.md
 beads database: {BEADS_DB}
-Docs directory: {DOCS_PATH}
+Docs directory: {DOCS_INTERNAL}
 
 ## subtype determination (must execute)
 
@@ -931,7 +931,7 @@ Determine subtype based on task description and involved files:
 - Frontend Dev rules: {TEAM_PATH}/prompts/dev-frontend.md
 - Frontend specialized tests: {TEAM_PATH}/workflows/roles/frontend-specialized-tests.md
 - Frontend Feature template: {TEAM_PATH}/templates/frontend-feature-test-template.md
-- Frontend test directory: {PROJECT_PATH}/web/tests/README.md
+- Frontend test directory: {PROJECT}/web/tests/README.md
 
 ## When subtype = backend-dev, load:
 - Backend Dev rules: {TEAM_PATH}/prompts/dev-backend.md
@@ -962,7 +962,7 @@ You are Bugfix, executing task {external-ref}: {task description}
 Rules file: {TEAM_PATH}/prompts/bugfix.md
 Shared protocol: {TEAM_PATH}/workflows/shared.md
 beads database: {BEADS_DB}
-Docs directory: {DOCS_PATH}
+Docs directory: {DOCS_INTERNAL}
 
 ## HARD GATE — violating any rule = task failure, forbidden to report "complete"
 
@@ -971,8 +971,8 @@ Docs directory: {DOCS_PATH}
 ```
 Step 1: Query R iteration count -> flow tools beads show <id> --json | count reopened events + 1
 Step 2: Create/update report directory
-  - First time: mkdir {DOCS_PATH}/reports/bugs/B{NNN}/R1/
-  - Subsequent: mkdir {DOCS_PATH}/reports/bugs/B{NNN}/R{n}/
+  - First time: mkdir {DOCS_INTERNAL}/reports/bugs/B{NNN}/R1/
+  - Subsequent: mkdir {DOCS_INTERNAL}/reports/bugs/B{NNN}/R{n}/
   - Update INDEX.md (mark current R, historical R marked as failed)
 Step 3: Create R{n}/RCA.md -> Must include: Bug description / Impact scope / Root cause / Root cause type / Fix plan / Prevention measures
 Step 4: Write Bug reproduction test -> Test must fail (red)
@@ -983,17 +983,17 @@ Step 8: flow tools beads update <id> --add-label phase:verify
 ```
 
 ### Gate 1: RCA.md (Step 3 output)
-- Path: {DOCS_PATH}/reports/bugs/B{NNN}/R{N}/RCA.md
+- Path: {DOCS_INTERNAL}/reports/bugs/B{NNN}/R{N}/RCA.md
 - RCA.md not created -> Forbidden to start fix code
 - Writing RCA after fix code -> Forbidden, must write RCA first then fix
 
 ### Gate 2: Bug reproduction test (Step 4 output)
-- Backend: {PROJECT_PATH}/tests/bugs/B{NNN}-{name}/regression_*.go
-- Frontend: {PROJECT_PATH}/web/tests/bugs/B{NNN}-{name}/regression_*.test.{ts,tsx}
+- Backend: {PROJECT}/tests/bugs/B{NNN}-{name}/regression_*.go
+- Frontend: {PROJECT}/web/tests/bugs/B{NNN}-{name}/regression_*.test.{ts,tsx}
 - No reproduction test -> Forbidden to report "complete"
 
 ### Gate 3: TEST_CASE.md (Step 6 output)
-- Path: {DOCS_PATH}/reports/bugs/B{NNN}/R{N}/TEST_CASE.md
+- Path: {DOCS_INTERNAL}/reports/bugs/B{NNN}/R{N}/TEST_CASE.md
 - TEST_CASE.md not created -> Forbidden to report "complete"
 
 ### Gate 4: R iteration rules
@@ -1008,7 +1008,7 @@ Step 8: flow tools beads update <id> --add-label phase:verify
 When subtype = frontend-dev, load:
 - {TEAM_PATH}/workflows/roles/frontend-specialized-tests.md
 - {TEAM_PATH}/templates/frontend-bug-test-template.md
-- {PROJECT_PATH}/web/tests/README.md
+- {PROJECT}/web/tests/README.md
 
 When subtype = backend-dev, load:
 - {TEAM_PATH}/workflows/roles/specialized-tests.md
@@ -1057,7 +1057,7 @@ You are {role name}, executing task {external-ref}: {task description}
 Rules file: {TEAM_PATH}/prompts/{role}.md
 Shared protocol: {TEAM_PATH}/workflows/shared.md
 beads database: {BEADS_DB}
-Docs directory: {DOCS_PATH}
+Docs directory: {DOCS_INTERNAL}
 
 ## beads operations (replaces task-pool.md)
 - View task: flow tools beads show <id>
@@ -1210,16 +1210,16 @@ flow tools beads close <id> --reason "Confirmed by user"
 >
 > | Item | Correct Path (USE THIS) | WRONG Path (NEVER) |
 > |------|------------------------|-------------------|
-> | beads DB | `{PROJECT_PATH}/.beads/` | `{TEAM_PATH}/.beads/` |
-> | task-pool-export | `{DOCS_PATH}/task-pool-export.md` | `{TEAM_PATH}/task-pool-export.md` |
+> | beads DB | `{PROJECT}/.beads/` | `{TEAM_PATH}/.beads/` |
+> | task-pool-export | `{DOCS_INTERNAL}/task-pool-export.md` | `{TEAM_PATH}/task-pool-export.md` |
 >
 > `{TEAM_PATH}/` is framework layer, cross-project shared, AI read-only at runtime. Wrong path = cross-project contamination.
 
 ### Storage Locations
 
 ```
-{PROJECT_PATH}/.beads/                <- beads database (single source of truth)
-{DOCS_PATH}/task-pool-export.md       <- Human-readable export (read-only)
+{PROJECT}/.beads/                <- beads database (single source of truth)
+{DOCS_INTERNAL}/task-pool-export.md       <- Human-readable export (read-only)
 ```
 
 ### ID Lookup Rules
@@ -1238,9 +1238,9 @@ flow tools beads show <beads-id> --json | jq '[.events[] | select(.event_type ==
 # -> 2 (means current is R2)
 
 # From task ID locate doc directory
-# F014 -> {DOCS_PATH}/requirements/F014-unified-pagination/
-# B001 -> {DOCS_PATH}/reports/bugs/B001/  (directory without R suffix)
-# A008 -> {DOCS_PATH}/reports/analysis/A008-quality-check-enhancement.md
+# F014 -> {DOCS_INTERNAL}/requirements/F014-unified-pagination/
+# B001 -> {DOCS_INTERNAL}/reports/bugs/B001/  (directory without R suffix)
+# A008 -> {DOCS_INTERNAL}/reports/analysis/A008-quality-check-enhancement.md
 ```
 
 ### Duplicate Detection
@@ -1437,7 +1437,7 @@ Triage 处理 LESSON-NEEDED
     ↓
 生成 lesson 内容
     ↓
-写入 {DOCS_PATH}/lessons/
+写入 {DOCS_INTERNAL}/lessons/
     ↓
 flow tools beads update <id> --remove-label lesson:needed --add-label lesson:done
 ```
@@ -1450,20 +1450,20 @@ At end of session or on demand, export beads state for human readability:
 
 ```bash
 # Export open issues (table format)
-flow tools beads list --status open --format table > {DOCS_PATH}/task-pool-export.md
+flow tools beads list --status open --format table > {DOCS_INTERNAL}/task-pool-export.md
 
 # Export P0/P1 only
-flow tools beads list --priority 0,1 --format table > {DOCS_PATH}/task-pool-urgent.md
+flow tools beads list --priority 0,1 --format table > {DOCS_INTERNAL}/task-pool-urgent.md
 
 # Full JSON export
-flow tools beads list --json > {DOCS_PATH}/task-pool-full.json
+flow tools beads list --json > {DOCS_INTERNAL}/task-pool-full.json
 
 # Manual export anytime via flow command
 flow export
 ```
 
 **Export rules**:
-1. Triage exports task status to `{DOCS_PATH}/task-pool-export.md` after every status change
+1. Triage exports task status to `{DOCS_INTERNAL}/task-pool-export.md` after every status change
 2. CLI command: `flow export` — manual export anytime
 3. task-pool-export.md is **read-only** — never edit it to change task state
 
@@ -1501,7 +1501,7 @@ Based on analysis of the issue:
 - Forget to assign or dispatch (stuck in `phase:ready` forever)
 - Dump deliverable content (root cause analysis, design decisions, test results) into beads notes — **write to independent deliverable files** (RCA.md, SPEC.md, TEST_CASE.md, SCOPE.md)
 - Add "Task Details" / "Deliverable Tracking" / "Current Status" sections to task-pool-export.md
-- Modify `{TEAM_PATH}/` rules to solve project-specific problems — use `.team/project.md CONSTRAINTS` and `{DOCS_PATH}/lessons/` instead
+- Modify `{TEAM_PATH}/` rules to solve project-specific problems — use `.team/project.md CONSTRAINTS` and `{DOCS_INTERNAL}/lessons/` instead
 - Create task state outside beads
 - Mix project configs across projects
 - Directly edit `.beads/*.db` or `.beads/issues.jsonl`
@@ -1525,7 +1525,7 @@ At end of triage session:
 
 ```bash
 # 1. Export current state
-flow tools beads list --status open --format table > {DOCS_PATH}/task-pool-export.md
+flow tools beads list --status open --format table > {DOCS_INTERNAL}/task-pool-export.md
 
 # 2. Commit Dolt changes (if batch mode)
 flow tools beads dolt commit -m "Triage session $(date +%Y%m%d)"
@@ -1569,6 +1569,6 @@ flow tools beads stats
 
 | Output Item | Storage Location | Format |
 |--------|----------|------|
-| beads issue | `{PROJECT_PATH}/.beads/` (via flow tools beads CLI) | beads database |
-| task-pool-export | `{DOCS_PATH}/task-pool-export.md` | Markdown table (read-only) |
+| beads issue | `{PROJECT}/.beads/` (via flow tools beads CLI) | beads database |
+| task-pool-export | `{DOCS_INTERNAL}/task-pool-export.md` | Markdown table (read-only) |
 | Classification report | Memory output | Inline text |

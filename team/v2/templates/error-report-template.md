@@ -40,7 +40,7 @@
 
 ## 根因分析摘要
 
-> 完整根因分析见: `{DOCS_PATH}/reports/bugs/B{NNN}/R{N}/RCA.md`
+> 完整根因分析见: `{DOCS_INTERNAL}/reports/bugs/B{NNN}/R{N}/RCA.md`
 
 | 项目 | 内容 |
 |------|------|

@@ -15,7 +15,7 @@
 **报告日期**: {YYYY-MM-DD}
 **报告人**: {reporter}
 **关联报告**: `{docs_internal}/reports/bugs/Bxxx/`
-**测试代码路径**: `{PROJECT_PATH}/tests/bugs/B{xxx}-{short-name}/`
+**测试代码路径**: `{PROJECT}/tests/bugs/B{xxx}-{short-name}/`
 
 > ⚠️ R 迭代说明：每个 R 独立子目录（R1/, R2/, ...），INDEX.md 标记当前迭代。R 编号 = beads reopened 事件数 + 1。AI 只读 INDEX.md + 当前 R 目录。
 
@@ -144,7 +144,7 @@
 | 类型 | 路径 |
 |------|------|
 | Bug 报告 | `_docs/.../reports/bugs/Bxxx-Rx/RCA.md` |
-| 测试代码目录 | `{PROJECT_PATH}/tests/bugs/B{xxx}-{short-name}/` |
+| 测试代码目录 | `{PROJECT}/tests/bugs/B{xxx}-{short-name}/` |
 
 ---
 

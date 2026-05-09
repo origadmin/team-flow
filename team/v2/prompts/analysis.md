@@ -118,7 +118,7 @@ Triage 扫描 phase:review 的 Analysis issue
 │ D. 仅作参考                                                │
 │    ↓                                                       │
 │    → Review 确认 → 关闭                                    │
-│    → 文档保存在 {DOCS_PATH}/reports/analysis/              │
+│    → 文档保存在 {DOCS_INTERNAL}/reports/analysis/              │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -147,7 +147,7 @@ flow tools beads list --label phase:review --json | jq '.[] | select(.type == "a
 ### 文档保存位置
 
 ```
-{DOCS_PATH}/reports/analysis/
+{DOCS_INTERNAL}/reports/analysis/
 ├── A001-{topic}/
 │   ├── INDEX.md
 │   ├── COMPARISON.md

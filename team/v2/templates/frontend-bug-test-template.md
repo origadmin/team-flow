@@ -15,7 +15,7 @@
 **Report Date**: {YYYY-MM-DD}
 **Reporter**: {reporter}
 **Related Report**: `{docs_internal}/reports/bugs/Bxxx/`
-**Test Code Path**: `{PROJECT_PATH}/web/tests/bugs/B{xxx}-{short-name}/`
+**Test Code Path**: `{PROJECT}/web/tests/bugs/B{xxx}-{short-name}/`
 **Tech Stack**: Bun + Rsbuild + Jest + React + Playwright
 
 > ⚠️ R 迭代说明：每个 R 独立子目录（R1/, R2/, ...），INDEX.md 标记当前迭代。R 编号 = beads reopened 事件数 + 1。AI 只读 INDEX.md + 当前 R 目录。
@@ -156,8 +156,8 @@
 | Type | Path |
 |------|------|
 | Bug report | `_docs/.../reports/bugs/Bxxx-Rx/RCA.md` |
-| Test code | `{PROJECT_PATH}/web/tests/bugs/B{xxx}-{short-name}/` |
-| MSW handlers | `{PROJECT_PATH}/web/tests/mocks/handlers.ts` |
+| Test code | `{PROJECT}/web/tests/bugs/B{xxx}-{short-name}/` |
+| MSW handlers | `{PROJECT}/web/tests/mocks/handlers.ts` |
 
 ---
 

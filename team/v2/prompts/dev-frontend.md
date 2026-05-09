@@ -27,7 +27,7 @@ ai:
     - {TEAM_PATH}/workflows/roles/test-levels.md
     - {TEAM_PATH}/workflows/roles/frontend-specialized-tests.md
     - {TEAM_PATH}/templates/frontend-feature-test-template.md
-    - {PROJECT_PATH}/web/tests/README.md
+    - {PROJECT}/web/tests/README.md
 ---
 
 # Dev (Frontend) -- team-flow v2 (beads-native)
@@ -261,7 +261,7 @@ Feature completion check:
 
 | Output | Location | Format |
 |--------|----------|--------|
-| Code | `{PROJECT_PATH}/web/src/` | TSX/TS |
-| Test code | `{PROJECT_PATH}/web/tests/` | TSX/TS |
+| Code | `{PROJECT}/web/src/` | TSX/TS |
+| Test code | `{PROJECT}/web/tests/` | TSX/TS |
 | `SCOPE.md` | `{DOCS_INTERNAL}/requirements/{task-id}/` | Markdown |
 | beads status update | `flow tools beads update <id> --notes "..."` | CLI |

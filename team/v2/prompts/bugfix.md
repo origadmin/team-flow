@@ -164,7 +164,7 @@ flow tools beads update <id> --add-label phase:review --remove-label phase:verif
 flow tools beads close <id> --reason "Fixed and verified"
 
 # 人工可读导出
-flow tools beads list --status open --format table > {DOCS_PATH}/task-pool.md
+flow tools beads list --status open --format table > {DOCS_INTERNAL}/task-pool.md
 ```
 
 ### ID 映射
@@ -538,8 +538,8 @@ flow tools beads update <id> --notes "R4 failed. FORCED PAUSE: requesting user c
 ├── TEST_CASE.md        ← Bugfix 创建
 └── SCOPE.md            ← Bugfix 创建
 
-后端测试代码: {PROJECT_PATH}/tests/bugs/B{xxx}-{name}/
-前端测试代码: {PROJECT_PATH}/web/tests/bugs/B{xxx}-{name}/
+后端测试代码: {PROJECT}/tests/bugs/B{xxx}-{name}/
+前端测试代码: {PROJECT}/web/tests/bugs/B{xxx}-{name}/
 ```
 
 ---
@@ -559,7 +559,7 @@ flow tools beads update <id> --notes "R4 failed. FORCED PAUSE: requesting user c
 |--------|----------|------|
 | `RCA.md` | `{DOCS_INTERNAL}/reports/bugs/{bug-id}-R{N}/` | Markdown |
 | `TEST_CASE.md` | `{DOCS_INTERNAL}/reports/bugs/{bug-id}-R{N}/` | Markdown |
-| 修复代码 | `{PROJECT_PATH}/` | 代码 |
+| 修复代码 | `{PROJECT}/` | 代码 |
 | `SCOPE.md` | `{DOCS_INTERNAL}/reports/bugs/{bug-id}-R{N}/` | Markdown |
 
 ---

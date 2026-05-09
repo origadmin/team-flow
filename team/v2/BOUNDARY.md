@@ -23,7 +23,7 @@
 ### Layer 1: Project Config (Project-Scoped)
 
 ```
-{PROJECT_PATH}/.team/
+{PROJECT}/.team/
 ├── SKILL.md              ← Points to framework + project overrides
 ├── project.md            ← Project metadata (paths, team, status)
 ├── ai-context.md         ← Current session focus, recent decisions
@@ -39,7 +39,7 @@
 ### Layer 2: Project Data (Project-Scoped, Read-Only for AI)
 
 ```
-{PROJECT_PATH}/{DOCS_INTERNAL}/
+{PROJECT}/{DOCS_INTERNAL}/
 ├── requirements/{ID}/       ← 需求文档（SPEC.md + AC.md + R1-R5）
 │   ├── F014-unified-pagination/
 │   │   ├── SPEC.md          ← 功能规格
@@ -164,7 +164,7 @@ flow tools beads show <beads-id> --json | jq '[.events[] | select(.event_type ==
 ### Layer 3: Beads Database (Single Source of Truth)
 
 ```
-{PROJECT_PATH}/.beads/
+{PROJECT}/.beads/
 ├── *.db                  ← SQLite/Dolt database
 ├── issues.jsonl          ← Issue export
 └── task-pool-mapping.json ← task ID ↔ beads ID mapping
@@ -179,7 +179,7 @@ flow tools beads show <beads-id> --json | jq '[.events[] | select(.event_type ==
 ### Layer 4: Implementation (AI workspace)
 
 ```
-{PROJECT_PATH}/
+{PROJECT}/
 ├── cmd/                  ← Application code
 ├── internal/
 ├── ent/schema/
@@ -252,10 +252,10 @@ If migrating from team-flow v1:
 mv _team _team_v1_archive  # (legacy command)
 
 # 2. Point project to v2
-echo "Load team-flow rules: {TEAM_PATH}/v2/SKILL.md" > {PROJECT_PATH}/CLAUDE.md
+echo "Load team-flow rules: {TEAM_PATH}/v2/SKILL.md" > {PROJECT}/CLAUDE.md
 
 # 3. Migrate tasks to beads
-{TEAM_PATH}/v2/scripts/migrate-tasks.ps1 -ProjectPath {PROJECT_PATH}
+{TEAM_PATH}/v2/scripts/migrate-tasks.ps1 -ProjectPath {PROJECT}
 
 # 4. Update agent prompts to use flow tools beads CLI
 ```
