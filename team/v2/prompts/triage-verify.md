@@ -287,19 +287,61 @@ flow tools beads update <id> --remove-label lesson:needed --add-label lesson:don
 
 ---
 
-## Sub-Agent Prompt Templates
+## Sub-Agent Prompt Templates (三层交接模型)
 
 > **Loading rule**: 当 Triage 分发子 Agent 时加载此节
 
-### Feature Task (developer-engineer)
+### Three-Layer Handoff Model
 
 ```
-You are Dev, executing task {external-ref}: {task description}
+Layer 1: Triage MUST pass (inject into sub-agent prompt)
+  ├── Task ID + title + description
+  ├── Task type (Feature/Bug/Change)
+  ├── Priority
+  └── Key context (user's original words, error messages, etc.)
 
-Rules file: {TEAM_PATH}/prompts/dev.md
-Shared protocol: {TEAM_PATH}/workflows/shared.md
-beads database: {BEADS_DB}
-Docs directory: {DOCS_INTERNAL}
+Layer 2: Sub-agent MUST read on startup (load immediately)
+  ├── {TEAM_PATH}/workflows/shared.md (core rules)
+  ├── Corresponding role prompt file (e.g., {TEAM_PATH}/prompts/dev.md)
+  └── flow config paths --json (path variables)
+
+Layer 3: Sub-agent reads on demand (load when needed)
+  ├── {TEAM_PATH}/workflows/roles/xxx-standards.md
+  ├── {TEAM_PATH}/templates/xxx-template.md
+  ├── {DOCS_INTERNAL}/reports/... (specific documents)
+  └── {TEAM_PATH}/docs/COMMANDS.md
+```
+
+### Handoff Key Rules (交接铁律)
+
+1. **Triage MUST NOT pass shared.md content in the prompt** — 浪费 token，子 Agent 自行读取 Layer 2
+2. **Triage MUST pass user's original words verbatim** — 不摘要、不转述，保留原始措辞
+3. **Sub-agent MUST read Layer 2 files before starting work** — 启动后第一件事是加载 Layer 2
+4. **Sub-agent MUST NOT read triage.md or triage-clarify.md** — 这是 Triage 的上下文，不是子 Agent 的
+5. **Sub-agent reads Layer 3 files only when the specific task requires it** — 按需加载，不预读
+
+### Feature Task (developer-engineer)
+
+```markdown
+You are Dev, executing task {beads_id}: {external-ref}: {title}
+
+## Task Context (from Triage — Layer 1)
+- Type: feature
+- Priority: {0-4}
+- Description: {user's original words}
+- Key constraints: {extracted from classification}
+
+## Required Reading (Layer 2 — load now)
+1. {TEAM_PATH}/workflows/shared.md
+2. {TEAM_PATH}/prompts/dev.md
+3. Run: flow config paths --json
+
+## On-Demand Reading (Layer 3 — load when needed)
+- Standards: {TEAM_PATH}/workflows/roles/dev-standards.md
+- Templates: {TEAM_PATH}/templates/feature-template.md
+- Commands: {TEAM_PATH}/docs/COMMANDS.md
+- Frontend: {TEAM_PATH}/prompts/dev-frontend.md + {TEAM_PATH}/workflows/roles/frontend-specialized-tests.md + {TEAM_PATH}/templates/frontend-feature-test-template.md
+- Backend: {TEAM_PATH}/prompts/dev-backend.md + {TEAM_PATH}/workflows/roles/specialized-tests.md + {TEAM_PATH}/templates/feature-test-template.md
 
 ## subtype determination (must execute)
 
@@ -307,18 +349,7 @@ Determine subtype based on task description and involved files:
 - Involves web/src/**, *.tsx, *.css, React -> subtype = frontend-dev
 - Involves internal/**, *.go, proto, API -> subtype = backend-dev
 
-## When subtype = frontend-dev, load:
-- Frontend Dev rules: {TEAM_PATH}/prompts/dev-frontend.md
-- Frontend specialized tests: {TEAM_PATH}/workflows/roles/frontend-specialized-tests.md
-- Frontend Feature template: {TEAM_PATH}/templates/frontend-feature-test-template.md
-- Frontend test directory: {PROJECT}/web/tests/README.md
-
-## When subtype = backend-dev, load:
-- Backend Dev rules: {TEAM_PATH}/prompts/dev-backend.md
-- Backend specialized tests: {TEAM_PATH}/workflows/roles/specialized-tests.md
-- Backend Feature template: {TEAM_PATH}/templates/feature-test-template.md
-
-## beads operations (replaces task-pool.md)
+## beads operations
 - View task: flow tools beads show <id>
 - Update progress: flow tools beads update <id> --notes "PROGRESS: ..."
 - Phase transition: flow tools beads update <id> --add-label phase:xxx --remove-label phase:yyy
@@ -328,21 +359,34 @@ Determine subtype based on task description and involved files:
 
 {TOOLCHAIN_GATE}
 
-After completion:
-1. flow tools beads update <id> --add-label phase:review
-2. flow tools beads update <id> --notes "COMPLETED: {deliverable list}"
-3. Report deliverable list
+## Rules
+- After completion: flow tools beads update {beads_id} --notes "COMPLETED: {deliverable list}"
+- Return to Triage with deliverables list
+- ⛔ Do NOT re-read triage.md or triage-clarify.md (Triage already processed)
 ```
 
 ### Bug Task (bugfix-expert)
 
-```
-You are Bugfix, executing task {external-ref}: {task description}
+```markdown
+You are Bugfix, executing task {beads_id}: {external-ref}: {title}
 
-Rules file: {TEAM_PATH}/prompts/bugfix.md
-Shared protocol: {TEAM_PATH}/workflows/shared.md
-beads database: {BEADS_DB}
-Docs directory: {DOCS_INTERNAL}
+## Task Context (from Triage — Layer 1)
+- Type: bug
+- Priority: {0-4}
+- Description: {user's original words}
+- Key constraints: {extracted from classification}
+
+## Required Reading (Layer 2 — load now)
+1. {TEAM_PATH}/workflows/shared.md
+2. {TEAM_PATH}/prompts/bugfix.md
+3. Run: flow config paths --json
+
+## On-Demand Reading (Layer 3 — load when needed)
+- Standards: {TEAM_PATH}/workflows/roles/bugfix-standards.md
+- Templates: {TEAM_PATH}/templates/bug-template.md
+- Commands: {TEAM_PATH}/docs/COMMANDS.md
+- Frontend: {TEAM_PATH}/workflows/roles/frontend-specialized-tests.md + {TEAM_PATH}/templates/frontend-bug-test-template.md
+- Backend: {TEAM_PATH}/workflows/roles/specialized-tests.md + {TEAM_PATH}/templates/bug-test-template.md
 
 ## IMPORTANT — violating any rule = task failure, forbidden to report "complete"
 
@@ -385,14 +429,8 @@ Step 8: flow tools beads update <id> --add-label phase:verify
 - Involves web/src/**, *.tsx -> subtype = frontend-dev
 - Involves internal/**, *.go -> subtype = backend-dev
 
-When subtype = frontend-dev, load:
-- {TEAM_PATH}/workflows/roles/frontend-specialized-tests.md
-- {TEAM_PATH}/templates/frontend-bug-test-template.md
-- {PROJECT}/web/tests/README.md
-
-When subtype = backend-dev, load:
-- {TEAM_PATH}/workflows/roles/specialized-tests.md
-- {TEAM_PATH}/templates/bug-test-template.md
+When subtype = frontend-dev, load Layer 3 frontend files.
+When subtype = backend-dev, load Layer 3 backend files.
 
 ### Gate 6: Full regression (Step 7)
 - Backend: go test ./... must pass
@@ -411,7 +449,7 @@ When subtype = backend-dev, load:
 | 6 | Full regression test passes | Execute test to confirm |
 | 7 | Report directory format B{NNN}/R{N}/ | Check path |
 
-## beads operations (replaces task-pool.md)
+## beads operations
 - View task: flow tools beads show <id>
 - Update progress: flow tools beads update <id> --notes "PROGRESS: ..."
 - Phase transition: flow tools beads update <id> --add-label phase:xxx --remove-label phase:yyy
@@ -421,25 +459,39 @@ When subtype = backend-dev, load:
 
 {TOOLCHAIN_GATE}
 
-After completion (must follow this order):
-1. Verify each item in "completion blockers" table
-2. Any missing -> Report "task failed: missing {specific item}", forbidden to mark complete
-3. All pass -> flow tools beads update <id> --add-label phase:review
-4. flow tools beads update <id> --notes "COMPLETED: RCA + TEST_CASE + fix"
-5. Report deliverable list (must include all file paths)
+## Rules
+- After completion (must follow this order):
+  1. Verify each item in "completion blockers" table
+  2. Any missing -> Report "task failed: missing {specific item}", forbidden to mark complete
+  3. All pass -> flow tools beads update <id> --add-label phase:review
+  4. flow tools beads update {beads_id} --notes "COMPLETED: RCA + TEST_CASE + fix"
+  5. Report deliverable list (must include all file paths)
+- Return to Triage with deliverables list
+- ⛔ Do NOT re-read triage.md or triage-clarify.md (Triage already processed)
 ```
 
 ### General Task (Change/Analysis/Docs/DevOps/UI/PM)
 
-```
-You are {role name}, executing task {external-ref}: {task description}
+```markdown
+You are {role}, executing task {beads_id}: {external-ref}: {title}
 
-Rules file: {TEAM_PATH}/prompts/{role}.md
-Shared protocol: {TEAM_PATH}/workflows/shared.md
-beads database: {BEADS_DB}
-Docs directory: {DOCS_INTERNAL}
+## Task Context (from Triage — Layer 1)
+- Type: {change|analysis|docs|devops|ui|pm}
+- Priority: {0-4}
+- Description: {user's original words}
+- Key constraints: {extracted from classification}
 
-## beads operations (replaces task-pool.md)
+## Required Reading (Layer 2 — load now)
+1. {TEAM_PATH}/workflows/shared.md
+2. {TEAM_PATH}/prompts/{role}.md
+3. Run: flow config paths --json
+
+## On-Demand Reading (Layer 3 — load when needed)
+- Standards: {TEAM_PATH}/workflows/roles/{role}-standards.md
+- Templates: {TEAM_PATH}/templates/{type}-template.md
+- Commands: {TEAM_PATH}/docs/COMMANDS.md
+
+## beads operations
 - View task: flow tools beads show <id>
 - Update progress: flow tools beads update <id> --notes "PROGRESS: ..."
 - Phase transition: flow tools beads update <id> --add-label phase:xxx --remove-label phase:yyy
@@ -449,10 +501,10 @@ Docs directory: {DOCS_INTERNAL}
 
 {TOOLCHAIN_GATE}
 
-After completion:
-1. flow tools beads update <id> --add-label phase:review
-2. flow tools beads update <id> --notes "COMPLETED: {deliverable list}"
-3. Report deliverable list
+## Rules
+- After completion: flow tools beads update {beads_id} --notes "COMPLETED: {deliverable list}"
+- Return to Triage with deliverables list
+- ⛔ Do NOT re-read triage.md or triage-clarify.md (Triage already processed)
 ```
 
 ---

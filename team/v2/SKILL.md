@@ -27,18 +27,30 @@ evolution:
 
 ## Status Line (MANDATORY — Highest Priority)
 
-Every AI response MUST start with: `[Role: {role} | TaskPool: {id|ref|❌unread} | Phase: {phase} | Asset: {project-name}]`
+Every AI response MUST start with: `[Role: {role} | TaskPool: {beads-id}#{cr-index} | Phase: {phase} | Asset: {PROJECT-basename}]`
 
 | Field | Values | Description |
 |-------|--------|-------------|
 | Role | Triage / TechLead / Dev / QA / PM / DevOps / Analysis / UIDesigner | Changes when sub-agent executes, returns to Triage on completion |
-| TaskPool | `abc-123 (INBOX)` or beads ID + ref | Current task ID + source |
+| TaskPool | {beads-id}#{cr-index} (e.g., `team-flow-6x9.15#5`) | Current task + conversation index |
 | Phase | ready / analyze / design / implement / verify / review / -(N/A) | Current phase |
-| Asset | project name or -(N/A) | Current project |
+| Asset | {PROJECT} basename from `flow config paths --json` | Current project |
 
-**⚠️ TRIAGE-INBOX**: Session 启动时，检查/创建 `TRIAGE-INBOX` 作为统一入口。所有输入在 Inbox 中分析，**分析完成后必须拆分**。
+**Asset 说明**:
+- Asset = basename of {PROJECT} from `flow config paths --json`
+- Example: working on team-flow → Asset: team-flow
+- Example: no project context → Asset: -(N/A)
 
-**Phase 与 TaskPool 同步**: Phase 是 `analyze`/`design`/`implement` 等时，TaskPool 必须显示正式 task ID（如 `(F001)`），禁止还显示 `(INBOX)`。
+**TaskPool 说明**:
+- {beads-id}: task ID from `flow task create`
+- {cr-index}: current conversation record index, stored in task's cr-index label
+- ⛔ Every conversation must have a TaskPool value, N/A is forbidden
+- Append conversation: `flow task append {id} --speaker {role} --content "..."` → returns new index
+- When Triage receives input, must immediately create/find task → Status Line shows beads-id#1
+
+**⛔ Task-first**: Session 启动时，Triage 必须先创建/查找任务。每次对话都有 TaskPool 值。
+
+**Phase 与 TaskPool 同步**: Phase 是 `analyze`/`design`/`implement` 等时，TaskPool 必须显示 `{beads-id}#{cr-index}`，禁止显示 N/A。
 
 ## Role Switching
 
@@ -46,7 +58,7 @@ Every AI response MUST start with: `[Role: {role} | TaskPool: {id|ref|❌unread}
 [Triage] 分析 → 分发 → [Sub-agent: TechLead/Dev/QA/...] 执行 → [Triage] 汇总结果
 ```
 
-Example: `[Role: Triage | ...]` → `[Role: Dev | TaskPool: abc-456 (F001) | Phase: implement | Asset: orig-cms]` → `[Role: Triage | ...]`
+Example: `[Role: Triage | TaskPool: team-flow-6x9.15#1 | Phase: analyze | Asset: team-flow]` → `[Role: Dev | TaskPool: team-flow-6x9.15#3 | Phase: implement | Asset: team-flow]` → `[Role: Triage | TaskPool: team-flow-6x9.15#5 | Phase: review | Asset: team-flow]`
 
 ## Overview
 
@@ -88,6 +100,7 @@ flow config paths --json
 | `{DOCS_EXTERNAL}` | External docs (public, open-source documentation) | no |
 | `{BEADS_DB}` | beads database directory | yes |
 | `{TEAM_PATH}` | Skill installation path | yes |
+| `{TMP_DIR}` | AI temporary files directory | no |
 
 **Path anchor rules** (in `.team/config.yaml` or `.team/project.md`):
 
@@ -96,13 +109,20 @@ flow config paths --json
 | `_` | workspace root | `_docs/orig-cms/` | `{WORKSPACE}/_docs/orig-cms/` |
 | other | project root | `docs/` | `{PROJECT}/docs/` |
 | not configured | — | — | path not available |
+| not configured | project root | — | `{PROJECT}/.team/tmp/` (default) |
 
 ⚠️ If `docs_internal` or `docs_external` not in output → not available, AI must not use those paths.
 ⚠️ AI must never self-resolve relative paths. Always use flow-resolved absolute paths.
+⚠️ AI must write temporary files to `{TMP_DIR}` only (default: .team/tmp/)
+⚠️ Never create temp files in project root or workspace root
+⚠️ Clean up {TMP_DIR} when session ends
 
 **Legacy variables** (deprecated, use flow config paths instead):
 - `{DOCS_PATH}` → replaced by `{DOCS_INTERNAL}`
 - `{PROJECT_PATH}` → replaced by `{PROJECT}`
+
+**Current variables** (new, not legacy):
+- `{TMP_DIR}` → AI temporary files directory (default: `{PROJECT}/.team/tmp/`)
 
 ## Human-Readable Export
 
@@ -160,11 +180,11 @@ type {PROJECT}/.team/ai-context.md
 
 1. **Hot start**: Load `{TEAM_PATH}/prompts/triage.md` for classification or execution.
 2. **No redundant checks**: Unless `.team/` is missing or user requests, do not re-run "version check" or "project init" logic.
-3. **Heartbeat**: Role response first line: `[Role: {role} | TaskPool: {status} | Phase: {phase} | Asset: {status}]`
+3. **Heartbeat**: Role response first line: `[Role: {role} | TaskPool: {beads-id}#{cr-index} | Phase: {phase} | Asset: {PROJECT-basename}]`
    - Role: Triage / Dev / QA / `-` (no role loaded)
-   - TaskPool: flow tools beads ready / task-pool / -(N/A)
-   - Phase: `Phase N` / `blocked` / `-(N/A)`
-   - Asset: `ok` / `missing` / `-(N/A)`
+   - TaskPool: {beads-id}#{cr-index} (e.g., team-flow-6x9.15#5)
+   - Phase: ready / analyze / design / implement / verify / review / -(N/A)
+   - Asset: {PROJECT} basename from `flow config paths --json` (e.g., team-flow) or -(N/A)
 4. **No-role guard**: When `Role: -`, only clarification answers allowed, no project modifications.
 
 ### Triage Loading Rules
@@ -172,6 +192,13 @@ type {PROJECT}/.team/ai-context.md
 - Core: `{TEAM_PATH}/prompts/triage.md` (always loaded)
 - Clarify: `{TEAM_PATH}/prompts/triage-clarify.md` (load when classifying requirements)
 - Verify: `{TEAM_PATH}/prompts/triage-verify.md` (load when bug returns, review needed, dispatching sub-agent, or managing session)
+
+### Output Format Rules
+
+When output exceeds 100 lines or covers 3+ independent topics:
+- Use `<details><summary>标题</summary>` for each section
+- Keep a 1-line summary outside the fold
+- Active task status and next steps should NOT be folded
 
 ### Dispatch Guard (same priority as Regression Guard)
 

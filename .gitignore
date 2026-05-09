@@ -34,6 +34,7 @@ tmp/
 
 # AI runtime files (NEVER commit these)
 .team/
+.team/tmp/
 .team-flow/
 .claude/
 .trae/

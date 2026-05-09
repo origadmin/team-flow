@@ -16,6 +16,10 @@ paths:
   docs_internal: _docs/{project-name}/
   # docs_external: docs/
 
+  # AI temporary files directory
+  # Not written = default: {project}/.team/tmp/
+  # tmp_dir: .team/tmp/
+
 tools:
   beads:
     required: true
