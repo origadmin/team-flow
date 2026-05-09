@@ -13,6 +13,7 @@ import (
 	"github.com/origadmin/team-flow/internal/logger"
 	"github.com/origadmin/team-flow/internal/migrate"
 	"github.com/origadmin/team-flow/internal/status"
+	"github.com/origadmin/team-flow/internal/task"
 	"github.com/origadmin/team-flow/internal/toolrunner"
 	"github.com/origadmin/team-flow/internal/tools"
 	"github.com/origadmin/team-flow/internal/ver"
@@ -70,6 +71,7 @@ func main() {
 	}
 
 	rootCmd.AddCommand(tools.Cmd)
+	rootCmd.AddCommand(task.Cmd)
 	rootCmd.AddCommand(boot.Cmd)
 	rootCmd.AddCommand(doctor.Cmd)
 	rootCmd.AddCommand(migrate.Cmd)
@@ -78,9 +80,6 @@ func main() {
 	rootCmd.AddCommand(editor.Cmd)
 	rootCmd.AddCommand(graph.Cmd)
 	rootCmd.AddCommand(ver.Cmd)
-
-	rootCmd.AddCommand(boot.Cmd)
-	rootCmd.AddCommand(doctor.Cmd)
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
