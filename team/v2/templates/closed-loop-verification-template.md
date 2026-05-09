@@ -6,7 +6,7 @@
 
 | 字段 | 内容 |
 |------|------|
-| Issue ID | cms-xxx |
+| Issue ID | `<beads-id>` |
 | Milestone | {M-ID} |
 
 ---
@@ -56,5 +56,5 @@
 ## beads 状态更新
 
 ```bash
-bd update <id> --add-label phase:closed --notes "Closed-loop verification passed"
+flow tools beads update <id> --add-label phase:closed --notes "Closed-loop verification passed"
 ```

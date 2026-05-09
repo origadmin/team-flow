@@ -8,7 +8,7 @@
 
 | 字段 | 内容 |
 |------|------|
-| Issue ID | cms-xxx |
+| Issue ID | `<beads-id>` |
 | Feature ID | F{NNN} |
 
 ---
@@ -55,5 +55,5 @@ Scenario: {场景名称}
 ## beads 状态更新
 
 ```bash
-bd update <id> --notes "User story defined: {story-summary}"
+flow tools beads update <id> --notes "User story defined: {story-summary}"
 ```

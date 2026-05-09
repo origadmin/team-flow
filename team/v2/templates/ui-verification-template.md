@@ -215,5 +215,5 @@ B{NNN}-R{N}-{step_number}-{action}-{state}.png
 ## beads Status Update
 
 ```bash
-bd update <id> --notes "UI_VERIFICATION: B{NNN}-R{N} {PASS/FAIL}. Screenshots: {N}. Bug symptom: {gone/present}"
+flow tools beads update <id> --notes "UI_VERIFICATION: B{NNN}-R{N} {PASS/FAIL}. Screenshots: {N}. Bug symptom: {gone/present}"
 ```

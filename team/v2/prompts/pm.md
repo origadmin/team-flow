@@ -26,8 +26,8 @@ ai:
 ```
 PM 被触发
     │
-    ├── beads issue 存在？→ bd show <id> / bd ready --json → 继续
-    │   └── 不存在？→ ⛔ 拒绝，提示走 Triage (bd create)
+    ├── beads issue 存在？→ flow tools beads show <id> / flow tools beads ready --json → 继续
+    │   └── 不存在？→ ⛔ 拒绝，提示走 Triage (flow tools beads create)
     │
     └── 任务类型为 feature/requirement？→ 继续
         └── 其他？→ ⛔ 移交对应角色
@@ -39,11 +39,11 @@ PM 被触发
 
 | 类型 | task ID (external-ref) | beads ID | 资产目录 |
 |------|----------------------|----------|---------|
-| Feature | F{NNN} | cms-xxx | F{NNN}-{name}/ |
-| Bug | B{NNN} | cms-xxx | B{NNN}-{name}/ |
-| Change | C{NNN} | cms-xxx | C{NNN}-{name}/ |
-| Docs | D{NNN} | cms-xxx | D{NNN}-{name}/ |
-| Analysis | A{NNN} | cms-xxx | A{NNN}-{name}/ |
+| Feature | F{NNN} | `<beads-id>` | F{NNN}-{name}/ |
+| Bug | B{NNN} | `<beads-id>` | B{NNN}-{name}/ |
+| Change | C{NNN} | `<beads-id>` | C{NNN}-{name}/ |
+| Docs | D{NNN} | `<beads-id>` | D{NNN}-{name}/ |
+| Analysis | A{NNN} | `<beads-id>` | A{NNN}-{name}/ |
 
 **资产目录必须带 R 后缀**：`F001-R1/`, `B001-R1/`
 - R1 = 第一轮迭代/修复
@@ -69,16 +69,16 @@ PM 被触发
 
 ```bash
 # 认领任务
-bd update <id> --claim
+flow tools beads update <id> --claim
 
 # 进入设计阶段
-bd update <id> --add-label phase:design --remove-label phase:ready
+flow tools beads update <id> --add-label phase:design --remove-label phase:ready
 
 # 记录进度
-bd update <id> --notes "COMPLETED: R1-R4 defined. IN PROGRESS: AC review"
+flow tools beads update <id> --notes "COMPLETED: R1-R4 defined. IN PROGRESS: AC review"
 
 # 设置文档路径
-bd update <id> --set-metadata doc_path="{DOCS_INTERNAL}/requirements/F{NNN}-{name}/"
+flow tools beads update <id> --set-metadata doc_path="{DOCS_INTERNAL}/requirements/F{NNN}-{name}/"
 ```
 
 ---
@@ -89,7 +89,7 @@ bd update <id> --set-metadata doc_path="{DOCS_INTERNAL}/requirements/F{NNN}-{nam
 PM 完成检查:
 - [ ] R1-R4 四要素全部定义
 - [ ] 验收标准为 Given/When/Then 格式
-- [ ] beads issue 已更新 (bd update --notes "requirements defined")
+- [ ] beads issue 已更新 (flow tools beads update --notes "requirements defined")
 - [ ] beads 建议后续角色已设置 (assignee → tech-lead)
 - [ ] 无模糊需求（无 AC 不得开工）
 ```
@@ -166,7 +166,7 @@ PM 主导，Tech Lead 和各 Dev 参与：
 
 | 输入项 | 来源 | 必填 |
 |--------|------|------|
-| beads issue | `bd show <id>` / `bd ready --json` | ✅ |
+| beads issue | `flow tools beads show <id>` / `flow tools beads ready --json` | ✅ |
 | `SPEC.md` | `{DOCS_INTERNAL}/features/{task-id}/` | ✅ |
 | 测试报告 | `{DOCS_INTERNAL}/reports/` | ✅ |
 

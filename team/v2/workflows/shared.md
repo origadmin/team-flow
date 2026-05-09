@@ -30,14 +30,14 @@ Before any state transition, verify prerequisites:
 
 | From | To | Gate |
 |------|----|----|
-| open | in_progress | Check no blockers: `bd ready <id>` |
+| open | in_progress | Check no blockers: `flow tools beads ready <id>` |
 | in_progress | closed | Verify tests pass, notes complete |
 | open | blocked | Document blocking issue in notes |
 | blocked | open | Confirm blocker resolved |
 
 ```bash
 # Gate check before starting work
-bd ready <id> && bd update <id> --claim
+flow tools beads ready <id> && flow tools beads update <id> --claim
 ```
 
 ### L0.3 Session Protocol
@@ -46,29 +46,29 @@ bd ready <id> && bd update <id> --claim
 
 ```bash
 # 1. Check beads status
-bd stats
+flow tools beads stats
 
 # 2. Pull latest changes (multi-agent)
-bd dolt pull
+flow tools beads dolt pull
 
 # 3. Check your assigned issues
-bd list --assignee $USER --status in_progress
+flow tools beads list --assignee $USER --status in_progress
 
 # 4. Check ready issues
-bd ready --json
+flow tools beads ready --json
 ```
 
 #### During Session
 
 ```bash
 # Before starting work
-bd update <id> --claim
+flow tools beads update <id> --claim
 
 # Regular progress updates
-bd update <id> --notes "COMPLETED: X IN PROGRESS: Y"
+flow tools beads update <id> --notes "COMPLETED: X IN PROGRESS: Y"
 
 # After completion
-bd close <id> --reason "Fixed: [details]"
+flow tools beads close <id> --reason "Fixed: [details]"
 ```
 
 #### End of Session
@@ -78,37 +78,37 @@ bd close <id> --reason "Fixed: [details]"
 flow export > .team/task-pool-export.md
 
 # 2. Commit changes
-bd dolt commit -m "Session: $(date +%Y%m%d_%H%M)"
+flow tools beads dolt commit -m "Session: $(date +%Y%m%d_%H%M)"
 
 # 3. Push to remote
-bd dolt push
+flow tools beads dolt push
 ```
 
 ### L0.4 beads Status Management Commands
 
 ```bash
 # Create a new task
-bd create --title "F014: Unified Pagination" --label type:feature
+flow tools beads create --title "F014: Unified Pagination" --label type:feature
 
 # List tasks by status
-bd list --status open --format table
+flow tools beads list --status open --format table
 
 # View task details
-bd show <id>
+flow tools beads show <id>
 
 # Update task status
-bd update <id> --status in_progress
-bd update <id> --status closed
+flow tools beads update <id> --status in_progress
+flow tools beads update <id> --status closed
 
 # Add labels (phase tracking)
-bd update <id> --add-label phase:implement
-bd update <id> --remove-label phase:design
+flow tools beads update <id> --add-label phase:implement
+flow tools beads update <id> --remove-label phase:design
 
 # Claim a task (atomic, prevents duplicate claims)
-bd update <id> --claim
+flow tools beads update <id> --claim
 
 # Link dependencies
-bd dep add <id> <blocker-id> --type blocks
+flow tools beads dep add <id> <blocker-id> --type blocks
 
 # Export for human review
 flow export > .team/task-pool-export.md
@@ -134,8 +134,8 @@ flow export > .team/task-pool-export.md
 **豁免场景**:
 | 场景 | 处理方式 |
 |------|---------|
-| 首次启动，beads 未初始化 | `bd init` 后进入正常流程 |
-| 用户询问任务状态/产出物 | `bd show <id>` 或 `flow export`，回答问题 |
+| 首次启动，beads 未初始化 | `flow tools beads init` 后进入正常流程 |
+| 用户询问任务状态/产出物 | `flow tools beads show <id>` 或 `flow export`，回答问题 |
 | 用户确认产出物 | 读取产出物，提供确认选项 |
 
 ---
@@ -149,23 +149,23 @@ flow export > .team/task-pool-export.md
 ```
 Phase 0: 任务创建（Triage）
   产出物: beads task (type:feature)
-  命令: bd create --title "F{NNN}: {name}" --label type:feature
+  命令: flow tools beads create --title "F{NNN}: {name}" --label type:feature
 
 Phase 1: 需求分析 + 技术设计（Tech Lead）
   前置: beads task exists
   产出物: SPEC.md + AC.md + R1/R2/R3
   文档同步: 创建/更新 {DOCS_INTERNAL}/PROJECT.md
-  命令: bd update <id> --add-label phase:design
+  命令: flow tools beads update <id> --add-label phase:design
 
 Phase 2: 实现（Dev）
   前置: SPEC.md + AC.md + R1/R2/R3
   产出物: 代码 + 单元测试 + SCOPE.md
-  命令: bd update <id> --add-label phase:implement --claim
+  命令: flow tools beads update <id> --add-label phase:implement --claim
 
 Phase 3: 验证（QA）
   前置: 代码 + 单元测试
   产出物: 测试报告
-  命令: bd update <id> --add-label phase:verify
+  命令: flow tools beads update <id> --add-label phase:verify
   → 任务状态 → Review（功能块就绪）
 ```
 
@@ -176,21 +176,21 @@ Phase 3: 验证（QA）
 ```
 Phase 0: Bug 接收（Triage）
   产出物: beads task (type:bug)
-  命令: bd create --title "B{NNN}: {name}" --label type:bug
+  命令: flow tools beads create --title "B{NNN}: {name}" --label type:bug
 
 Phase 1: 根因分析（Dev）
   产出物: RCA.md
-  命令: bd update <id> --add-label phase:analyze --claim
+  命令: flow tools beads update <id> --add-label phase:analyze --claim
 
 Phase 2: 修复实现（Dev）
   前置: RCA.md
   产出物: 代码修复 + TEST_CASE.md + SCOPE.md
-  命令: bd update <id> --add-label phase:implement
+  命令: flow tools beads update <id> --add-label phase:implement
 
 Phase 3: 验证（QA）
   前置: 代码修复 + TEST_CASE.md
   产出物: 测试报告
-  命令: bd update <id> --add-label phase:verify
+  命令: flow tools beads update <id> --add-label phase:verify
   → 任务状态 → Review
 ```
 
@@ -202,7 +202,7 @@ Phase 3: 验证（QA）
 R-Phase 0: 就绪检查（Triage）
   条件: Milestone 下所有任务 → Review 或 Archived
   不满足 → 列出未完成任务，拒绝进入发布
-  命令: bd list --label milestone:{id} --status open
+  命令: flow tools beads list --label milestone:{id} --status open
 
 R-Phase 1: 集成验证（QA + DevOps）
   产出物: 闭环验证报告
@@ -244,7 +244,7 @@ R-Phase 3: 上线部署（DevOps）
 - [ ] 前后端参数命名对照: 前端请求参数名 vs 后端期望参数名 100% 匹配
 - [ ] 前后端响应结构对照: 前端TypeScript类型 vs 后端Proto/JSON响应 100% 匹配
 - [ ] Handler注册完整性: Proto定义的所有API均有对应Handler注册
-- [ ] beads task 状态已更新 (bd update <id> --status closed)
+- [ ] beads task 状态已更新 (flow tools beads update <id> --status closed)
 - [ ] {DOCS_INTERNAL}/PROJECT.md 已同步（如有范围变更）
 - [ ] 用户确认前不得归档
 ```
@@ -293,7 +293,7 @@ R-Phase 3: 上线部署（DevOps）
 - [ ] 修复后的完整链路已验证（非仅断点环节）
 
 流程检查:
-- [ ] beads task 状态已更新 (bd update <id> --status closed)
+- [ ] beads task 状态已更新 (flow tools beads update <id> --status closed)
 - [ ] {DOCS_INTERNAL}/PROJECT.md 已同步（如有影响模块变更）
 - [ ] 用户确认前不得归档
 ```
@@ -538,9 +538,9 @@ B019-R1/ (Phase 1: RCA → Phase 2: Fix → Phase 3: Verify)
 
 ```bash
 # R iteration tracking in beads
-bd update B019 --add-label "iteration:R2" --remove-label "iteration:R1"
-bd update B019 --set-metadata doc_path="{DOCS_INTERNAL}/reports/bugs/B019-R2/"
-bd update B019 --add-label phase:analyze --remove-label phase:verify
+flow tools beads update B019 --add-label "iteration:R2" --remove-label "iteration:R1"
+flow tools beads update B019 --set-metadata doc_path="{DOCS_INTERNAL}/reports/bugs/B019-R2/"
+flow tools beads update B019 --add-label phase:analyze --remove-label phase:verify
 ```
 
 ---
@@ -577,8 +577,8 @@ framework/
     ├── backlog.md    ← Deferred tasks
     └── issues.md     ← Issue tracking
 
-  .beads/             ← beads database (managed by bd CLI)
-    └── ...           ← DO NOT edit directly, use bd commands
+  .beads/             ← beads database (managed by flow tools beads CLI)
+    └── ...           ← DO NOT edit directly, use flow tools beads commands
 
 {DOCS_INTERNAL}/      ← Project docs (AI writes here)
   ├── PROJECT.md      ← Project overview
@@ -656,13 +656,13 @@ doc_path:      B001-R2/             （指向当前最新的 R 迭代目录）
 open → in_progress → closed (Review) → (用户确认) → Archived
 ```
 
-- **open**: Triage 创建 (`bd create`)
-- **in_progress**: 执行角色认领 (`bd update <id> --claim`)
+- **open**: Triage 创建 (`flow tools beads create`)
+- **in_progress**: 执行角色认领 (`flow tools beads update <id> --claim`)
 - **closed (Review)**: 产出物完成，等待用户确认
 - **Archived**: Triage 执行归档
 
 **规则**：
-- 状态流转必须在 beads 中记录 (`bd update <id> --status <status>`)
+- 状态流转必须在 beads 中记录 (`flow tools beads update <id> --status <status>`)
 - closed (Review) 状态必须等待用户确认
 - 未通过完成门禁 → 禁止更新为 closed
 - 归档必须由 Triage 执行
@@ -701,7 +701,7 @@ When handing off to another role:
 
 ```bash
 # Update task with handoff notes
-bd update <id> \
+flow tools beads update <id> \
   --notes "## Handoff → <target-role>
 
 Summary: [details]
@@ -711,7 +711,7 @@ Next: [actions]" \
   --add-label phase:<next-phase>
 
 # Example: Dev → QA
-bd update cms-xxx \
+flow tools beads update <beads-id> \
   --notes "## Handoff → qa
 
 Summary: Implemented X feature
@@ -728,16 +728,16 @@ Receiving role must validate:
 
 ```bash
 # 1. Check task state
-bd show <id>
+flow tools beads show <id>
 
 # 2. Verify deliverables exist
 ls -la <artifact-path>
 
 # 3. Verify no blockers
-bd ready <id>
+flow tools beads ready <id>
 
 # 4. Acknowledge handoff
-bd update <id> --notes "Handoff acknowledged. Starting work."
+flow tools beads update <id> --notes "Handoff acknowledged. Starting work."
 ```
 
 ---
@@ -750,13 +750,13 @@ For multi-agent environments, use Dolt's git-native collaboration:
 
 ```bash
 # Enable auto-commit for immediate sync
-bd config set dolt.auto-commit on
+flow tools beads config set dolt.auto-commit on
 
 # Or use batch mode for performance
-bd config set dolt.auto-commit batch
+flow tools beads config set dolt.auto-commit batch
 # Remember to commit manually:
-bd dolt commit -m "Batch update"
-bd dolt push
+flow tools beads dolt commit -m "Batch update"
+flow tools beads dolt push
 ```
 
 ### Conflict Resolution
@@ -765,15 +765,15 @@ Dolt handles merge conflicts automatically for most operations. If conflict occu
 
 ```bash
 # Check Dolt status
-bd dolt status
+flow tools beads dolt status
 
 # View conflicts
-bd dolt conflicts cat <table>
+flow tools beads dolt conflicts cat <table>
 
 # Resolve using theirs (or ours)
-bd dolt checkout --theirs <table>
-bd dolt add <table>
-bd dolt commit -m "Resolve conflict"
+flow tools beads dolt checkout --theirs <table>
+flow tools beads dolt add <table>
+flow tools beads dolt commit -m "Resolve conflict"
 ```
 
 ### Session Isolation
@@ -785,10 +785,10 @@ Each agent session should:
 
 ```bash
 # Atomic claim
-bd update <id> --claim  # Fails if already claimed by another
+flow tools beads update <id> --claim  # Fails if already claimed by another
 
 # Frequent sync
-bd dolt pull
+flow tools beads dolt pull
 ```
 
 ---
@@ -922,7 +922,7 @@ flow export --test-results > {DOCS_INTERNAL}/test/{TASK_ID}-test-report.md
 - Skip Dolt pull/push in multi-agent setups
 - Leave tasks in `phase:ready` unassigned
 - Close tasks without recording outcome
-- Create duplicate tasks (check first with `bd list`)
+- Create duplicate tasks (check first with `flow tools beads list`)
 - Dump deliverable content (root cause analysis, design decisions, test results) into beads notes — **write to independent deliverable files**
 - Add "Task Details" / "Deliverable Tracking" sections to task-pool-export.md
 - Modify `{TEAM_PATH}/` rules to solve project-specific problems — use `.team/project.md §CONSTRAINTS` and `{DOCS_INTERNAL}/lessons/`
@@ -937,17 +937,17 @@ flow export --test-results > {DOCS_INTERNAL}/test/{TASK_ID}-test-report.md
 - 为同一 Bug 的不同修复尝试分配新 B-ID（用 R 后缀）
 - 写入 `framework/{TEAM_PATH}/`（只读层）
 - 写入 `{PROJECT_PATH}/_docs/`（正确路径：`framework/_docs/{project}/`）
-- Edit task-pool-export.md to change task state (use `bd` commands)
+- Edit task-pool-export.md to change task state (use `flow tools beads` commands)
 - Assume file state matches beads state (always query beads)
 
 ### Deliverable Write Separation (v1 Lesson)
 
-> **v1 教训**: AI 把所有任务详情写入 task-pool.md 而非独立成果物文件，导致 75 行状态表膨胀到 1822 行。v2 中 `bd update --notes` 是同样的风险点。
+> **v1 教训**: AI 把所有任务详情写入 task-pool.md 而非独立成果物文件，导致 75 行状态表膨胀到 1822 行。v2 中 `flow tools beads update --notes` 是同样的风险点。
 
 **beads notes 用途**: 只记录进度摘要和交接信息
 ```
-✅ bd update <id> --notes "COMPLETED: RCA.md written, fix applied, tests passing"
-❌ bd update <id> --notes "Root cause: handler.go wraps response with {code,message,data}..."
+✅ flow tools beads update <id> --notes "COMPLETED: RCA.md written, fix applied, tests passing"
+❌ flow tools beads update <id> --notes "Root cause: handler.go wraps response with {code,message,data}..."
 ```
 
 **成果物写入规则**:

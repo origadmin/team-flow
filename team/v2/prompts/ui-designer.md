@@ -35,8 +35,8 @@ ai:
 ```
 UI Designer 被触发
     │
-    ├── beads issue 存在？→ bd show <id> / bd ready --json → 继续
-    │   └── 不存在？→ ⛔ 拒绝，提示走 Triage (bd create)
+    ├── beads issue 存在？→ flow tools beads show <id> / flow tools beads ready --json → 继续
+    │   └── 不存在？→ ⛔ 拒绝，提示走 Triage (flow tools beads create)
     │
     └── 任务类型为 feature/ui-design？→ 继续
 ```
@@ -57,16 +57,16 @@ UI Designer 被触发
 
 ```bash
 # 认领任务
-bd update <id> --claim
+flow tools beads update <id> --claim
 
 # 进入设计阶段
-bd update <id> --add-label phase:design --remove-label phase:ready
+flow tools beads update <id> --add-label phase:design --remove-label phase:ready
 
 # 记录进度
-bd update <id> --notes "COMPLETED: wireframes. IN PROGRESS: component mapping"
+flow tools beads update <id> --notes "COMPLETED: wireframes. IN PROGRESS: component mapping"
 
 # 设计完成，移交前端
-bd update <id> --add-label phase:implement --remove-label phase:design --assignee "frontend-dev"
+flow tools beads update <id> --add-label phase:implement --remove-label phase:design --assignee "frontend-dev"
 ```
 
 ---
@@ -90,7 +90,7 @@ bd update <id> --add-label phase:implement --remove-label phase:design --assigne
 - [ ] DESIGN.md 已创建
 - [ ] SNAPSHOT.html 已创建
 - [ ] 组件引用来自 ui-standards.md
-- [ ] beads issue 已更新 (bd update --notes "design complete", 建议后续角色 → Dev Frontend)
+- [ ] beads issue 已更新 (flow tools beads update --notes "design complete", 建议后续角色 → Dev Frontend)
 ```
 
 ---
@@ -117,7 +117,7 @@ bd update <id> --add-label phase:implement --remove-label phase:design --assigne
 
 | 输入项 | 来源 | 必填 |
 |--------|------|------|
-| beads issue | `bd show <id>` / `bd ready --json` | ✅ |
+| beads issue | `flow tools beads show <id>` / `flow tools beads ready --json` | ✅ |
 | 需求描述 | 用户原始请求 / SPEC.md | ✅ |
 
 ---

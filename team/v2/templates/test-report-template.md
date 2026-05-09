@@ -6,7 +6,7 @@
 
 | 字段 | 内容 |
 |------|------|
-| Issue ID | cms-xxx |
+| Issue ID | `<beads-id>` |
 | 报告日期 | {YYYY-MM-DD} |
 
 ---
@@ -36,7 +36,7 @@
 
 | 用例 ID | 用例名称 | 优先级 | 结果 | Bug ID |
 |---------|----------|--------|------|--------|
-| TC-001 | {名称} | P0 | Pass/Fail | cms-xxx |
+| TC-001 | {名称} | P0 | Pass/Fail | `<beads-id>` |
 
 ---
 
@@ -58,5 +58,5 @@
 ### beads 状态更新
 
 ```bash
-bd update <id> --add-label phase:review --notes "Test report: {path}"
+flow tools beads update <id> --add-label phase:review --notes "Test report: {path}"
 ```

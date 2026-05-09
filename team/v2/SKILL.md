@@ -13,45 +13,87 @@ Every AI response MUST start with a status line. This is the FIRST thing output,
 
 | Field | Values | Description |
 |-------|--------|-------------|
-| Role | Triage / TechLead / Dev / QA / PM / DevOps / Analysis / UIDesigner | Current active role |
-| TaskPool | `TRIAGE-INBOX` 或 beads ID (e.g., `cms-abc`) 或 task ID (e.g., `F014`) | Current task ID |
+| Role | Triage / TechLead / Dev / QA / PM / DevOps / Analysis / UIDesigner | **Role Switching**: Triage dispatches sub-agent → Role changes to sub-agent's role (e.g., `Role: Dev`). Sub-agent completes → Role returns to Triage for result summary. |
+| TaskPool | `abc-123 (INBOX)` 或 beads ID + ref (e.g., `abc-456 (F001)`) | Current task ID + source |
 | Phase | ready / analyze / design / implement / verify / review / -(N/A) | Current phase of the task |
 | Asset | project name (e.g., `orig-cms`) or -(N/A) | Current project |
 
 **Example**:
 ```
-[Role: Triage | TaskPool: TRIAGE-INBOX | Phase: -(N/A) | Asset: team-flow]
+[Role: Triage | TaskPool: abc-123 (INBOX) | Phase: -(N/A) | Asset: team-flow]
 → Session started, inbox active. All inputs go through TRIAGE-INBOX.
 
-[Role: Triage | TaskPool: F001 | Phase: ready | Asset: orig-cms]
+[Role: Triage | TaskPool: abc-456 (F001) | Phase: ready | Asset: orig-cms]
 → Task split from inbox, awaiting classification confirmation.
 
-[Role: Dev | TaskPool: F001 | Phase: implement | Asset: orig-cms]
+[Role: Dev | TaskPool: abc-789 (F001) | Phase: implement | Asset: orig-cms]
 → Working on F001
 ```
 
-**⛔ TRIAGE-INBOX**: Session 启动时，检查/创建 `TRIAGE-INBOX` 作为统一入口。所有输入在 Inbox 中分析，可分类时拆分为独立 Task。详见 `prompts/triage.md`。
+**⛔ TRIAGE-INBOX**: Session 启动时，检查/创建 `TRIAGE-INBOX` 作为统一入口。所有输入在 Inbox 中分析，**分析完成后必须拆分**。
+
+**Phase 与 TaskPool 同步规则**：
+
+| 当前 Phase | TaskPool 来源 | 说明 |
+|-----------|--------------|------|
+| `-(N/A)` 或 `triaging` | `(INBOX)` | Triage 在分析 |
+| `ready` 及以后 | `(F001)` / `(B001)` 等 | 已拆分到正式 task |
+
+**禁止**: Phase 是 `analyze`/`design`/`implement` 等时，TaskPool 还显示 `(INBOX)`。详见 `prompts/triage.md`。
+
+## Role Switching (角色切换)
+
+**Role 随子 Agent 执行而变化**：
+
+```
+[Triage] 分析 → 分发
+    ↓
+启动子 Agent → [Role: Tech Lead] / [Role: Dev] / [Role: Bugfix] / [Role: QA]
+    ↓
+子 Agent 执行 → Status Line 实时反映当前角色
+    ↓
+子 Agent 完成 → [Role: Triage] 汇总结果
+```
+
+**角色切换示例**：
+
+```
+1. [Role: Triage | TaskPool: abc-456 (F001) | Phase: ready | Asset: orig-cms]
+   → 分析完成，分发到 Tech Lead
+
+2. [Role: TechLead | TaskPool: abc-456 (F001) | Phase: design | Asset: orig-cms]
+   → Tech Lead 开始设计
+
+3. [Role: Dev | TaskPool: abc-456 (F001) | Phase: implement | Asset: orig-cms]
+   → Dev 开始开发
+
+4. [Role: QA | TaskPool: abc-456 (F001) | Phase: verify | Asset: orig-cms]
+   → QA 开始验证
+
+5. [Role: Triage | TaskPool: abc-456 (F001) | Phase: review | Asset: orig-cms]
+   → QA 完成，回到 Triage 汇报
+```
 
 ## Overview
 
-team-flow v2 is the beads-native evolution of team-flow. `bd` CLI is installed and verified during `flow init`. Triage uses `bd` exclusively for all task creation, tracking, and status updates. The `task-pool-export.md` file is a human-readable export (read-only).
+team-flow v2 is the beads-native evolution of team-flow. `flow tools beads` CLI is installed and verified during `flow init`. Triage uses flow tools beads exclusively for all task creation, tracking, and status updates. The `task-pool-export.md` file is a human-readable export (read-only).
 
 ## Beads Availability (v2)
 
-`bd` CLI is always available after `flow init` (which installs, verifies, and adds to PATH). If `bd` is not found on PATH:
+flow tools beads CLI is always available after `flow init` (which installs, verifies, and adds to PATH). If flow tools beads not found on PATH:
 
 ```bash
-# Verify bd installation
+# Verify flow tools beads installation
 flow doctor
 
-# If bd found but not on PATH, re-run init to fix PATH
+# If flow tools beads found but not on PATH, re-run init to fix PATH
 flow init --force
 
-# Or manually discover bd path
-where.exe bd 2>$null; Get-ChildItem "$env:LOCALAPPDATA\Programs\bd\bd.exe" -ErrorAction SilentlyContinue
+# Or manually discover flow tools beads path
+where.exe flow tools beads 2>$null; Get-ChildItem "$env:LOCALAPPDATA\Programs\flow\flow.exe" -ErrorAction SilentlyContinue
 ```
 
-**bd is ALWAYS installed** — `flow init` guarantees it. If shell can't find `bd`, use the full path reported by `flow doctor`.
+**flow tools beads is ALWAYS installed** — `flow init` guarantees it. If shell can't find flow tools beads, use the full path reported by flow doctor.
 
 ## Path Variables
 
@@ -74,9 +116,11 @@ docs_path: _docs/{project-name}/    # User-configurable
 ```
 
 **Export rules**:
-1. Triage exports task status to `{DOCS_PATH}/task-pool.md` after every status change
-2. CLI command: `flow export` — manual export anytime
-3. If `docs_path` not configured: fallback to `.team/docs/`
+1. Triage updates task status via flow tools beads update (source of truth: beads `.beads/`)
+2. Export to human-readable: flow tools beads list --status open --format table > {DOCS_PATH}/task-pool-export.md`
+3. CLI command: `flow export` — manual export anytime
+4. task-pool-export.md is **read-only** — never edit it to change task state
+5. If `docs_path` not configured: fallback to `.team/docs/`
 
 **Resolution order**:
 ```
@@ -89,10 +133,10 @@ docs_path: _docs/{project-name}/    # User-configurable
 
 ```bash
 # 1. Check beads status
-cd {PROJECT_PATH} && bd ready --json
+cd {PROJECT_PATH} && flow tools beads ready --json
 
 # 2. Read task pool
-cd {PROJECT_PATH} && bd list --status open --priority 0,1 --json | ConvertTo-Json -Depth 5
+cd {PROJECT_PATH} && flow tools beads list --status open --priority 0,1 --json | ConvertTo-Json -Depth 5
 
 # 3. Read latest AI guidance
 type {PROJECT_PATH}/.team/ai-context.md
@@ -102,13 +146,13 @@ type {PROJECT_PATH}/.team/ai-context.md
 
 | Aspect | v1 | v2 |
 |--------|----|----|
-| Triage writes | task-pool.md (manual) | `bd create/update` (beads) |
+| Triage writes | task-pool.md (manual) | flow tools beads create/update (beads) |
 | Task source of truth | task-pool.md | beads `.beads/` |
 | task-pool.md | Active + writable | Read-only export |
-| ID format | F/B/C/A-NNN | cms-xxx (beads auto) |
-| Status tracking | task-pool.md columns | `bd status` |
+| ID format | F/B/C/A-NNN | `<beads-id>` (beads auto) |
+| Status tracking | task-pool.md columns | flow tools beads status |
 | Multi-agent sync | task-pool.md git conflicts | Dolt git-native |
-| Export | N/A | `bd export --format table` |
+| Export | N/A | flow tools beads export --format table |
 
 ## Directory Structure
 
@@ -184,7 +228,7 @@ type {PROJECT_PATH}/.team/ai-context.md
 2. **No redundant checks**: Unless `.team/` is missing or user requests, do not re-run "version check" or "project init" logic.
 3. **Heartbeat**: Role response first line: `[Role: {role} | TaskPool: {status} | Phase: {phase} | Asset: {status}]`
    - Role: Triage / Dev / QA / `-` (no role loaded)
-   - TaskPool: `bd ready` / `task-pool` / `-(N/A)`
+   - TaskPool: flow tools beads ready / task-pool / -(N/A)
    - Phase: `Phase N` / `blocked` / `-(N/A)`
    - Asset: `ok` / `missing` / `-(N/A)`
 4. **No-role guard**: When `Role: -`, only clarification answers allowed, no project modifications.
@@ -290,26 +334,26 @@ Development flow:
 ### v2 Task Lifecycle
 
 ```
-bd create "Title" -t bug|feature|task -p 0-4 --json
+flow tools beads create "Title" -t bug|feature|task -p 0-4 --json
     ↓
-bd update <id> --claim   (status → in_progress)
+flow tools beads update <id> --claim   (status → in_progress)
     ↓
-bd update <id> --notes "COMPLETED: ... IN PROGRESS: ..."
+flow tools beads update <id> --notes "COMPLETED: ... IN PROGRESS: ..."
     ↓
-bd close <id> --reason "Done" --json
+flow tools beads close <id> --reason "Done" --json
 ```
 
 ### ID Mapping
 
 - task ID (F001, B061, etc.) lives in the `external-ref` field of the beads issue
-- Use `bd list --json | ConvertFrom-Json | Where-Object { $_.externalRef -match 'F001' }` to find by task ID
-- Export: `bd list --json` includes `externalRef` for cross-reference
+- Use flow tools beads list --json | ConvertFrom-Json | Where-Object { $_.externalRef -match 'F001' } to find by task ID
+- Export: flow tools beads list --json includes externalRef for cross-reference
 
 ### DO NOT
 
 - ❌ Edit task-pool.md manually during task operations
 - ❌ Create tasks in task-pool.md that aren't also in beads
-- ❌ Skip `bd dolt push` after significant status changes
+- ❌ Skip flow tools beads dolt push after significant status changes
 - ❌ Write to `{TEAM_PATH}/v1/` (framework-original, read-only reference)
 - ❌ Dump deliverable content into beads notes — write to independent files (RCA.md, SPEC.md, etc.)
 - ❌ Modify `{TEAM_PATH}/` rules to solve project-specific problems — use `.team/project.md §CONSTRAINTS` and `_docs/.../lessons/` instead
@@ -335,8 +379,8 @@ _docs/.../lessons/ = 项目经验教训（Dev/Bugfix 读取）
 ```
 Role triggered
     │
-    ├── Issue exists in beads? → bd ready --json → continue
-    │   └── Not found? → ⛔ Reject, suggest Triage create via bd create
+    ├── Issue exists in beads? → flow tools beads ready --json → continue
+    │   └── Not found? → ⛔ Reject, suggest Triage create via flow tools beads create
     │
     ├── Issue type matches role? → continue
     │   └── Mismatch? → ⛔ Hand off to correct role
@@ -357,7 +401,7 @@ Phase transition
     │   └── Failing? → ⛔ Fix before proceeding
     │
     └── beads issue updated? → continue
-        └── Not updated? → ⛔ bd update before proceeding
+        └── Not updated? → ⛔ flow tools beads update before proceeding
 ```
 
 ### Layer 3: Completion Gate (Before Closing)
@@ -374,8 +418,8 @@ Task complete
     ├── No regressions? → continue
     │   └── Regressions found? → ⛔ Fix or document known issues
     │
-    └── beads issue closable? → bd close
-        └── Not ready? → bd update --notes with remaining items
+    └── beads issue closable? → flow tools beads close
+        └── Not ready? → flow tools beads update --notes with remaining items
 ```
 
 ### Feature Completion Checklist (19 items)
@@ -502,14 +546,15 @@ You are {role_name}, executing task {task_id}: {task_description}
 
 Rules: {TEAM_PATH}/prompts/{role}.md
 Shared protocol: {TEAM_PATH}/workflows/shared.md
-Task tracking: bd CLI (v2) or task-pool.md (v1)
+Task tracking: flow tools beads CLI (v2 only)
 Docs: {DOCS_INTERNAL}
 
+⛔ v2 禁止手动编辑 task-pool.md，所有状态更新通过 flow tools beads CLI
+
 After completion:
-1. bd update <id> --notes "COMPLETED: ... IN PROGRESS: ..." (v2)
-   or update task-pool.md status (v1)
-2. Set suggested next role
-3. Report deliverables list
+1. flow tools beads update <id> --notes "COMPLETED: ..." --add-label phase:review
+2. Report deliverables list
+3. Return to Triage
 ```
 
 ## Core Protocol

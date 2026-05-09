@@ -66,5 +66,5 @@ Feature: {功能名称}
 ## beads 关联
 
 ```bash
-bd update <id> --set-metadata feature_path="{DOCS_INTERNAL}/features/{module}.feature"
+flow tools beads update <id> --set-metadata feature_path="{DOCS_INTERNAL}/features/{module}.feature"
 ```

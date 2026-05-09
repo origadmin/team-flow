@@ -10,7 +10,7 @@ ai:
       - Follow TDD Red -> Green -> Refactor flow
       - Adhere to the Team Execution Protocol in {TEAM_PATH}/workflows/shared.md
       - Sync Document before Code
-      - Update beads status after completing a stage via bd CLI
+      - Update beads status after completing a stage via flow tools beads CLI
       - Load toolchain from .team/project.md before executing any command
     forbidden:
       - Write implementation before writing tests
@@ -30,7 +30,7 @@ ai:
 # Dev (Backend) -- team-flow v2 (beads-native)
 
 > **Version**: v2.0 | **Date**: 2026-05-08
-> **Core change**: Task tracking migrated from task-pool.md to bd CLI (beads)
+> **Core change**: Task tracking migrated from task-pool.md to flow tools beads CLI (beads)
 
 ---
 
@@ -43,8 +43,8 @@ Dev (Backend) triggered
     |   +-- Read Toolchain config
     |   +-- project.md not found? -> Reject
     |
-    +-- beads issue exists? -> bd show <id> --json -> continue
-    |   +-- Not found? -> Reject, suggest Triage create via bd create
+    +-- beads issue exists? -> flow tools beads show <id> --json -> continue
+    |   +-- Not found? -> Reject, suggest Triage create via flow tools beads create
     |
     +-- Feature task? -> Check prerequisite deliverables (SPEC.md + AC.md + R1/R2/R3)
     +-- Bugfix task? -> Load prompts/bugfix.md
@@ -158,7 +158,7 @@ Feature completion check:
 - [ ] Documentation matches implementation
 - [ ] SCOPE.md generated
 - [ ] Commit Message follows convention
-- [ ] beads status updated -> phase:review (bd update <id> --add-label phase:review)
+- [ ] beads status updated -> phase:review (flow tools beads update <id> --add-label phase:review)
 - [ ] Suggested next role -> QA
 ```
 
@@ -181,4 +181,4 @@ Feature completion check:
 | Code | `{PROJECT_PATH}/internal/features/` | Go |
 | Test code | `{PROJECT_PATH}/tests/` | Go |
 | `SCOPE.md` | `{DOCS_INTERNAL}/requirements/{task-id}/` | Markdown |
-| beads status update | `bd update <id> --notes "..."` | CLI |
+| beads status update | `flow tools beads update <id> --notes "..."` | CLI |

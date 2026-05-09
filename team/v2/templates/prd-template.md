@@ -8,7 +8,7 @@
 
 | 字段 | 内容 |
 |------|------|
-| Issue ID | cms-xxx |
+| Issue ID | `<beads-id>` |
 | Feature ID | F{NNN} |
 
 ---
@@ -79,5 +79,5 @@ Scenario: {场景名称}
 ## beads 状态更新
 
 ```bash
-bd update <id> --set-metadata doc_path="{DOCS_INTERNAL}/requirements/F{NNN}-{name}/PRD.md"
+flow tools beads update <id> --set-metadata doc_path="{DOCS_INTERNAL}/requirements/F{NNN}-{name}/PRD.md"
 ```

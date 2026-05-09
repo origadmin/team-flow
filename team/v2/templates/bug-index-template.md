@@ -6,7 +6,7 @@
 
 | 字段 | 值 |
 |------|-----|
-| Issue ID | cms-xxx |
+| Issue ID | `<beads-id>` |
 | task ID | B{xxx} |
 | Current R | R{n} |
 

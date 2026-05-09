@@ -21,7 +21,7 @@
 
 | v1 Concept | v2 Equivalent |
 |------------|---------------|
-| Task ID (F001) | `external_ref` field + auto-generated beads ID (cms-xxx) |
+| Task ID (F001) | `external_ref` field + auto-generated beads ID (`<beads-id>`) |
 | Status column | `status` field + `phase:*` labels |
 | Sub-column | `subsystem:*` labels |
 | task-pool.md | Export from beads (read-only) |
@@ -33,7 +33,7 @@
 
 ```bash
 cd projects/your-project
-bd init --prefix <proj>
+flow tools beads init --prefix <proj>
 ```
 
 ### 2. Load v2 rules
@@ -54,16 +54,16 @@ Load team-flow rules: {TEAM_PATH}/v2/SKILL.md
 
 ```bash
 # Create task
-bd create "Fix login bug" -t bug -p 0 --add-label phase:ready --json
+flow tools beads create "Fix login bug" -t bug -p 0 --add-label phase:ready --json
 
 # List tasks
-bd list --status open --priority 0,1
+flow tools beads list --status open --priority 0,1
 
 # Update task
-bd update <id> --claim --add-label phase:implement
+flow tools beads update <id> --claim --add-label phase:implement
 
 # Close task
-bd close <id> --reason "Fixed in commit abc123"
+flow tools beads close <id> --reason "Fixed in commit abc123"
 ```
 
 ## Directory Structure
@@ -110,15 +110,15 @@ bd close <id> --reason "Fixed in commit abc123"
 ```
 User Input
     ↓
-Triage → bd create (phase:ready)
+Triage → flow tools beads create (phase:ready)
     ↓
-Tech Lead → bd update (phase:analyze → phase:design)
+Tech Lead → flow tools beads update (phase:analyze → phase:design)
     ↓
-Dev → bd update --claim (phase:implement)
+Dev → flow tools beads update --claim (phase:implement)
     ↓
-QA → bd update (phase:verify)
+QA → flow tools beads update (phase:verify)
     ↓
-User Confirmation → bd close
+User Confirmation → flow tools beads close
 ```
 
 ## Phase Labels
@@ -145,15 +145,15 @@ phase:review     → Waiting for confirmation
 
 ```bash
 # beads CLI help
-bd --help
-bd <command> --help
+flow tools beads --help
+flow tools beads <command> --help
 
 # Check beads status
-bd stats
-bd ready
+flow tools beads stats
+flow tools beads ready
 
 # Dolt help
-bd dolt --help
+flow tools beads dolt --help
 ```
 
 ## Feedback

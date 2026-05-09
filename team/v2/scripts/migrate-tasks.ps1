@@ -49,7 +49,7 @@ if (-not (Test-Path $TaskPoolPath)) {
 }
 
 if (-not (Test-Path $BeadsPath)) {
-    Write-Error "beads not initialized. Run 'bd init' in $ProjectPath first"
+    Write-Error "beads not initialized. Run 'flow tools beads init' in $ProjectPath first"
     exit 1
 }
 
@@ -212,7 +212,7 @@ foreach ($Task in $Tasks) {
     $StatusPhase = Get-BeadsStatusAndPhase $Task.status $Task.phase
 
     # Build command
-    $Cmd = "bd create `"$($Task.id): $($Task.title)`" -t $BeadsType -p $BeadsPriority --external-ref `"$($Task.id)`""
+    $Cmd = "flow tools beads create `"$($Task.id): $($Task.title)`" -t $BeadsType -p $BeadsPriority --external-ref `"$($Task.id)`""
 
     if ($StatusPhase.phaseLabel) {
         $Cmd += " --add-label $($StatusPhase.phaseLabel)"

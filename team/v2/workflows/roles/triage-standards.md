@@ -18,28 +18,28 @@ Triage is the **intake and dispatch** agent. Responsibilities:
 
 ```bash
 # Create issue
-bd create "Title" -t <type> -p <priority> --json
+flow tools beads create "Title" -t <type> -p <priority> --json
 
 # Add context after creation
-bd update <id> --description "..." --notes "..."
+flow tools beads update <id> --description "..." --notes "..."
 
 # Add labels
-bd update <id> --add-label phase:ready --add-label subsystem:backend
+flow tools beads update <id> --add-label phase:ready --add-label subsystem:backend
 
 # Add dependency
-bd dep add <id> <dep-id> --type discovered-from
+flow tools beads dep add <id> <dep-id> --type discovered-from
 
 # Assign
-bd update <id> --assignee "<role|name>"
+flow tools beads update <id> --assignee "<role|name>"
 
 # Search for duplicates
-bd list --json | jq '.[] | select(.title | contains("keyword"))'
+flow tools beads list --json | jq '.[] | select(.title | contains("keyword"))'
 
 # Show issue
-bd show <id>
+flow tools beads show <id>
 
 # Close duplicate
-bd close <id> --reason "Duplicate of <other-id>"
+flow tools beads close <id> --reason "Duplicate of <other-id>"
 ```
 
 ## Classification Standards
@@ -162,13 +162,13 @@ Brief description of problem/request
 
 ```bash
 # Search by keyword
-bd list --json | jq '.[] | select(.title | test("upload"; "i"))'
+flow tools beads list --json | jq '.[] | select(.title | test("upload"; "i"))'
 
 # Search by status
-bd list --status closed --json | jq '.[] | select(.title | contains("upload"))'
+flow tools beads list --status closed --json | jq '.[] | select(.title | contains("upload"))'
 
 # Search by external-ref (team ID)
-bd list --json | jq '.[] | select(.externalRef == "B061")'
+flow tools beads list --json | jq '.[] | select(.externalRef == "B061")'
 ```
 
 ### Duplicate Resolution
@@ -177,12 +177,11 @@ If found:
 ```bash
 # Don't create new issue
 # Add note to existing
-bd update <existing-id> --append-notes "
-
+flow tools beads update <existing-id> --append-notes "
 ---
 Additional report (2026-05-02):
 [New context from user]"
-
+```
 # Inform user
 echo "This appears to be a duplicate of <existing-id>. Adding your context to the existing issue."
 ```
@@ -199,19 +198,19 @@ echo "This appears to be a duplicate of <existing-id>. Adding your context to th
 
 ```bash
 # Standard dispatch
-bd update <id> --assignee "tech-lead" --add-label phase:analyze
+flow tools beads update <id> --assignee "tech-lead" --add-label phase:analyze
 
 # Direct to dev (for simple tasks)
-bd update <id> --assignee "backend-dev" --add-label phase:implement
+flow tools beads update <id> --assignee "backend-dev" --add-label phase:implement
 ```
 
 ## Session Checklist
 
 ### Start of Session
 
-- [ ] `bd stats` — Check current state
-- [ ] `bd dolt pull` — Sync with team
-- [ ] `bd ready` — See what's available
+- [ ] `flow tools beads stats` — Check current state
+- [ ] `flow tools beads dolt pull` — Sync with team
+- [ ] `flow tools beads ready` — See what's available
 
 ### For Each Input
 
@@ -225,9 +224,9 @@ bd update <id> --assignee "backend-dev" --add-label phase:implement
 
 ### End of Session
 
-- [ ] Export state: `bd list --format table > .team/task-pool-export.md`
-- [ ] Commit: `bd dolt commit -m "Triage session"`
-- [ ] Push: `bd dolt push`
+- [ ] Export state: `flow tools beads list --format table > .team/task-pool-export.md`
+- [ ] Commit: `flow tools beads dolt commit -m "Triage session"`
+- [ ] Push: `flow tools beads dolt push`
 
 ## Metrics
 
@@ -235,11 +234,11 @@ Track for quality:
 
 ```bash
 # Issues created today
-bd log --action create --since "today" --actor $USER
+flow tools beads log --action create --since "today" --actor $USER
 
 # Issues closed today
-bd log --action close --since "today" --actor $USER
-
+flow tools beads log --action close --since "today" --actor $USER
+```
 # Duplicate detection rate (manual review)
 # Quality of descriptions (spot check)
 ```
@@ -262,10 +261,10 @@ User: "The video page is showing 'user logged out' when I'm logged in"
 
 Triage:
   # Search for existing
-  bd list --json | jq '.[] | select(.title | test("video|logged out"; "i"))'
-  
+  flow tools beads list --json | jq '.[] | select(.title | test("video|logged out"; "i"))'
+
   # Not found, create new
-  bd create "B095: Video page shows 'user logged out' when authenticated" \
+  flow tools beads create "B095: Video page shows 'user logged out' when authenticated" \
     -t bug -p 0 \
     --description "## Problem
 The video page displays 'user logged out' message even when user is authenticated.
@@ -282,7 +281,7 @@ Should show video player" \
     --json
 
   # Assign to tech-lead for analysis
-  bd update cms-xxx --assignee "tech-lead" --add-label phase:analyze
+  flow tools beads update <beads-id> --assignee "tech-lead" --add-label phase:analyze
 ```
 
 ### Workflow 2: Feature Request
@@ -292,10 +291,10 @@ User: "We need to add a search bar to the media library"
 
 Triage:
   # Search existing
-  bd list --json | jq '.[] | select(.title | test("search|media library"; "i"))'
-  
+  flow tools beads list --json | jq '.[] | select(.title | test("search|media library"; "i"))'
+
   # Create
-  bd create "F022: Add search to media library" \
+  flow tools beads create "F022: Add search to media library" \
     -t feature -p 2 \
     --description "## Request
 Add search functionality to media library
@@ -309,7 +308,7 @@ Add search functionality to media library
     --json
 
   # Assign to PM for spec
-  bd update cms-xxx --assignee "pm" --add-label phase:design
+  flow tools beads update <beads-id> --assignee "pm" --add-label phase:design
 ```
 
 ### Workflow 3: Duplicate Found
@@ -319,14 +318,14 @@ User: "Upload is still broken, getting 500 errors"
 
 Triage:
   # Search existing
-  bd list --json | jq '.[] | select(.title | test("upload.*500"; "i"))'
-  # Found: cms-abc123 "Upload endpoint returns 500"
+  flow tools beads list --json | jq '.[] | select(.title | test("upload.*500"; "i"))'
+  # Found: <beads-id> "Upload endpoint returns 500"
   
   # Don't create new, add context
-  bd update cms-abc123 --append-notes "
+  flow tools beads update <beads-id> --append-notes "
 ---
 Additional report (2026-05-02 12:30):
 User reports upload still failing with 500. May indicate fix incomplete or new regression."
 
-  echo "✓ Added your report to existing issue cms-abc123. The team is aware and working on it."
+  echo "✓ Added your report to existing issue <beads-id>. The team is aware and working on it."
 ```

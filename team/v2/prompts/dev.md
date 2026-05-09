@@ -20,7 +20,7 @@ ai:
       - Follow TDD Red → Green → Refactor flow
       - Adhere to the Team Execution Protocol in {TEAM_PATH}/workflows/shared.md
       - Sync Document before Code: If implementation deviates from design, update the Source Document first
-      - Update beads status after completing a stage via bd CLI
+      - Update beads status after completing a stage via flow tools beads CLI
       - Load toolchain from .team/project.md before executing any command
       - Use exact commands from project.md Toolchain section, never guess or default to npm
     forbidden:
@@ -59,7 +59,7 @@ ai:
 > **版本**: v9.0-v2
 > **更新日期**: 2026-05-08
 > **注意**: 本文件为共享核心。subtype 专属规则在 dev-backend.md / dev-frontend.md 中。
-> **v2 变更**: 任务管理从 task-pool.md 迁移至 beads (bd CLI)，task-pool.md 仅为只读导出。
+> **v2 变更**: 任务管理从 task-pool.md 迁移至 beads (flow tools beads CLI)，task-pool.md 仅为只读导出。
 
 ---
 
@@ -90,7 +90,7 @@ Dev 被触发
     │
     ├── Step 1: 确定 subtype（见上方 Subtype 路由）
     │
-    ├── Step 2: 任务存在于 beads？→ bd show <id> 或 bd list --json
+    ├── Step│   └── 任务存在于 beads？→ flow tools beads show <id> 或 flow tools beads list --json
     │   └── 不存在？→ ⛔ 拒绝，提示走 Triage
     │
     ├── Step 3: Feature 任务？→ 检查前置产出物（SPEC.md + AC.md + R1/R2/R3）
@@ -103,32 +103,32 @@ Dev 被触发
 
 ## beads 状态管理
 
-📌 v2 中所有任务状态通过 bd CLI 管理，禁止手动编辑 task-pool.md
+📌 v2 中所有任务状态通过 flow tools beads CLI 管理，禁止手动编辑 task-pool.md
 
 ```bash
 # 认领任务
-bd update <id> --claim
+flow tools beads update <id> --claim
 
 # 标记实现阶段开始
-bd update <id> --add-label phase:implement --remove-label phase:ready
+flow tools beads update <id> --add-label phase:implement --remove-label phase:ready
 
 # 记录进度
-bd update <id> --notes "COMPLETED: X IN PROGRESS: Y"
+flow tools beads update <id> --notes "COMPLETED: X IN PROGRESS: Y"
 
 # 标记进入验证阶段
-bd update <id> --add-label phase:verify --remove-label phase:implement
+flow tools beads update <id> --add-label phase:verify --remove-label phase:implement
 
 # 标记进入评审阶段
-bd update <id> --add-label phase:review --remove-label phase:verify
+flow tools beads update <id> --add-label phase:review --remove-label phase:verify
 
 # 设置文档路径元数据
-bd update <id> --set-metadata doc_path="{DOCS_INTERNAL}/features/F{NNN}-{name}/"
+flow tools beads update <id> --set-metadata doc_path="{DOCS_INTERNAL}/features/F{NNN}-{name}/"
 
 # 关闭任务（完成时）
-bd close <id> --reason "Implemented and verified"
+flow tools beads close <id> --reason "Implemented and verified"
 
 # 人工可读导出
-bd list --status open --format table > {DOCS_PATH}/task-pool.md
+flow tools beads list --status open --format table > {DOCS_PATH}/task-pool.md
 ```
 
 ### ID 映射
@@ -287,11 +287,11 @@ TDD 阶段（开发中）:
 
 | 任务类型 | external-ref | beads ID | 资产目录格式 | 示例 |
 |----------|-------------|----------|-------------|------|
-| Feature | F{NNN} | cms-xxx | F{NNN}-{name}/ | F014-unified-pagination/ |
-| Bugfix | B{NNN} | cms-xxx | B{NNN}-R{N}/ | B001-R1/ |
-| Change | C{NNN} | cms-xxx | C{NNN}-{name}/ | C011-auth-refactor/ |
+| Feature | F{NNN} | `<beads-id>` | F{NNN}-{name}/ | F014-unified-pagination/ |
+| Bugfix | B{NNN} | `<beads-id>` | B{NNN}-R{N}/ | B001-R1/ |
+| Change | C{NNN} | `<beads-id>` | C{NNN}-{name}/ | C011-auth-refactor/ |
 
-📌 external-ref 存储在 beads issue 的 `external_ref` 字段，通过 `bd list --json` 可查询
+📌 external-ref 存储在 beads issue 的 `external_ref` 字段，通过 `flow tools beads list --json` 可查询
 
 ---
 
@@ -376,7 +376,7 @@ docs/{doc-name}
 
 | 输入项 | 来源 | 必填 |
 |--------|------|------|
-| beads issue | `bd show <id>` 或 `bd list --json` | ✅ |
+| beads issue | `flow tools beads show <id>` 或 `flow tools beads list --json` | ✅ |
 | `SPEC.md` | `{DOCS_INTERNAL}/features/{task-id}/` | Feature ✅ |
 | `AC.md` | `{DOCS_INTERNAL}/features/{task-id}/` | Feature ✅ |
 | `R1.md`, `R2.md`, `R3.md` | `{DOCS_INTERNAL}/features/{task-id}/` | Feature ✅ |
@@ -420,7 +420,7 @@ Feature 完成检查:
 - [ ] Commit Message 符合规范
 - [ ] 分支命名符合规范
 - [ ] 异常处理符合规范
-- [ ] beads issue 状态更新: bd update <id> --add-label phase:review
+- [ ] beads issue 状态更新: flow tools beads update <id> --add-label phase:review
 - [ ] 建议后续角色 → QA
 
 Bugfix 完成检查:

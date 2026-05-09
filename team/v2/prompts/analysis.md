@@ -26,8 +26,8 @@ ai:
 ```
 Analysis 被触发
     │
-    ├── beads issue 存在？→ bd show <id> / bd ready --json → 继续
-    │   └── 不存在？→ ⛔ 拒绝，提示走 Triage (bd create)
+    ├── beads issue 存在？→ flow tools beads show <id> / flow tools beads ready --json → 继续
+    │   └── 不存在？→ 拒绝，提示走 Triage (flow tools beads create)
     │
     └── 任务类型为 analysis？→ 继续
         └── 其他？→ ⛔ 移交对应角色
@@ -49,16 +49,16 @@ Analysis 被触发
 
 ```bash
 # 认领任务
-bd update <id> --claim
+flow tools beads update <id> --claim
 
 # 进入分析阶段
-bd update <id> --add-label phase:analyze --remove-label phase:ready
+flow tools beads update <id> --add-label phase:analyze --remove-label phase:ready
 
 # 记录进度
-bd update <id> --notes "COMPLETED: data collection. IN PROGRESS: comparison table"
+flow tools beads update <id> --notes "COMPLETED: data collection. IN PROGRESS: comparison table"
 
 # 设置文档路径
-bd update <id> --set-metadata doc_path="{DOCS_INTERNAL}/analysis/{name}/"
+flow tools beads update <id> --set-metadata doc_path="{DOCS_INTERNAL}/analysis/{name}/"
 ```
 
 ---
@@ -127,7 +127,7 @@ Triage 扫描 phase:review 的 Analysis issue
 
 ```bash
 # 扫描 Review 阶段的 Analysis
-bd list --label phase:review --json | jq '.[] | select(.type == "analysis")'
+flow tools beads list --label phase:review --json | jq '.[] | select(.type == "analysis")'
 ```
 
 ```markdown
@@ -155,7 +155,7 @@ bd list --label phase:review --json | jq '.[] | select(.type == "analysis")'
 └── A002-{topic}/
     └── ...
 ```
-- [ ] beads issue 已更新 (bd update --notes "analysis complete")
+- [ ] beads issue 已更新 (flow tools beads update --notes "analysis complete")
 ```
 
 ---
@@ -180,7 +180,7 @@ bd list --label phase:review --json | jq '.[] | select(.type == "analysis")'
 
 | 输入项 | 来源 | 必填 |
 |--------|------|------|
-| beads issue | `bd show <id>` / `bd ready --json` | ✅ |
+| beads issue | `flow tools beads show <id>` / `flow tools beads ready --json` | ✅ |
 | 分析目标 | 用户原始请求 | ✅ |
 
 ---

@@ -4,173 +4,203 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"runtime"
+	"strings"
 )
 
-func FindBdPath() string {
-	if path, err := exec.LookPath("bd"); err == nil {
-		return path
-	}
-
-	home, _ := os.UserHomeDir()
-	localAppData := os.Getenv("LOCALAPPDATA")
-
-	candidates := []string{}
-	switch runtime.GOOS {
-	case "windows":
-		if localAppData != "" {
-			candidates = append(candidates,
-				filepath.Join(localAppData, "Programs", "bd", "bd.exe"),
-				filepath.Join(localAppData, "bd", "bd.exe"),
-			)
-		}
-		if home != "" {
-			candidates = append(candidates,
-				filepath.Join(home, "AppData", "Local", "Programs", "bd", "bd.exe"),
-				filepath.Join(home, ".local", "bin", "bd.exe"),
-			)
-		}
-	case "darwin":
-		if home != "" {
-			candidates = append(candidates,
-				filepath.Join(home, ".local", "bin", "bd"),
-				filepath.Join("/usr/local/bin", "bd"),
-				filepath.Join("/opt/homebrew/bin", "bd"),
-			)
-		}
-	default:
-		if home != "" {
-			candidates = append(candidates,
-				filepath.Join(home, ".local", "bin", "bd"),
-				filepath.Join("/usr/local/bin", "bd"),
-			)
-		}
-	}
-
-	for _, c := range candidates {
-		if _, err := os.Stat(c); err == nil {
-			return c
-		}
-	}
-
-	return ""
-}
+var (
+	pythonPath     string
+	pythonChecked  bool
+	pipPath        string
+	pipChecked     bool
+	nodePath       string
+	nodeChecked    bool
+	goPath         string
+	goChecked      bool
+	gitPath        string
+	gitChecked     bool
+)
 
 func FindPythonPath() string {
-	for _, name := range []string{"python", "python3"} {
-		if path, err := exec.LookPath(name); err == nil {
-			return path
-		}
+	if pythonChecked {
+		return pythonPath
 	}
+	pythonChecked = true
 
-	home, _ := os.UserHomeDir()
-	localAppData := os.Getenv("LOCALAPPDATA")
-	programFiles := os.Getenv("ProgramFiles")
-
-	candidates := []string{}
-	switch runtime.GOOS {
-	case "windows":
-		if localAppData != "" {
-			candidates = append(candidates,
-				filepath.Join(localAppData, "Programs", "Python", "Python311", "python.exe"),
-				filepath.Join(localAppData, "Programs", "Python", "Python312", "python.exe"),
-				filepath.Join(localAppData, "Programs", "Python", "Python313", "python.exe"),
-				filepath.Join(localAppData, "Programs", "Python", "Python310", "python.exe"),
-			)
-		}
-		if programFiles != "" {
-			candidates = append(candidates,
-				filepath.Join(programFiles, "Python311", "python.exe"),
-				filepath.Join(programFiles, "Python312", "python.exe"),
-				filepath.Join(programFiles, "Python313", "python.exe"),
-			)
-		}
-		candidates = append(candidates,
-			`C:\Python311\python.exe`,
+	if runtime.GOOS == "windows" {
+		paths := []string{
 			`C:\Python312\python.exe`,
+			`C:\Python311\python.exe`,
 			`C:\Python310\python.exe`,
-		)
-		if home != "" {
-			candidates = append(candidates,
-				filepath.Join(home, "AppData", "Local", "Programs", "Python", "Python311", "python.exe"),
-				filepath.Join(home, "AppData", "Local", "Programs", "Python", "Python312", "python.exe"),
-				filepath.Join(home, "AppData", "Local", "Programs", "Python", "Python313", "python.exe"),
-			)
+			`C:\Python39\python.exe`,
+			`C:\Program Files\Python312\python.exe`,
+			`C:\Program Files\Python311\python.exe`,
+			`C:\Program Files\Python310\python.exe`,
 		}
-	case "darwin":
-		candidates = append(candidates,
-			"/usr/bin/python3",
-			"/usr/local/bin/python3",
-			"/opt/homebrew/bin/python3",
-		)
-		if home != "" {
-			candidates = append(candidates,
-				filepath.Join(home, ".local", "bin", "python3"),
-			)
-		}
-	default:
-		candidates = append(candidates,
-			"/usr/bin/python3",
-			"/usr/local/bin/python3",
-		)
-		if home != "" {
-			candidates = append(candidates,
-				filepath.Join(home, ".local", "bin", "python3"),
-			)
+		for _, p := range paths {
+			if _, err := os.Stat(p); err == nil {
+				pythonPath = p
+				return p
+			}
 		}
 	}
 
-	for _, c := range candidates {
-		if _, err := os.Stat(c); err == nil {
-			return c
+	cmd := exec.Command("where.exe", "python")
+	if output, err := cmd.Output(); err == nil {
+		lines := strings.Split(string(output), "\n")
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+			if line != "" {
+				pythonPath = line
+				return line
+			}
 		}
+	}
+
+	cmd = exec.Command("which", "python")
+	if output, err := cmd.Output(); err == nil {
+		return strings.TrimSpace(string(output))
 	}
 
 	return ""
 }
 
 func FindPipPath() string {
-	for _, name := range []string{"pip", "pip3"} {
-		if path, err := exec.LookPath(name); err == nil {
-			return path
+	if pipChecked {
+		return pipPath
+	}
+	pipChecked = true
+
+	pyPath := FindPythonPath()
+	if pyPath == "" {
+		return ""
+	}
+
+	if runtime.GOOS == "windows" {
+		paths := []string{
+			strings.Replace(pyPath, "python.exe", "Scripts\\pip.exe", 1),
+			strings.Replace(pyPath, "python.exe", "Scripts\\pip3.exe", 1),
+		}
+		for _, p := range paths {
+			if _, err := os.Stat(p); err == nil {
+				pipPath = p
+				return p
+			}
 		}
 	}
+
+	cmd := exec.Command("where.exe", "pip")
+	if output, err := cmd.Output(); err == nil {
+		lines := strings.Split(string(output), "\n")
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+			if line != "" {
+				pipPath = line
+				return line
+			}
+		}
+	}
+
+	cmd = exec.Command(pyPath, "-m", "pip", "--version")
+	if err := cmd.Run(); err == nil {
+		pipPath = pyPath + " -m pip"
+		return pipPath
+	}
+
 	return ""
 }
 
-func AddBdToPath(bdPath string) bool {
-	bdDir := filepath.Dir(bdPath)
-
-	currentPath := os.Getenv("PATH")
-	if currentPath == "" {
-		return false
+func FindNodePath() string {
+	if nodeChecked {
+		return nodePath
 	}
-
-	separator := ":"
-	if runtime.GOOS == "windows" {
-		separator = ";"
-	}
-
-	os.Setenv("PATH", currentPath+separator+bdDir)
+	nodeChecked = true
 
 	if runtime.GOOS == "windows" {
-		return addToUserPathWindows(bdDir)
+		cmd := exec.Command("where.exe", "node")
+		if output, err := cmd.Output(); err == nil {
+			lines := strings.Split(string(output), "\n")
+			for _, line := range lines {
+				line = strings.TrimSpace(line)
+				if line != "" {
+					nodePath = line
+					return line
+				}
+			}
+		}
 	}
 
-	return true
+	cmd := exec.Command("which", "node")
+	if output, err := cmd.Output(); err == nil {
+		nodePath = strings.TrimSpace(string(output))
+	}
+	return nodePath
 }
 
-func addToUserPathWindows(dir string) bool {
-	psScript := fmt.Sprintf(
-		`$current = [Environment]::GetEnvironmentVariable('Path', 'User'); if ($current -notlike '*%s*') { [Environment]::SetEnvironmentVariable('Path', $current + ';%s', 'User') }`,
-		dir, dir,
-	)
-	cmd := exec.Command("powershell", "-Command", psScript)
-	return cmd.Run() == nil
+func FindGoPath() string {
+	if goChecked {
+		return goPath
+	}
+	goChecked = true
+
+	if runtime.GOOS == "windows" {
+		cmd := exec.Command("where.exe", "go")
+		if output, err := cmd.Output(); err == nil {
+			lines := strings.Split(string(output), "\n")
+			for _, line := range lines {
+				line = strings.TrimSpace(line)
+				if line != "" {
+					goPath = line
+					return line
+				}
+			}
+		}
+	}
+
+	cmd := exec.Command("which", "go")
+	if output, err := cmd.Output(); err == nil {
+		goPath = strings.TrimSpace(string(output))
+	}
+	return goPath
 }
 
-func IsBdOnPath() bool {
-	_, err := exec.LookPath("bd")
-	return err == nil
+func FindGitPath() string {
+	if gitChecked {
+		return gitPath
+	}
+	gitChecked = true
+
+	if runtime.GOOS == "windows" {
+		cmd := exec.Command("where.exe", "git")
+		if output, err := cmd.Output(); err == nil {
+			lines := strings.Split(string(output), "\n")
+			for _, line := range lines {
+				line = strings.TrimSpace(line)
+				if line != "" {
+					gitPath = line
+					return line
+				}
+			}
+		}
+	}
+
+	cmd := exec.Command("which", "git")
+	if output, err := cmd.Output(); err == nil {
+		gitPath = strings.TrimSpace(string(output))
+	}
+	return gitPath
+}
+
+func CheckCommand(name string) error {
+	var cmd *exec.Cmd
+	if runtime.GOOS == "windows" {
+		cmd = exec.Command("where.exe", name)
+	} else {
+		cmd = exec.Command("which", name)
+	}
+
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("command not found: %s", name)
+	}
+	return nil
 }

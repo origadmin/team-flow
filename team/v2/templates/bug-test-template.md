@@ -4,7 +4,7 @@
 
 | 字段 | 值 |
 |------|-----|
-| Issue ID | cms-xxx |
+| Issue ID | `<beads-id>` |
 | task ID | B{xxx} |
 | Phase | phase:implement → phase:verify |
 | Subsystem | subsystem:backend |
@@ -153,6 +153,6 @@
 完成测试后执行：
 
 ```bash
-bd update <issue-id> --notes "TEST_CASE: B{xxx}-R{n} verified, regression passed"
-bd update <issue-id> --add-label phase:verify --remove-label phase:implement
+flow tools beads update <issue-id> --notes "TEST_CASE: B{xxx}-R{n} verified, regression passed"
+flow tools beads update <issue-id> --add-label phase:verify --remove-label phase:implement
 ```

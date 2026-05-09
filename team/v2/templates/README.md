@@ -40,11 +40,11 @@
 
 | 变更项 | v1 | v2 |
 |--------|----|----|
-| 任务状态更新 | "写入 task-pool.md" | `bd update <id> --notes` |
-| Phase 转换 | 手动更新状态列 | `bd update <id> --add-label phase:xxx` |
-| 任务 ID | F/B/C/A-NNN 为主 ID | cms-xxx 为主 ID，v1 ID 存 external-ref |
+| 任务状态更新 | "写入 task-pool.md" | `flow tools beads update <id> --notes` |
+| Phase 转换 | 手动更新状态列 | `flow tools beads update <id> --add-label phase:xxx` |
+| 任务 ID | F/B/C/A-NNN 为主 ID | `<beads-id>` 为主 ID，v1 ID 存 external-ref |
 | 模板头部 | 无 beads 关联 | 增加 beads 关联表（Issue ID / task ID / Phase / Subsystem） |
-| 模板尾部 | 无状态更新命令 | 增加 `bd update` 命令示例 |
+| 模板尾部 | 无状态更新命令 | 增加 `flow tools beads update` 命令示例 |
 
 ---
 
@@ -54,10 +54,10 @@
 
 ```bash
 # 后端 Feature
-bd update <id> --notes "Loading template: {TEAM_PATH}/templates/feature-test-template.md"
+flow tools beads update <id> --notes "Loading template: {TEAM_PATH}/templates/feature-test-template.md"
 
 # 前端 Bug
-bd update <id> --notes "Loading template: {TEAM_PATH}/templates/frontend-bug-test-template.md"
+flow tools beads update <id> --notes "Loading template: {TEAM_PATH}/templates/frontend-bug-test-template.md"
 ```
 
 模板路径在 Triage 分发时注入子 Agent Prompt。

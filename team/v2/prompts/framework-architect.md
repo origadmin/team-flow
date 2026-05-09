@@ -24,8 +24,8 @@ ai:
 ```
 Framework Architect 被触发
     │
-    ├── beads issue 存在？→ bd show <id> / bd ready --json → 继续
-    │   └── 不存在？→ ⛔ 拒绝，提示走 Triage (bd create)
+    ├── beads issue 存在？→ flow tools beads show <id> / flow tools beads ready --json → 继续
+    │   └── 不存在？→ ⛔ 拒绝，提示走 Triage (flow tools beads create)
     │
     └── 任务类型为 design/review/decision？→ 继续
 ```
@@ -36,16 +36,16 @@ Framework Architect 被触发
 
 ```bash
 # 认领任务
-bd update <id> --claim
+flow tools beads update <id> --claim
 
 # 进入设计阶段
-bd update <id> --add-label phase:design --remove-label phase:ready
+flow tools beads update <id> --add-label phase:design --remove-label phase:ready
 
 # 记录进度
-bd update <id> --notes "COMPLETED: module boundaries. IN PROGRESS: interface contracts"
+flow tools beads update <id> --notes "COMPLETED: module boundaries. IN PROGRESS: interface contracts"
 
 # 设置文档路径
-bd update <id> --set-metadata doc_path="{DOCS_INTERNAL}/architecture/"
+flow tools beads update <id> --set-metadata doc_path="{DOCS_INTERNAL}/architecture/"
 ```
 
 ---
@@ -64,7 +64,7 @@ bd update <id> --set-metadata doc_path="{DOCS_INTERNAL}/architecture/"
 - [ ] 模块间依赖关系已定义
 - [ ] 接口契约已定义
 - [ ] 依赖单向性验证通过
-- [ ] beads issue 已更新 (bd update --notes "architecture complete")
+- [ ] beads issue 已更新 (flow tools beads update --notes "architecture complete")
 ```
 
 ---
@@ -83,7 +83,7 @@ bd update <id> --set-metadata doc_path="{DOCS_INTERNAL}/architecture/"
 
 | 输入项 | 来源 | 必填 |
 |--------|------|------|
-| beads issue | `bd show <id>` / `bd ready --json` | ✅ |
+| beads issue | `flow tools beads show <id>` / `flow tools beads ready --json` | ✅ |
 | 架构需求 | 用户原始请求 | ✅ |
 
 ---

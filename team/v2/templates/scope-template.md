@@ -8,7 +8,7 @@
 # Parse: Each section is a YAML block, separated by ---
 
 task_id: "{TASK_ID}"
-beads_id: "cms-xxx"
+beads_id: "<beads-id>"
 task_type: "feature|bugfix|change|analysis"
 iteration: "R{N}"
 date: "{YYYY-MM-DD}"
@@ -66,6 +66,6 @@ summary: |
 生成 SCOPE.md 后执行：
 
 ```bash
-bd update <issue-id> --notes "SCOPE: {summary}"
-bd update <issue-id> --add-label phase:review --remove-label phase:verify
+flow tools beads update <issue-id> --notes "SCOPE: {summary}"
+flow tools beads update <issue-id> --add-label phase:review --remove-label phase:verify
 ```

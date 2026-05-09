@@ -1,0 +1,62 @@
+beads:
+  name: "beads"
+  description: "Task management with Dolt git-native storage"
+  binary:
+    path: "bd"
+    auto_download:
+      enabled: true
+      url: "https://github.com/steveyegge/beads/releases/latest"
+      method: "github"
+  install:
+    enabled: true
+    url: "https://github.com/steveyegge/beads/releases/latest"
+    method: "github"
+  commands:
+    init:
+      name: "init"
+      description: "Initialize beads database"
+      args: ["init"]
+    create:
+      name: "create"
+      description: "Create a new task"
+      args: ["create"]
+    list:
+      name: "list"
+      description: "List all tasks"
+      args: ["list"]
+    show:
+      name: "show"
+      description: "Show task details"
+      args: ["show"]
+    update:
+      name: "update"
+      description: "Update task"
+      args: ["update"]
+    close:
+      name: "close"
+      description: "Close a task"
+      args: ["close"]
+    ready:
+      name: "ready"
+      description: "Show tasks ready for pickup"
+      args: ["ready"]
+    stats:
+      name: "stats"
+      description: "Show statistics"
+      args: ["stats"]
+    dolt:
+      name: "dolt"
+      description: "Dolt git operations"
+      args: ["dolt"]
+    dep:
+      name: "dep"
+      description: "Manage dependencies"
+      args: ["dep"]
+    config:
+      name: "config"
+      description: "Configuration management"
+      args: ["config"]
+    children:
+      name: "children"
+      description: "List child issues"
+      args: ["children"]

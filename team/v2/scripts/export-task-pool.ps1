@@ -39,7 +39,7 @@ if (-not (Test-Path ".beads")) {
 }
 
 # Build command
-$Cmd = "bd list --json"
+$Cmd = "flow tools beads list --json"
 
 if (-not $All) {
     $StatusFilter = $Status -join ","

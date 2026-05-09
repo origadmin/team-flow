@@ -136,7 +136,7 @@
 | 变更报告 | `{DOCS_INTERNAL}/reports/changes/C{NNN}-R{n}/SCOPE.md` | beads notes / task-pool-export.md |
 | 需求规格 | `{DOCS_INTERNAL}/requirements/F{NNN}-{name}/SPEC.md` | beads notes / task-pool-export.md |
 | 设计决策 | `{DOCS_INTERNAL}/requirements/F{NNN}-{name}/R1-R5.md` | beads notes / task-pool-export.md |
-| 进度摘要 | `bd update <id> --notes "COMPLETED: X IN PROGRESS: Y"` | — (notes 只写进度，不写详情) |
+| 进度摘要 | `flow tools beads update <id> --notes "COMPLETED: X IN PROGRESS: Y"` | — (notes 只写进度，不写详情) |
 
 **beads notes 用途**: 只记录进度摘要和交接信息，**禁止**写入根因分析、代码片段、测试结果等详情。
 
@@ -144,15 +144,15 @@
 
 ```bash
 # 从 beads ID 查找 task ID
-bd show <beads-id> --json | jq '.externalRef'
+flow tools beads show <beads-id> --json | jq '.externalRef'
 # → "F014"
 
 # 从 task ID 查找 beads ID
-bd list --json | jq '.[] | select(.externalRef == "F014") | .id'
-# → "cms-xxx"
+flow tools beads list --json | jq '.[] | select(.externalRef == "F014") | .id'
+# → "<beads-id>"
 
 # 查询 Bug 的 R 迭代次数（reopen 次数 + 1）
-bd show <beads-id> --json | jq '[.events[] | select(.event_type == "reopened")] | length + 1'
+flow tools beads show <beads-id> --json | jq '[.events[] | select(.event_type == "reopened")] | length + 1'
 # → 2 (表示当前是 R2)
 
 # 从 task ID 定位文档目录
@@ -171,10 +171,10 @@ bd show <beads-id> --json | jq '[.events[] | select(.event_type == "reopened")] 
 ```
 
 **Rules**:
-- AI interacts via `bd` CLI only
+- AI interacts via `flow tools beads` CLI only
 - **NEVER** directly edit `.beads/*.db`
 - **NEVER** directly edit `.beads/issues.jsonl`
-- Use `bd create/update/close` for all modifications
+- Use `flow tools beads create/update/close` for all modifications
 
 ### Layer 4: Implementation (AI workspace)
 
@@ -217,7 +217,7 @@ bd show <beads-id> --json | jq '[.events[] | select(.event_type == "reopened")] 
 ## Permitted Actions
 
 ✅ **ALWAYS**:
-- Use `bd` CLI for all task operations
+- Use `flow tools beads` CLI for all task operations
 - Read from L0 for rules
 - Write to L1 for project state
 - Write to L4 for implementation
@@ -231,7 +231,7 @@ When starting a session, AI loads:
 1. **L0**: `{TEAM_PATH}/v2/SKILL.md` (rules + structure)
 2. **L1**: `.team/project.md` (project paths + team)
 3. **L1**: `.team/ai-context.md` (recent focus)
-4. **L3**: `bd ready --json` (available tasks)
+4. **L3**: `flow tools beads ready --json` (available tasks)
 
 Example CLAUDE.md:
 
@@ -257,7 +257,7 @@ echo "Load team-flow rules: {TEAM_PATH}/v2/SKILL.md" > {PROJECT_PATH}/CLAUDE.md
 # 3. Migrate tasks to beads
 {TEAM_PATH}/v2/scripts/migrate-tasks.ps1 -ProjectPath {PROJECT_PATH}
 
-# 4. Update agent prompts to use bd CLI
+# 4. Update agent prompts to use flow tools beads CLI
 ```
 
 ## Quality Gates
@@ -272,6 +272,6 @@ pwd
 # L0 → Never
 # L1 → Yes, if in .team/
 # L2 → Yes, if documenting
-# L3 → Never (use bd CLI)
+# L3 → Never (use flow tools beads CLI)
 # L4 → Yes, if implementing
 ```

@@ -8,7 +8,7 @@
 
 | 字段 | 内容 |
 |------|------|
-| Issue ID | cms-xxx |
+| Issue ID | `<beads-id>` |
 | Feature | {feature-name} |
 
 ---
@@ -80,5 +80,5 @@ Response: { ... }
 ## beads 状态更新
 
 ```bash
-bd update <id> --set-metadata doc_path="{DOCS_INTERNAL}/design/{feature}/ARCHITECTURE.md"
+flow tools beads update <id> --set-metadata doc_path="{DOCS_INTERNAL}/design/{feature}/ARCHITECTURE.md"
 ```

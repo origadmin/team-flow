@@ -13,24 +13,49 @@ Every AI response MUST start with:
 
 | Field | Values | Description |
 |-------|--------|-------------|
-| Role | Triage / TechLead / Dev / QA / PM / DevOps / Analysis / UIDesigner | Current active role |
+| Role | Triage / TechLead / Dev / QA / PM / DevOps / Analysis / UIDesigner | **Role Switching**: Triage dispatches sub-agent → Role changes to sub-agent's role. Sub-agent completes → Role returns to Triage. |
+
+**禁止**: Phase 是 `analyze`/`design`/`implement` 等时，TaskPool 还显示 `INBOX`。详见 `{TEAM_PATH}/{VERSION}/prompts/triage.md`。
+
+## Role Switching (角色切换)
+
+**Role 随子 Agent 执行而变化**：
+
+```
+[Triage] 分析 → 分发
+    ↓
+启动子 Agent → [Role: Tech Lead] / [Role: Dev] / [Role: Bugfix] / [Role: QA]
+    ↓
+子 Agent 执行 → Status Line 实时反映当前角色
+    ↓
+子 Agent 完成 → [Role: Triage] 汇总结果
+```
 | TaskPool | `INBOX` 或 task ID (e.g., `F014`, `B001`) | Current task ID |
 | Phase | ready / analyze / design / implement / verify / review / -(N/A) | Current phase |
 | Asset | project name (e.g., `orig-cms`) or -(N/A) | Current project |
 
 **Example**:
 ```
-[Role: Triage | TaskPool: INBOX | Phase: -(N/A) | Asset: team-flow]
+[Role: Triage | TaskPool: abc-123 (INBOX) | Phase: -(N/A) | Asset: team-flow]
 → Session started, inbox active. All inputs go through INBOX.
 
-[Role: Triage | TaskPool: F014 | Phase: ready | Asset: orig-cms]
+[Role: Triage | TaskPool: abc-456 (F014) | Phase: ready | Asset: orig-cms]
 → Task split from inbox, awaiting classification confirmation.
 
-[Role: Dev | TaskPool: F014 | Phase: implement | Asset: orig-cms]
+[Role: Dev | TaskPool: abc-789 (F014) | Phase: implement | Asset: orig-cms]
 → Working on F014
 ```
 
-**⛔ TRIAGE-INBOX**: Session 启动时，确保 task-pool.md 中有 `INBOX` 条目作为统一入口。所有输入在 Inbox 中分析，可分类时拆分为独立 Task。详见 `{TEAM_PATH}/{VERSION}/prompts/triage.md`。
+**⛔ TRIAGE-INBOX**: Session 启动时，确保 task-pool.md 中有 `INBOX` 条目作为统一入口。所有输入在 Inbox 中分析，**分析完成后必须拆分**。
+
+**Phase 与 TaskPool 同步规则**：
+
+| 当前 Phase | TaskPool 来源 | 说明 |
+|-----------|--------------|------|
+| `-(N/A)` 或 `triaging` | `INBOX` | Triage 在分析 |
+| `ready` 及以后 | `F014` / `B001` 等 | 已拆分到正式 task |
+
+**禁止**: Phase 是 `analyze`/`design`/`implement` 等时，TaskPool 还显示 `INBOX`。详见 `{TEAM_PATH}/{VERSION}/prompts/triage.md`。
 
 ## Version Detection (FIRST ACTION)
 

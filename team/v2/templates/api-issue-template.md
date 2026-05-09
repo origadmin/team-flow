@@ -68,5 +68,5 @@ Authorization: Bearer {token}
 ## beads 状态更新
 
 ```bash
-bd create "API Issue: {endpoint}" -t bug -p 1
+flow tools beads create "API Issue: {endpoint}" -t bug -p 1
 ```

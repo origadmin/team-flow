@@ -81,6 +81,78 @@ func runInit(cmd *cobra.Command, args []string) error {
 	if err := os.MkdirAll(teamDir, 0755); err != nil {
 		return fmt.Errorf("create .team dir: %w", err)
 	}
+	toolsYamlPath := filepath.Join(teamDir, "tools.yaml")
+	toolsYamlContent := `beads:
+  name: "beads"
+  description: "Task management with Dolt git-native storage"
+  binary:
+    path: "bd"
+    auto_download:
+      enabled: true
+      url: "https://github.com/steveyegge/beads/releases/latest"
+      method: "github"
+  install:
+    enabled: true
+    url: "https://github.com/steveyegge/beads/releases/latest"
+    method: "github"
+  commands:
+    init:
+      name: "init"
+      description: "Initialize beads database"
+      args: ["init"]
+    create:
+      name: "create"
+      description: "Create a new task"
+      args: ["create"]
+    list:
+      name: "list"
+      description: "List all tasks"
+      args: ["list"]
+    show:
+      name: "show"
+      description: "Show task details"
+      args: ["show"]
+    update:
+      name: "update"
+      description: "Update task"
+      args: ["update"]
+    close:
+      name: "close"
+      description: "Close a task"
+      args: ["close"]
+    ready:
+      name: "ready"
+      description: "Show tasks ready for pickup"
+      args: ["ready"]
+    stats:
+      name: "stats"
+      description: "Show statistics"
+      args: ["stats"]
+    dolt:
+      name: "dolt"
+      description: "Dolt git operations"
+      args: ["dolt"]
+    dep:
+      name: "dep"
+      description: "Manage dependencies"
+      args: ["dep"]
+    config:
+      name: "config"
+      description: "Configuration management"
+      args: ["config"]
+    children:
+      name: "children"
+      description: "List child issues"
+      args: ["children"]
+`
+	if _, err := os.Stat(toolsYamlPath); err == nil && !force {
+		fmt.Println("  .team/tools.yaml already exists (use --force to overwrite)")
+	} else {
+		if err := os.WriteFile(toolsYamlPath, []byte(toolsYamlContent), 0644); err != nil {
+			return fmt.Errorf("create tools.yaml: %w", err)
+		}
+		fmt.Println("  ✓ .team/tools.yaml created")
+	}
 
 	projectMd := fmt.Sprintf(`## Project Configuration
 

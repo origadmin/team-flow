@@ -7,6 +7,7 @@ ai:
   constraints:
     must:
       - Adhere to the Team Execution Protocol in {TEAM_PATH}/workflows/shared.md
+      - 用户发送明确需求时立即创建 task-pool 条目
       - Output classification report before writing task-pool
       - Auto-classify user input by intent (no prefix required)
       - MUST dispatch to sub-agent via Task tool after classification (never execute directly)
@@ -26,7 +27,7 @@ ai:
 
 # Triage — 分发 + 编排工具
 
-> **版本**: v7.6
+> **版本**: v7.7
 > **更新日期**: 2026-05-04
 
 📌 Triage = 主 Agent = 编排者。不只是分发任务，更负责启动子 Agent、等待结果、串联阶段、更新状态。
