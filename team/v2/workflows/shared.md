@@ -363,17 +363,38 @@ R-Phase 3: 上线部署（DevOps）
 - 每轮修复有独立目录，历史目录保留不删除
 - R 目录由执行角色（Bugfix/Dev）在修复时创建，Triage 不预创建
 
+### Change 任务流程（强制）
+
+```
+Triage 创建 Change 任务
+    │
+    ├─ Step 1: 预先创建目录
+    │   └─ {DOCS_INTERNAL}/reports/changes/{change-id}/
+    │
+    ├─ Step 2: 分发到执行角色（所有 Change 都必须分发）
+    │   ├─ 涉及代码 → Dev (Backend/Frontend)
+    │   ├─ 涉及 SKILL/规则 → DevOps 或专门的 Change Agent
+    │   └─ 涉及文档 → DevOps 或专门的 Change Agent
+    │
+    └─ Step 3: 执行结束后
+        └─ **强制要求**：执行角色创建 SCOPE.md
+```
+
 ### Change 资产包
 
 ```
 {DOCS_INTERNAL}/reports/changes/{change-id}/
-├── SCOPE.md            ← Dev 创建，变更报告（必须）
+├── SCOPE.md            ← 执行角色创建（必须，由分发的 Agent 生成）
 └── （其他参考文档按需）
 ```
 
-📌 **Change 报告强制要求**：Dev 完成 Change 后必须创建 `SCOPE.md`，包含变更清单、设计决策、影响范围、QA 验证要点。报告路径写入 beads task 的 doc_path metadata。
+📌 **Change 报告强制要求**：**执行角色**完成 Change 后必须创建 `SCOPE.md`，包含变更清单、设计决策、影响范围、测试结果。报告路径写入 beads task 的 doc_path metadata。
 
-📌 **reports/changes/ 目录必须存在**（由 Triage 在 Change 任务创建时预先创建），Dev 完成时写入 SCOPE.md。
+📌 **Change SCOPE.md 是强制的**：无论是否涉及代码，所有 Change 任务都必须有 SCOPE.md。
+
+📌 **SCOPE.md 由执行角色创建**：Triage 不创建任何文件，只负责协调。
+
+📌 **reports/changes/ 目录由 Triage 预先创建**（仅目录，不含内容），执行角色负责写入 SCOPE.md。
 
 📌 Change 目录**不带 R 后缀**（R 后缀仅用于 Bug 修复轮次）。如 Change 需要调整，创建新 Change 任务。
 
@@ -383,6 +404,34 @@ R-Phase 3: 上线部署（DevOps）
 | Feature | `{TASK_ID}-{name}/` | ❌ 不带 | 版本体系 `delivery/{feature}/versions/` |
 | Bug | `{bug-id}-R{N}/` | ✅ 必带 | R 递增（R1→R2→R3） |
 | Change | `{change-id}/` | ❌ 不带 | 新 Change 任务 |
+
+---
+
+## ⚠️ 会话结束交接文档（强制）
+
+**规则**：每一个会话结束时，Triage 必须创建交接文档。
+
+**Triage 职责说明**：
+- 交接文档是**会话管理**的一部分，不是任务执行
+- Triage 作为协调者，负责记录整个会话的状态
+- 任务执行角色只负责自己任务的 SCOPE.md/RCA.md 等
+
+### 交接文档位置
+```
+{DOCS_INTERNAL}/handoff-{YYYY}-{MM}-{DD}.md
+```
+
+### 交接文档内容（强制项）
+- 当前项目状态
+- 本会话已完成的工作（含 git 引用）
+- 识别但未修复的问题
+- 待完成的任务
+- 关键文件路径
+- 继续工作提示词
+
+### ⛔ 禁止跳过
+- **会话结束前必须生成**：即使什么也没改，也得写个空的
+- **交接文档不是可选的**：是流程的强制环节
 
 ---
 
