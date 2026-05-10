@@ -15,13 +15,12 @@ ai:
       - Edit task-pool.md manually (read-only export in v2)
       - Reference v1 paths
   standards:
+    # Layer 2 (必须): 核心协议
     - {TEAM_PATH}/workflows/shared.md
+    - {TEAM_PATH}/workflows/shared-protocol.md
+    # Layer 3 (按需加载):
     - {TEAM_PATH}/workflows/roles/test-standards.md
     - {TEAM_PATH}/workflows/roles/devtestops.md
-    - {TEAM_PATH}/workflows/roles/test-levels.md
-    - {TEAM_PATH}/workflows/roles/specialized-tests.md
-    - {TEAM_PATH}/workflows/roles/checklist.md
-    - {TEAM_PATH}/templates/gherkin-feature-template.md
     # Project-level design specs (UI verification baseline)
     - {DOCS_INTERNAL}/design/tokens.md
     - {DOCS_INTERNAL}/design/components.md

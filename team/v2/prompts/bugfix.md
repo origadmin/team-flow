@@ -19,16 +19,17 @@ ai:
       - Edit task-pool.md manually during task operations
       - Reference v1 paths or v1-only patterns
   standards:
+    # Layer 2 (必须): 核心协议
     - {TEAM_PATH}/workflows/shared.md
+    - {TEAM_PATH}/workflows/shared-protocol.md
+    # Layer 3 (按需加载):
     - {TEAM_PATH}/workflows/roles/bugfix-standards.md
     - {TEAM_PATH}/workflows/roles/bugfix-standards-v2.md
     # subtype = frontend-dev 时额外加载
     - {TEAM_PATH}/workflows/roles/frontend-specialized-tests.md
-    - {TEAM_PATH}/templates/frontend-bug-test-template.md
     - {TEAM_PATH}/templates/ui-verification-template.md
     # subtype = backend-dev 时额外加载
     - {TEAM_PATH}/workflows/roles/specialized-tests.md
-    - {TEAM_PATH}/templates/bug-test-template.md
 ---
 
 # Bugfix Agent — team-flow v2 (beads-native)

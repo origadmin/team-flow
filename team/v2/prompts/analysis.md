@@ -14,7 +14,10 @@ ai:
       - Decisions without evidence
       - Vague descriptions like "this is better"
   standards:
+    # Layer 2 (必须): 核心协议
     - {TEAM_PATH}/workflows/shared.md
+    - {TEAM_PATH}/workflows/shared-protocol.md
+    # Layer 3 (按需加载):
     - {TEAM_PATH}/workflows/roles/analysis-standards.md
 ---
 

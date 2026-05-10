@@ -21,13 +21,13 @@ ai:
       - Edit task-pool.md manually (read-only export in v2)
       - Reference v1 paths
   standards:
+    # Layer 2 (必须): 核心协议
     - {TEAM_PATH}/workflows/shared.md
+    - {TEAM_PATH}/workflows/shared-protocol.md
+    # Layer 3 (按需加载):
     - {TEAM_PATH}/workflows/roles/development-standards.md
     - {TEAM_PATH}/workflows/roles/devtestops.md
-    - {TEAM_PATH}/workflows/roles/test-levels.md
     - {TEAM_PATH}/workflows/roles/frontend-specialized-tests.md
-    - {TEAM_PATH}/templates/frontend-feature-test-template.md
-    - {PROJECT}/web/tests/README.md
 ---
 
 # Dev (Frontend) -- team-flow v2 (beads-native)

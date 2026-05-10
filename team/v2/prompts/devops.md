@@ -16,7 +16,10 @@ ai:
       - Deploy without documenting changes
       - Skip SCOPE.md for Change tasks
   standards:
+    # Layer 2 (必须): 核心协议
     - {TEAM_PATH}/workflows/shared.md
+    - {TEAM_PATH}/workflows/shared-protocol.md
+    # Layer 3 (按需加载):
     - {TEAM_PATH}/workflows/roles/devops-standards.md
 ---
 

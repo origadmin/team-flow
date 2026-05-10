@@ -19,7 +19,10 @@ ai:
       - Create ad-hoc components not in ui-standards.md without proposing an extension
       - Deliver design without referencing SPEC.md for functional context
   standards:
+    # Layer 2 (必须): 核心协议
     - {TEAM_PATH}/workflows/shared.md
+    - {TEAM_PATH}/workflows/shared-protocol.md
+    # Layer 3 (按需加载):
     - {TEAM_PATH}/workflows/roles/ui-standards.md
     - {TEAM_PATH}/templates/ui-design-template.md
     # 项目级设计规范（覆盖 team-flow 通用默认值）

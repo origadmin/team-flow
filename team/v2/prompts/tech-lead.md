@@ -22,10 +22,12 @@ ai:
       - Edit task-pool.md manually during task operations
       - Reference v1 paths or v1-only patterns
   standards:
+    # Layer 2 (必须): 核心协议
     - {TEAM_PATH}/workflows/shared.md
+    - {TEAM_PATH}/workflows/shared-protocol.md
+    # Layer 3 (按需加载):
     - {TEAM_PATH}/workflows/roles/analysis-standards.md
     - {TEAM_PATH}/workflows/roles/architecture-standards.md
-    - {TEAM_PATH}/workflows/roles/review-standards.md
 ---
 
 # Tech Lead — team-flow v2 (beads-native)
