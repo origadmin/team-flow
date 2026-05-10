@@ -203,9 +203,11 @@ Phase 3: 验证（QA）
 
 📌 当用户一次性发送 2+ 个需求时，触发 Batch 任务流程
 
+**核心原则**：Batch 是 Triage 内部管理机制，Agent 不知道 Batch 存在
+
 ```
 Phase 0: Batch 创建（Triage）
-  产出物: Batch beads + 执行计划文档
+  产出物: Batch beads + PLAN.md
   命令: flow task create --title "Batch: {date}-{N}" -t batch
   命令: 创建 {DOCS_INTERNAL}/batch/{batch-id}/PLAN.md
 
@@ -213,33 +215,47 @@ Phase 1: 范围分析（Triage）
   产出物: 子任务列表 + 依赖分析 + 冲突分析
   分析: 无冲突任务可并行分发
 
-Phase 2: 批量分发（Triage）
-  产出物: 执行计划 + 用户确认
+Phase 2: 用户确认（Triage）
+  产出物: 用户确认执行计划
+  ⚠️ 必须用户确认后才能分发
+
+Phase 3: 批量分发（Triage）
+  产出物: 执行计划
   分发策略:
     ├─ 无冲突任务 → 同时分发给多个 Agent
     └─ 有冲突任务 → 按依赖顺序分发
 
-Phase 3: 并行执行（多 Agent）
+Phase 4: Agent 执行（多 Agent）
   产出物: 各子任务完成
-  执行: Agent 一个个处理自己被分配的任务
+  Agent 行为:
+    ├─ Agent 不知道 Batch 存在
+    ├─ Agent 只知道自己的任务 ID（如 F001）
+    ├─ Agent 按各自标准流程执行
+    └─ Agent 完成后汇报 Triage
 
-Phase 4: 结果收集（Triage）
+Phase 5: 成果验证（Triage）
+  产出物: 验证结果
+  检查: 验证 Agent 产出物（SCOPE.md/RCA.md 等）是否满足要求
+  判定: 满足 → 标记 DONE | 不满足 → 触发重试
+
+Phase 6: 结果收集（Triage）
   产出物: 批量执行报告
   检查: 收集各 Agent 完成结果
   处理: 成功 → 更新 PLAN.md | 失败 → 重新分发（最多 3 次）
 
-Phase 5: 状态更新（Triage）
+Phase 7: 状态更新（Triage）
   产出物: 更新后的执行计划
   循环: 等所有子任务完成
 ```
 
-📌 Batch 任务由 Triage 统一管理，beads 只管进度状态
+📌 Batch 由 Triage 统一管理，Agent 不需要知道 Batch 存在
 
 ### 并发控制规则
 
-| 规则 | 说明 |
+| 场景 | 规则 |
 |------|------|
-| 并行分发上限 | 无冲突任务建议最多 3 个并行分发 |
+| 子任务 ≤ 3 个 | 同时分发 |
+| 子任务 > 3 个 | 每批最多 3 个，上一批完成后分发下一批 |
 | 有冲突任务 | 必须队列执行（等前一个完成） |
 | 依赖任务 | 等依赖完成后才分发 |
 | 失败重试 | 单任务失败重试 3 次，仍失败标记 FAILED |
@@ -484,6 +500,7 @@ Triage 创建 Change 任务
 
 📌 **Batch 管理规则**：
 - Batch 由 Triage 统一管理
+- PLAN.md **仅供 Triage 内部使用**，Agent 不读取也不写入
 - beads 只记录 Batch 的总体状态（PLANNING → IN_PROGRESS → COMPLETED）
 - 子任务状态在 PLAN.md 中追踪
 

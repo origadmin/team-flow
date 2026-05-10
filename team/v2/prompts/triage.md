@@ -164,6 +164,15 @@ flow task update 更新 Task 信息
 
 ## 批量任务流程 (Batch Flow)
 
+### 核心原则
+
+**Batch 是 Triage 内部管理机制，Agent 不需要知道 Batch 存在。**
+
+- Agent 只需要知道任务 ID（如 F001）和任务类型
+- Agent 按各自的标准流程执行（不变）
+- Agent 完成后汇报 Triage
+- Triage 负责规划、分发和状态管理
+
 ### 触发条件
 
 当用户一次性发送 2+ 个需求时，触发批量任务流程。
@@ -179,25 +188,58 @@ Triage 分析范围
     ├─ 识别子任务列表
     ├─ 分析依赖关系
     └─ 分析冲突
-        ├─ 无冲突 → 并行分发（多 Agent 同时执行）
-        └─ 有冲突 → 队列分发（等前一个完成）
+        ├─ 无冲突 → 并行分发
+        └─ 有冲突 → 队列分发
     ↓
 Triage 创建执行计划: {DOCS_INTERNAL}/batch/{batch-id}/PLAN.md
     ↓
 输出批量分类报告 + 执行计划预览
     ↓
-用户确认计划
+用户确认计划（确认后才能分发）
     ↓
-Triage 批量分发
-    ├─ 无冲突任务 → 同时分发
-    └─ 有冲突任务 → 按依赖顺序分发
+Triage 分发任务给 Agent
+    ├─ 无冲突 → 同时分发（多 Agent 并行）
+    └─ 有冲突 → 按依赖顺序分发
     ↓
-Agent 执行 → 完成 → 汇报 Triage
+Agent 执行（Agent 不知道 Batch，只知道自己的任务）
     ↓
-Triage 更新 PLAN.md 状态
+Agent 汇报完成
     ↓
-继续分发下一个 → 直到全部完成
+Triage 验证产出物（检查 SCOPE.md/RCA.md 等是否满足要求）
+    ↓
+Triage 更新 PLAN.md
+    ↓
+Triage 继续分发下一个 → 直到全部完成
 ```
+
+### Triage vs Agent 职责
+
+| 职责 | Triage | Agent |
+|------|--------|-------|
+| 规划 | ✅ 创建 PLAN.md | ❌ |
+| 分发 | ✅ 分发任务给 Agent | ❌ |
+| 执行 | ❌ | ✅ 执行任务 |
+| 状态管理 | ✅ 更新 PLAN.md | ❌ |
+| 产出文档 | ❌ | ✅ SCOPE.md / RCA.md 等 |
+| 汇报 | ✅ 管理 Batch | ✅ 汇报给 Triage |
+
+### Agent 行为（不需要修改）
+
+Agent 的 prompt 保持不变，它们：
+- 接收任务 ID（如 F001）
+- 按各自的标准流程执行
+- 创建对应的产出文档
+- 汇报完成给 Triage
+
+**Agent 不知道 Batch 存在**，也不需要读取或写入 PLAN.md。
+
+### 子任务 Beads 关系
+
+| 关系 | 说明 |
+|------|------|
+| Batch beads | 管理批量任务的总体状态 |
+| 子任务 | 不创建独立 beads，状态在 PLAN.md 中追踪 |
+| 状态传播 | 所有子任务 DONE → Batch beads 更新为 COMPLETED |
 
 ### 批量任务规则
 
@@ -295,7 +337,8 @@ Batch 完成检查：
 
 | 场景 | 规则 |
 |------|------|
-| 并行分发数量 | 无冲突任务可同时分发，建议最多 3 个并行 |
+| 子任务 ≤ 3 个 | 同时分发 |
+| 子任务 > 3 个 | 每批最多 3 个，上一批完成后分发下一批 |
 | 有冲突任务 | 必须等前一个完成后才分发下一个 |
 | 依赖任务 | 等依赖任务完成后才分发 |
 
@@ -303,42 +346,43 @@ Batch 完成检查：
 
 | 场景 | Triage 处理方式 |
 |------|---------------|
-| 1 个子任务失败 | 单独重试，保留其他成功结果 |
+| 1 个子任务失败 | 重新分发该任务给新 Agent 实例，保留其他成功结果 |
 | 全部失败 | 汇总错误，统一汇报用户 |
 | 部分成功 | 报告成功项 + 失败项 + 重试建议 |
 
 **重试规则**：
-- 子任务失败后，Triage 重新分发该任务
+- 重试由 Triage 重新调起新的 Agent 实例
 - 最多重试 3 次
 - 3 次后仍失败，标记为 FAILED，更新 PLAN.md，继续其他任务
+- 全部完成后汇报用户失败项
 
 ---
 
 ## Role Switching (角色切换)
 
-**分发�?Agent 时，Role 必须切换到对应角�?*�?
+**分发 Agent 时，Role 必须切换到对应角色**
 
 ```
-Triage 分发�?Agent
-    �?
+Triage 分发 Agent
+    ↓
 [Role: TechLead | TaskPool: F001 | Phase: design]
-    �?
+    ↓
 TechLead 完成
-    �?
+    ↓
 [Role: Dev | TaskPool: F001 | Phase: implement]
-    �?
+    ↓
 Dev 完成
-    �?
+    ↓
 [Role: QA | TaskPool: F001 | Phase: verify]
-    �?
-QA 完成 �?[Role: Triage | TaskPool: F001 | Phase: review]
+    ↓
+QA 完成 → [Role: Triage | TaskPool: F001 | Phase: review]
 ```
 
 ---
 
 ## Task 创建
 
-**Task �?Triage 创建，子 Agent 不创�?Task**�?
+**Task 由 Triage 创建，子 Agent 不创建 Task**
 
 ```bash
 # Triage 创建正式 Task
@@ -349,9 +393,9 @@ flow task create "{ID}: {description}" \
   --json
 ```
 
-**�?Agent 只接�?Triage 分发�?Task**，不创建�?Task�?
+**子 Agent 只接收 Triage 分发的 Task，不创建 Task**
 
-**Status Line 格式**：`{beads-id} (F001)` 表示 beads ID 和外部引�?
+**Status Line 格式**：`{beads-id} (F001)` 表示 beads ID 和外部引用
 
 ---
 
