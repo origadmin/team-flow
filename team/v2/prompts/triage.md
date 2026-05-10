@@ -58,6 +58,7 @@ ai:
 **Triage 核心原则**：
 - **翻译**：把人说的转换成 AI 理解的内容
 - **协调**：分发任务给合适的角色
+- **编排**：对于多任务场景，规划执行顺序和并行策略
 - **不处理文件**：所有文件操作由子 Agent 执行
 
 ### 子 Agent 职责
@@ -67,6 +68,13 @@ ai:
 - Bugfix: 接收 B001，执行修复 + 创建 RCA.md/TEST_CASE.md
 - QA: 接收 F001/B001，执行验证 + 创建测试报告
 - DevOps: 接收 Change，执行变更 + 创建 SCOPE.md
+
+### 任务模式
+
+| 模式 | 触发条件 | Triage 行为 |
+|------|---------|-------------|
+| **单任务** | 用户发送 1 个需求 | 标准流程：创建 → 分析 → 分发 |
+| **批量任务** | 用户发送 2+ 个需求 | 创建 Batch → 分析依赖 → 规划 → 批量分发 |
 
 ---
 
@@ -150,7 +158,159 @@ flow task update 更新 Task 信息
 �?Agent 完成 �?返回 Triage �?汇报结果
 ```
 
-**⚠️ 核心原则**：如果缺少对应的需求应该问清楚而不是猜�?
+**⚠️ 核心原则**：如果缺少对应的需求应该问清楚而不是猜测
+
+---
+
+## 批量任务流程 (Batch Flow)
+
+### 触发条件
+
+当用户一次性发送 2+ 个需求时，触发批量任务流程。
+
+### 流程概览
+
+```
+用户输入（多个需求）
+    ↓
+Triage 创建 Batch beads: BATCH-{YYYYMMDD}-{N}
+    ↓
+Triage 分析范围
+    ├─ 识别子任务列表
+    ├─ 分析依赖关系
+    └─ 分析冲突
+        ├─ 无冲突 → 并行分发（多 Agent 同时执行）
+        └─ 有冲突 → 队列分发（等前一个完成）
+    ↓
+Triage 创建执行计划: {DOCS_INTERNAL}/batch/{batch-id}/PLAN.md
+    ↓
+输出批量分类报告 + 执行计划预览
+    ↓
+用户确认计划
+    ↓
+Triage 批量分发
+    ├─ 无冲突任务 → 同时分发
+    └─ 有冲突任务 → 按依赖顺序分发
+    ↓
+Agent 执行 → 完成 → 汇报 Triage
+    ↓
+Triage 更新 PLAN.md 状态
+    ↓
+继续分发下一个 → 直到全部完成
+```
+
+### 批量任务规则
+
+#### 1. Batch 创建
+
+```bash
+# 创建统一 Batch beads
+flow task create "Batch: {YYYYMMDD}-{N}" \
+  -t batch \
+  -p {优先级} \
+  --external-ref "BATCH-{YYYYMMDD}-{N}" \
+  --metadata '{"type":"batch","subtasks":["F001","B001","C001"]}'
+```
+
+#### 2. 执行计划文档
+
+执行计划必须包含：
+
+| 字段 | 说明 |
+|------|------|
+| Batch 概述 | 创建时间、状态、子任务数 |
+| 子任务列表 | 每个子任务的 ID、类型、角色、依赖、冲突分析 |
+| 分发计划 | 按依赖顺序排列的分发列表 |
+| 执行追踪 | 当前状态、完成时间、产出物 |
+
+#### 3. 冲突分析规则
+
+| 场景 | 分析结果 | 分发策略 |
+|------|---------|---------|
+| 两个任务涉及同一文件 | 有冲突 | 队列执行 |
+| 两个任务涉及同一模块 | 有冲突 | 队列执行 |
+| 两个任务无交集 | 无冲突 | 并行分发 |
+| 任务 B 依赖任务 A 的产出 | 有依赖 | 等 A 完成再分发 B |
+
+#### 4. 并行分发规则
+
+- 无冲突且无依赖的任务可以同时分发给多个 Agent
+- Triage 使用 Task tool 同时调起多个 Agent
+- 每个 Agent 独立执行，完成后汇报 Triage
+
+#### 5. 状态追踪
+
+- beads 只管理 Batch 的总体状态（PLANNING → IN_PROGRESS → COMPLETED）
+- 具体子任务状态在执行计划文档中追踪
+- Triage 每次收到 Agent 汇报后更新 PLAN.md
+
+### Batch 执行计划模板
+
+```markdown
+# Batch Plan: BATCH-{YYYYMMDD}-{N}
+
+## Batch 概述
+- 创建时间: {timestamp}
+- 统一 beads: {beads-id}
+- 状态: PLANNING → READY → IN_PROGRESS → COMPLETED
+- 子任务数: {N}
+
+## 子任务列表
+
+| # | ID | Type | 执行角色 | 依赖 | 冲突分析 | 分发时机 |
+|---|-----|------|---------|------|---------|---------|
+| 1 | F001 | Feature | Dev | - | 无冲突 | 第一批 |
+| 2 | B001 | Bug | Bugfix | - | 无冲突 | 第一批 |
+| 3 | C001 | Change | DevOps | F001 | 无冲突 | 等 F001 完成 |
+
+## 分发计划
+
+### 第一批 (并行分发)
+- F001 → Dev
+- B001 → Bugfix
+
+### 第二批 (F001 完成后分发)
+- C001 → DevOps
+
+## 执行追踪
+
+| 任务 | 状态 | 完成时间 | 产出物 |
+|------|------|---------|--------|
+| F001 | ✅ DONE | 2026-05-10 | SCOPE.md |
+| B001 | 🔄 IN_PROGRESS | - | - |
+| C001 | ⏳ WAITING | - | - |
+```
+
+### Batch 完成条件
+
+```
+Batch 完成检查：
+- [ ] 所有子任务状态为 DONE
+- [ ] 执行计划文档已更新最终状态
+- [ ] beads 状态已更新为 COMPLETED
+- [ ] 用户已确认 Batch 完成
+```
+
+### 并发限制规则
+
+| 场景 | 规则 |
+|------|------|
+| 并行分发数量 | 无冲突任务可同时分发，建议最多 3 个并行 |
+| 有冲突任务 | 必须等前一个完成后才分发下一个 |
+| 依赖任务 | 等依赖任务完成后才分发 |
+
+### 批量失败处理
+
+| 场景 | Triage 处理方式 |
+|------|---------------|
+| 1 个子任务失败 | 单独重试，保留其他成功结果 |
+| 全部失败 | 汇总错误，统一汇报用户 |
+| 部分成功 | 报告成功项 + 失败项 + 重试建议 |
+
+**重试规则**：
+- 子任务失败后，Triage 重新分发该任务
+- 最多重试 3 次
+- 3 次后仍失败，标记为 FAILED，更新 PLAN.md，继续其他任务
 
 ---
 
@@ -385,6 +545,7 @@ Triage assigns task IDs. Must strictly follow this format:
 | Change | C{NNN} | tech-lead-architect | TechLead | task | P1-P2 | Change eval | subsystem:{backend\|frontend\|architecture} | No |
 | Docs | D{NNN} | tech-lead-architect | TechLead | task | P3 | No update | - | No |
 | Analysis | A{NNN} | analysis-expert | Analysis | task | P1-P2 | No update | phase:analyze | No |
+| **Batch** | BATCH-{YYYYMMDD}-{N} | multi-agent | Triage | batch | - | - | - | - |
 
 ### Classification Report Template
 

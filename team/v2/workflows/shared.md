@@ -123,13 +123,18 @@ flow export > .team/task-pool-export.md
 ```
 用户输入
     │
-    ├── 意图识别 → 自动分类（Feature/Bug/Change/Analysis/Docs）
+    ├── 单个需求 → 自动分类（Feature/Bug/Change/Analysis/Docs）
+    ├── 多个需求（2+） → 批量任务流程
     ├── beads task ID？→ 进入任务执行流程
     ├── "R:" 前缀 + Milestone ID？→ 进入发布流程
     └── 澄清/状态查询？→ 直接回答
 ```
 
 📌 所有用户输入自动进入分类流程，无需特殊前缀
+
+**批量任务识别**:
+- 用户一次性发送多个需求（用换行/序号/分号分隔）
+- Triage 自动识别并触发批量任务流程
 
 **豁免场景**:
 | 场景 | 处理方式 |
@@ -193,6 +198,59 @@ Phase 3: 验证（QA）
   命令: flow task update <id> --add-label phase:verify
   → 任务状态 → Review
 ```
+
+### Batch 任务阶段（多任务场景）
+
+📌 当用户一次性发送 2+ 个需求时，触发 Batch 任务流程
+
+```
+Phase 0: Batch 创建（Triage）
+  产出物: Batch beads + 执行计划文档
+  命令: flow task create --title "Batch: {date}-{N}" -t batch
+  命令: 创建 {DOCS_INTERNAL}/batch/{batch-id}/PLAN.md
+
+Phase 1: 范围分析（Triage）
+  产出物: 子任务列表 + 依赖分析 + 冲突分析
+  分析: 无冲突任务可并行分发
+
+Phase 2: 批量分发（Triage）
+  产出物: 执行计划 + 用户确认
+  分发策略:
+    ├─ 无冲突任务 → 同时分发给多个 Agent
+    └─ 有冲突任务 → 按依赖顺序分发
+
+Phase 3: 并行执行（多 Agent）
+  产出物: 各子任务完成
+  执行: Agent 一个个处理自己被分配的任务
+
+Phase 4: 结果收集（Triage）
+  产出物: 批量执行报告
+  检查: 收集各 Agent 完成结果
+  处理: 成功 → 更新 PLAN.md | 失败 → 重新分发（最多 3 次）
+
+Phase 5: 状态更新（Triage）
+  产出物: 更新后的执行计划
+  循环: 等所有子任务完成
+```
+
+📌 Batch 任务由 Triage 统一管理，beads 只管进度状态
+
+### 并发控制规则
+
+| 规则 | 说明 |
+|------|------|
+| 并行分发上限 | 无冲突任务建议最多 3 个并行分发 |
+| 有冲突任务 | 必须队列执行（等前一个完成） |
+| 依赖任务 | 等依赖完成后才分发 |
+| 失败重试 | 单任务失败重试 3 次，仍失败标记 FAILED |
+
+### 批量失败处理
+
+| 场景 | 处理策略 |
+|------|---------|
+| 1 个子 Agent 失败 | 单独重试，保留其他成功结果 |
+| 全部失败 | 汇总错误，统一汇报用户 |
+| 部分成功 | 报告成功项 + 失败项 + 重试建议 |
 
 ### 发布阶段（Release Workflow）
 
@@ -404,6 +462,30 @@ Triage 创建 Change 任务
 | Feature | `{TASK_ID}-{name}/` | ❌ 不带 | 版本体系 `delivery/{feature}/versions/` |
 | Bug | `{bug-id}-R{N}/` | ✅ 必带 | R 递增（R1→R2→R3） |
 | Change | `{change-id}/` | ❌ 不带 | 新 Change 任务 |
+| Batch | `batch/{batch-id}/` | ❌ 不带 | 新 Batch 任务 |
+
+### Batch 资产包
+
+```
+{DOCS_INTERNAL}/batch/{batch-id}/
+├── PLAN.md              ← 执行计划（Triage 创建）
+├── F001/                ← 子任务产出物（各 Agent 创建）
+│   └── SCOPE.md
+├── B001/
+│   ├── RCA.md
+│   └── TEST_CASE.md
+└── ...
+```
+
+📌 **Batch 执行计划强制要求**：
+- Triage 创建 Batch 时必须创建 PLAN.md
+- PLAN.md 包含子任务列表、依赖分析、冲突分析、分发计划、执行追踪
+- 具体子任务内容在各 Agent 的产出物中
+
+📌 **Batch 管理规则**：
+- Batch 由 Triage 统一管理
+- beads 只记录 Batch 的总体状态（PLANNING → IN_PROGRESS → COMPLETED）
+- 子任务状态在 PLAN.md 中追踪
 
 ---
 
@@ -508,10 +590,11 @@ framework/
 | C001 | Change | ❌ 不带 |
 | D001 | Documentation | ❌ 不带 |
 | A001 | Analysis | ❌ 不带 |
+| BATCH-{YYYYMMDD}-{N} | Batch | ❌ 不带 |
 
 ### ⚠️ 强制规则
 
-1. **TYPE 只允许 F/B/C/D/A 五种**，禁止自创前缀（FE-/BE-/BF-/TASK-/UI- 等）
+1. **TYPE 只允许 F/B/C/D/A/BATCH 六种**，禁止自创前缀（FE-/BE-/BF-/TASK-/UI- 等）
 2. **SEQUENCE 从 001 递增**，禁止跳号、禁止复用已归档 ID
 3. **同一 beads 数据库中全局唯一**，不分子类型（前端 Bug 也用 B 前缀，描述中注明即可）
 4. **R 后缀仅在 Bug 资产目录使用**，beads task 永远用基础 ID
@@ -522,6 +605,7 @@ framework/
    - 发现 Bug A 的子问题 B/C/D → 不新建 B-ID，而是作为 A 的 R2/R3/R4 处理
    - 关联文档列写入 `B{A}-R{N}/`
    - 旧分散 B-ID 标记为 Archived，注明去向
+9. **Batch 任务**: 一个 Batch 包含多个子任务，子任务用各自类型的前缀（F/B/C/D/A），Batch 统一管理
 
 📌 **一个 Bug 一个 ID，R 跟踪修复轮次。禁止为同一 Bug 的不同修复尝试分配新 B-ID。**
 

@@ -168,19 +168,16 @@ flow task list --status open --format table > {DOCS_INTERNAL}/task-pool.md
 1. 读取 beads issue: `flow task show <id>` 获取变更描述
 2. 分析变更对交付的影响
 3. 判断:
-   - 影响交付 → beads issue 保持 open，反馈 Triage 更新状态
+   - 影响交付 → 评估完成后，分发到 DevOps 执行并生成 SCOPE.md
      ```bash
-     flow task update <id> --add-label blocked
-     flow task update <id> --notes "Change impacts delivery: {reason}"
+     flow task update <id> --add-label phase:implement
+     # 返回 Triage 分发到 DevOps
      ```
    - 不影响交付 → 关闭 beads issue，反馈 Triage
      ```bash
      flow task close <id> --reason "Change evaluated: no delivery impact"
      ```
-4. 如果影响交付，更新相关资产包（SPEC.md / AC.md / R1/R2/R3）
-   ```bash
-   flow task update <id> --notes "Updated SPEC.md and AC.md for change impact"
-   ```
+4. 如果影响交付，DevOps 执行变更并生成 SCOPE.md（详见 shared.md §Change 任务流程）
 
 ---
 

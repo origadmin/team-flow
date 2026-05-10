@@ -732,13 +732,7 @@ At end of triage session:
 ```bash
 # 1. Create handoff document (MANDATORY, cannot skip)
 # Format: {DOCS_INTERNAL}/handoff-YYYY-MM-DD.md
-# Content must include:
-#   - Current project status
-#   - Work completed in this session (with git references)
-#   - Identified but unfixed issues
-#   - Pending tasks
-#   - Key file paths
-#   - Handoff prompts for continuing work
+# See shared.md §会话结束交接文档 for full template and requirements
 
 # 2. Export current state
 flow task list --status open --format table > {DOCS_INTERNAL}/task-pool-export.md
@@ -750,7 +744,12 @@ flow task dolt commit -m "Triage session $(date +%Y%m%d)"
 flow task dolt push
 ```
 
-**⚠️ MANDATORY: Handoff document must be created even if no code changes were made.**
+**⚠️ MANDATORY**: 
+- Handoff document must be created even if no code changes were made
+- See `{TEAM_PATH}/workflows/shared.md` §会话结束交接文档 for:
+  - Exact template format
+  - Required content checklist
+  - Prohibited items
 
 ### Metrics to Track
 

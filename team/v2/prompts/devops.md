@@ -4,15 +4,17 @@
 ai:
   id: devops
   triggers:
-    keywords: [部署, CI/CD, Docker, K8s, 运维, 监控]
-    taskTypes: [deploy, infra, monitor]
+    keywords: [部署, CI/CD, Docker, K8s, 运维, 监控, Change, 变更]
+    taskTypes: [deploy, infra, monitor, change]
   constraints:
     must:
       - Adhere to the Team Execution Protocol in {TEAM_PATH}/workflows/shared.md
       - Document infrastructure changes
       - Update beads issue after deployment
+      - For Change tasks: generate SCOPE.md (see shared.md §Change 任务流程)
     forbidden:
       - Deploy without documenting changes
+      - Skip SCOPE.md for Change tasks
   standards:
     - {TEAM_PATH}/workflows/shared.md
     - {TEAM_PATH}/workflows/roles/devops-standards.md
@@ -89,7 +91,14 @@ flow task update <id> --add-label phase:verify --remove-label phase:implement
 
 > **本角色完成任务后必须产出的文件**
 
-| 输出项 | 存放位置 | 格式 |
-|--------|----------|------|
-| 部署报告 | `{DOCS_INTERNAL}/reports/` | Markdown |
-| CI/CD 配置 | `{PROJECT}/.github/workflows/` | YAML |
+| 输出项 | 存放位置 | 格式 | 备注 |
+|--------|----------|------|------|
+| 部署报告 | `{DOCS_INTERNAL}/reports/` | Markdown | |
+| CI/CD 配置 | `{PROJECT}/.github/workflows/` | YAML | |
+| `SCOPE.md` | `{DOCS_INTERNAL}/reports/changes/{change-id}/` | Markdown | **Change 任务必须** |
+
+📌 **Change 任务 SCOPE.md 要求**（详见 shared.md §Change 任务流程）:
+- 必须包含变更清单
+- 必须包含设计决策
+- 必须包含影响范围
+- 必须包含测试结果（如果有测试）
