@@ -124,3 +124,28 @@ TaskPool 前缀必须匹配 Asset。
 | 禁止交叉写入 | workspace 模式下所有任务在同一个 `.beads/`，但 Asset 必须反映正确目标 |
 | 配置持久化 | 配置写在 `.team/project.md`，AI 每次启动自动读取 |
 | 子项目规则独立 | 每个子项目的 Tech Stack + Toolchain 独立配置，互不影响 |
+
+## 7. 内部文档路径
+
+team-flow 的流程产出（Bug 报告、变更记录、INDEX 等）不应污染项目源码或用户文档，应放在内部文档路径。
+
+### 路径规则
+
+| 优先级 | 位置 | 条件 |
+|--------|------|------|
+| 1 | `_docs/team-flow/` | 项目配置了 `_docs/` 内部文档路径 |
+| 2 | `.team/` | 无内部文档路径时的降级方案 |
+
+### 目录结构
+
+```
+_docs/team-flow/
+├── README.md           ← 目录说明
+├── INDEX.md            ← 全局 cr-index 跟踪表
+├── reports/
+│   ├── bugs/           ← B001/R1/RCA.md
+│   └── changes/        ← C001/R1/SCOPE.md
+└── requirements/       ← F001/DETAIL.md
+```
+
+每个任务目录下含 `INDEX.md` 跟踪该任务的 cr-index。
