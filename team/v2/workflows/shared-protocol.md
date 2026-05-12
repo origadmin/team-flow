@@ -80,7 +80,18 @@ flow task dolt commit -m "Session: $(date +%Y%m%d_%H%M)"
 flow task dolt push
 ```
 
-### L0.4 beads Status Management Commands
+### L0.4 beads Storage Location (IMPORTANT)
+
+**beads 数据库必须在项目根目录 `.beads/`，禁止写入框架层。**
+
+| Item | Correct Path (USE THIS) | WRONG Path (NEVER) |
+|------|------------------------|-------------------|
+| beads DB | `{PROJECT}/.beads/` | `{TEAM_PATH}/.beads/` |
+| task-pool-export | `{DOCS_INTERNAL}/task-pool-export.md` | `{TEAM_PATH}/task-pool-export.md` |
+
+`{TEAM_PATH}/` 是框架层，跨项目共享，AI 运行时只读。错误路径 = 跨项目污染。
+
+### L0.5 beads Status Management Commands
 
 ```bash
 # Create a new task

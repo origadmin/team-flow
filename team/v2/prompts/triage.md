@@ -419,28 +419,45 @@ About to execute an operation
 
 ---
 
-## 分发前检查清(IMPORTANT)
+## 分发前检查清单（强制 - 违反 = 严重违规）
 
-**⚠️ 分发到子 Agent 前，必须完成以下检查：**
+**⚠️ 分发到子 Agent 前，必须完成以下检查。缺少任何一项 = 严重违规：**
 
 ```
-分发前检
-    
-    ├─ Task 已创建？
-      └─ ⚠️ 违规！先执行 flow task create
-    
-    ├─ TaskPool 显示正确 ID
-      └─ 显示 -(N/A) ⚠️ 违规！TaskPool 必须显示 F001/B001/C001
-    
-    ├─ 用户已确认？
-      └─ 等待用户确认
-    
-    └─ 分发到正确的 subagent
-        └─ 检Agent Dispatch Mapping
+分发前检查清单
+
+    □ Task 已创建？
+      └─ ⚠️ 未执行 flow task create = 违规！必须先创建 Task
+
+    □ TaskPool 显示正确 beads ID？
+      └─ 显示 "framework"/"orig-cms"/"-(N/A)" = ⚠️ 违规！TaskPool 必须显示 beads ID (如 team-flow-xxx#5)
+
+    □ 用户已确认？
+      └─ 未确认 = 等待用户确认
+
+    □ 分发到正确的 subagent？
+      └─ 检查 Agent Dispatch Mapping
 ```
 
-**如果 Status Line 显示 `[Role: Dev | TaskPool: -(N/A) | Phase: ...]`**
-这是**严重违规**！说Triage 没有创建 Task 就分发了
+### Status Line 验证规则
+
+**TaskPool 值来源**（按优先级）：
+1. `flow task create` 返回的 beads ID（正确）
+2. `flow config paths --json` 返回的 `{PROJECT}` 目录名（错误！）
+3. 硬编码 "framework"（错误！）
+
+**⚠️ 如果看到 Status Line 中 TaskPool 值等于目录名（如 "framework"、"orig-cms"），说明 AI 跳过了 Task 创建步骤。**
+
+**正确示例**：
+```
+[Role: Triage | TaskPool: team-flow-6x9.15#5 | Phase: analyze | Asset: orig-cms]
+```
+
+**错误示例**：
+```
+[Role: Triage | TaskPool: framework | Phase: analyze | Asset: orig-cms]  ← 违规！
+[Role: Dev | TaskPool: -(N/A) | Phase: implement | Asset: orig-cms]       ← 严重违规！
+```
 
 ---
 

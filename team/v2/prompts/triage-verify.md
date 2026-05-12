@@ -1,7 +1,7 @@
 ﻿# Triage: Post-Verification & Review (loaded on demand)
 
-> **Loading rule**: 锟?Bug 杩斿洖鍚庨獙璇併€丷eview 纭銆佸垎鍙戝瓙 Agent銆佺鐞嗙姸锟?Session 鏃跺姞杞芥鏂囦欢
-> **Source**: 锟?`triage.md` 鎷嗗垎锛寁17.0
+> **Loading rule**: Bug返回后验证、Review确认、分发子Agent、管理状态、Session时加载此文件
+> **Source**: 来自triage.md拆分，v17.0
 
 ---
 
@@ -12,14 +12,14 @@ After bugfix-expert returns, Triage must verify:
 ### Part 1: File Existence Check
 
 | # | Verification Item | Expected Path | If Missing |
-|---|--------|---------|--------|
+|---|-------------------|---------------|------------|
 | 1 | RCA.md | {DOCS_INTERNAL}/reports/bugs/B{NNN}/R{N}/RCA.md | Mark as "RCA missing", require completion |
 | 2 | TEST_CASE.md | {DOCS_INTERNAL}/reports/bugs/B{NNN}/R{N}/TEST_CASE.md | Mark as "TEST_CASE missing", require completion |
 | 3 | Reproduction test code | tests/bugs/B{NNN}-*/ or web/tests/bugs/B{NNN}-*/ | Mark as "reproduction test missing", require completion |
 
-### Part 2: Test Execution Verification (IMPORTANT 锟?must run actual tests)
+### Part 2: Test Execution Verification (IMPORTANT - must run actual tests)
 
-鈿狅笍 Triage MUST execute the following commands to verify the fix actually works:
+Triage MUST execute the following commands to verify the fix actually works:
 
 **Backend Bug**:
 ```bash
@@ -46,19 +46,14 @@ bun run test
 
 # Step 4: Run bug-specific regression test
 bun run test -- --testPathPattern="B{NNN}"
-```
 
-**鈿狅笍 Frontend Bug 棰濆蹇呴』: UI 杩愯鏃堕獙锟?*:
-```bash
-# Step 5: Start dev server and verify UI
+# Step 5: UI verification (MANDATORY for frontend)
 bun run dev
-# 鐒跺悗蹇呴』鎵ц:
-# - 鎵撳紑 Bug 娑夊強鐨勯〉闈紙瀵艰埅锟?Bug URL锟?# - 妫€鏌ラ〉闈㈠唴瀹癸紙鏂囨湰/鏁版嵁/缁勪欢姝ｇ‘鏄剧ず锟?# - 鎵ц Bug 娑夊強鐨勪氦浜掞紙鐐瑰嚮/杈撳叆/鎻愪氦锟?# - 閲嶇幇 Bug 鍘熷瑙﹀彂姝ラ锛岀‘锟?Bug 鐜拌薄娑堝け
-# - 鎴浘淇濆瓨锟?{DOCS_INTERNAL}/reports/bugs/B{NNN}-R{N}/
+# Then open the bug page, verify content and interactions
 ```
 
 | # | Verification Item | Check Method | If Failed |
-|---|--------|---------|--------|
+|---|-------------------|--------------|-----------|
 | 4 | Backend: go build passes | Execute `go build ./...` | Mark as "compilation failed", send back to bugfix |
 | 5 | Backend: go test passes | Execute `go test ./...` | Mark as "tests failing", send back to bugfix |
 | 6 | Frontend: typecheck passes | Execute `bun run typecheck` | Mark as "type errors", send back to bugfix |
@@ -77,7 +72,7 @@ bun run dev
 ### Part 3: Data Flow Tracing Verification (API/permissions/state/interaction bugs)
 
 | # | Verification Item | Check Method | If Missing |
-|---|--------|---------|--------|
+|---|-------------------|--------------|------------|
 | 10 | RCA.md contains "Data Flow Tracing" section | Read RCA.md, search for "Data Flow Tracing" | Mark as "missing data flow tracing" |
 | 11 | Data flow tracing includes breakpoint analysis | Read RCA.md, search for "breakpoint" | Mark as "incomplete data flow tracing" |
 | 12 | TEST_CASE.md includes real-scenario verification | Read TEST_CASE.md, search for "real scenario" | Mark as "missing real-scenario verification" |
@@ -85,7 +80,7 @@ bun run dev
 ### Part 4: R Iteration Quality Check (must execute for R2+)
 
 | # | Verification Item | Check Method | If Missing |
-|---|--------|---------|--------|
+|---|-------------------|--------------|------------|
 | 13 | RCA.md contains previous round failure analysis | Read RCA.md, search for "R{N-1}" or "previous round" | Mark as "missing R iteration analysis" |
 | 14 | R iteration >= R4, has user been asked to confirm? | Check beads notes | Mark as "R4+ not paused" |
 
@@ -99,210 +94,219 @@ bun run dev
 
 ---
 
-## R-Iteration Handling
+## R Iteration Handling
 
-### R 杩唬瑙勫垯
+### R Iteration Rules
 
 ```
-Bug 淇锟?QA 楠岃瘉
-    锟?    鈹溾攢 楠岃瘉閫氳繃 锟?杩涘叆 Review 纭娴佺▼
-    锟?    鈹斺攢 楠岃瘉鏈€氳繃
-        锟?    璇㈤棶鐢ㄦ埛: "Bug 鏈慨濂斤紝闇€锟?R{N+1} 杩唬锟?
-        锟?    鈹屸攢 锟?锟?鎵撳洖 bugfix-expert锛岃Е锟?R{N+1}
-    锟?  鈹斺攢 鍒涘缓鏂扮洰锟?B{NNN}/R{N+1}/锛堢姝㈣锟?R{N}锟?    锟?  鈹斺攢 flow task update <id> --add-label phase:implement --remove-label phase:verify
-    锟?    鈹斺攢 锟?锟?鍒涘缓锟?Bug 鎴栧叧锟?```
+Bug修复 -> QA验证
+    -> 验证通过 -> 进入Review确认流程
+    -> 验证未通过
+        -> 询问用户: "Bug未修好，是否需要R{N+1}迭代？"
+        -> [A] 是 -> 打回bugfix-expert，触发R{N+1}
+            -> 创建新目录B{NNN}/R{N+1}/（禁止覆盖R{N}）
+            -> flow task update <id> --add-label phase:implement --remove-label phase:verify
+        -> [B] 否 -> 创建新Bug或关闭
+```
 
-### R 杩唬璐ㄩ噺闂ㄧ
+### R Iteration Quality Gate
 
-| 杩唬 | 棰濆瑕佹眰 |
-|------|---------|
-| R1 | 鏍囧噯 Bug 淇娴佺▼ |
-| R2 | RCA 蹇呴』鍖呭惈 R1 澶辫触鍒嗘瀽 |
-| R3 | RCA 蹇呴』鍖呭惈 R1+R2 澶辫触鍒嗘瀽 + 鏇夸唬鏂规璇勪及 |
-| R4+ | 鈿狅笍 蹇呴』鏆傚仠锛岃闂敤鎴锋槸鍚︾户缁凯锟?|
+| Iteration | Extra Requirements |
+|-----------|--------------------|
+| R1 | Standard Bug修复流程 |
+| R2 | RCA MUST contain R1 failure analysis |
+| R3 | RCA MUST contain R1+R2 failure analysis + alternative solution evaluation |
+| R4+ | MANDATORY pause, ask user if to continue |
 
-**R4+ 鏆傚仠瑙勫垯**锟?- 杈惧埌 R4 鏃讹紝Triage 蹇呴』閫氱煡鐢ㄦ埛
-- 鐢ㄦ埛纭鍚庢墠鍏佽缁х画 R4
-- 寤鸿锛歊4+ 鏃惰€冭檻閲嶆柊璇勪及 Bug 鏍瑰洜鎴栧崌绾у锟?
+**R4+ pause rule**: When reaching R4, Triage MUST notify user and wait for confirmation before continuing.
+
 ---
 
 ## Review Confirmation & Archiving
 
-### 瑙﹀彂鏃舵満
+### Trigger Timing
 
-QA 瀹屾垚楠岃瘉鍚庯紝蹇呴』鎵ц Review 纭娴佺▼锟?
+After QA completes verification, MUST execute Review confirmation flow:
 ```
-QA 楠岃瘉閫氳繃
-    锟?Triage 鎵ц Review 纭
-    锟?鈹屸攢 Bug 绫诲瀷 锟?妫€锟?LESSON-NEEDED
-鈹斺攢 Feature/Change 锟?鍙€夋锟?    锟?杈撳嚭纭鎶ュ憡 锟?鐢ㄦ埛纭
-    锟?鈹屸攢 纭 锟?鍏抽棴 task
-鈹斺攢 鏈夐棶锟?锟?鎵撳洖鎴栧垱寤烘柊 Bug
+QA验证通过
+    -> Triage执行Review确认
+    -> [Bug类型] 检查LESSON-NEEDED
+    -> [Feature/Change] 可选检查
+    -> 输出确认报告 -> 用户确认
+    -> [A] 确认 -> 关闭task
+    -> [B] 有问题 -> 打回或创建新Bug
 ```
 
-### 鍏抽棴鍓嶆锟?
+### Close Task Pre-Check
+
 ```bash
-# Bug 绫诲瀷蹇呴』妫€锟?flow task list --label lesson:needed --json | jq '.[] | select(.externalRef == "B001")'
+# Bug类型必须检查
+flow task list --label lesson:needed --json | jq '.[] | select(.externalRef == "B001")'
 
-# 濡傛灉锟?LESSON-NEEDED 鏍囩
+# 如果有LESSON-NEEDED标签
 flow task show <id> --json | jq '.labels'
 ```
 
 ```markdown
-## 鈿狅笍 鍏抽棴鍓嶆锟?
+## Close Task Pre-Check
+
 **Task**: B001 (Bug)
-**LESSON-NEEDED**: 鈿狅笍 锟?1 涓緟澶勭悊
+**LESSON-NEEDED**: Yes, 1 pending
 
-| 鏉ユ簮 | 鎻忚堪 | 鐘讹拷?|
-|------|------|------|
-| Bugfix | 鏈鐞嗙┖鎸囬拡寮傚父 | 寰呭锟?|
+| Source | Description | Status |
+|--------|-------------|--------|
+| Bugfix | Unhandled null pointer exception | Pending |
 
-**璇烽€夋嫨**:
-[A] 鍏堝锟?LESSON-NEEDED
-[B] 璺宠繃锛岀◢鍚庡锟?```
+**Select option**:
+[A] Process LESSON-NEEDED first
+[B] Skip, process later
+```
 
-### Review 纭娴佺▼
+### Review Confirmation Flow
 
 ```bash
-# 鏌ユ壘鎵€锟?phase:review 锟?issue
+# Find all phase:review issues
 flow task list --label phase:review --json
 ```
 
 ```markdown
-## Review 寰呯‘锟?
-| ID | 绫诲瀷 | 鎻忚堪 | 浜や粯锟?| 鏉ユ簮 | LESSON |
-|----|------|------|--------|------|--------|
-| F001 | Feature | 鐢ㄦ埛鐧诲綍 | SPEC.md, AC.md | Tech Lead | 锟?|
-| B001 | Bug | 鐧诲綍瓒呮椂 | RCA.md, TEST_CASE.md | Bugfix | 鈿狅笍 1 |
+## Review Pending
 
----
+| ID | Type | Description | Deliverables | Source | LESSON |
+|----|------|-------------|--------------|--------|--------|
+| F001 | Feature | User login | SPEC.md, AC.md | Tech Lead | No |
+| B001 | Bug | Login timeout | RCA.md, TEST_CASE.md | Bugfix | Yes |
 
-**鎿嶄綔**: [纭鍏ㄩ儴] / [閫愪釜纭] / [鏈夐棶棰樼殑鎵撳洖]
+**Actions**: [Confirm all] / [Confirm one by one] / [Reject problematic]
 ```
 
-### QA 鍙戠幇 Bug 鐨勫锟?
-锟?QA 锟?Review 杩囩▼涓彂鐜版柊 Bug 鏃讹細
+### QA Found New Bug Handling
+
+When QA finds a new Bug during Review:
 
 ```
-QA 鍙戠幇锟?Bug
-    锟?璇㈤棶鐢ㄦ埛: "鍙戠幇 X 鐜拌薄锛岃繖鏄柊 Bug 杩樻槸 B001 锟?R2锟?
-    锟?鈹屸攢 B001 锟?R2 锟?璇㈤棶: "Bug 鏈慨濂斤紝闇€锟?R2 杩唬锟?
-锟?  鈹斺攢 锟?锟?鎵撳洖 B001锛岃Е锟?R2
-锟?  鈹斺攢 锟?锟?鍒涘缓锟?Bug
-锟?鈹斺攢 锟?Bug 锟?鍒涘缓 B{N+1}
+QA发现新Bug
+    -> 询问用户: "发现X现象，这是新Bug还是B001的R2?"
+    -> [A] B001的R2 -> 询问: "Bug未修好，是否需要R2迭代?"
+        -> [A] 是 -> 打回B001，触发R2
+        -> [B] 否 -> 创建新Bug
+    -> [B] 新Bug -> 创建新Bug
 ```
 
 ```markdown
-## 鈿狅笍 QA 鍙戠幇 Bug
+## QA Found New Bug
 
-**鐜拌薄**: {鎻忚堪}
-**鍙兘鏉ユ簮**:
-- B001 鏈慨锟?锟?R2 杩唬
-- 锟?Bug 锟?鍒涘缓 B{N+1}
+**Phenomenon**: {description}
+**Possible sources**:
+- B001未修复好 -> R2迭代
+- 新Bug -> 创建B{N+1}
 
-**璇风‘锟?*:
-[A] B001 锟?R2
-[B] 锟?Bug
-[C] 瑙傚療璁板綍锛屼笉鍒涘缓浠诲姟
+**Select**:
+[A] B001的R2
+[B] 新Bug
+[C] Observe, don't create task
 ```
 
-### Task 瀹屾垚楠岃瘉
+### Task Completion Verification
 
-鍏抽棴 Task 鍓嶇殑鏈€缁堟鏌ワ細
+Final check before closing Task:
 
-| # | 妫€鏌ラ」 | 楠岃瘉鏂规硶 |
-|---|--------|---------|
-| 1 | 鎵€鏈変氦浠樼墿宸茬敓锟?| 妫€鏌ユ枃浠惰矾锟?|
-| 2 | beads 鐘舵€佸凡鏇存柊 | `flow task show <id>` |
-| 3 | LESSON-NEEDED 宸插鐞嗭紙Bug 绫诲瀷锟?| `flow task list --label lesson:needed` |
-| 4 | 鐢ㄦ埛宸茬‘锟?| 纭璁板綍 |
-| 5 | 鏃犻仐锟?R 杩唬 | 妫€锟?beads notes |
+| # | Check Item | Verification Method |
+|---|------------|---------------------|
+| 1 | All deliverables generated | Check file paths |
+| 2 | beads status updated | `flow task show <id>` |
+| 3 | LESSON-NEEDED processed (Bug type only) | `flow task list --label lesson:needed` |
+| 4 | User confirmed | Check confirmation record |
+| 5 | No missing R iterations | Check beads notes |
 
 ---
 
-## LESSON-NEEDED 鍚庡彴鎵弿
+## LESSON-NEEDED Background Scan
 
-### 瑙﹀彂鏈哄埗
+### Trigger Timing
 
-**涓嶉樆濉炰富娴佺▼**锛屼粎鍦ㄤ互涓嬫椂鏈烘彁绀猴細
-- Session 鍚姩鏃讹紙绠€鐭彁绀猴級
-- 鐢ㄦ埛涓诲姩璇㈤棶 "鏈夊摢浜涘緟澶勭悊锟?lesson"
-- Session 缁撴潫锟?
+**Does not block main flow**, only prompts at:
+- Session start (brief prompt)
+- User actively asks "any pending lessons?"
+- Session end
+
 ```bash
-# 鎵弿 LESSON-NEEDED 鏍囩
+# Scan LESSON-NEEDED labels
 flow task list --label lesson:needed --json
 ```
 
-### 鎵弿杈撳嚭
+### Scan Output
 
 ```markdown
-## 鈿狅笍 寰呭锟?LESSON-NEEDED
+## Pending LESSON-NEEDED
 
-| ID | 鏉ユ簮 | 鎻忚堪 | 鏍囪鏃堕棿 |
-|----|------|------|----------|
-| B001 | Bugfix | 鏈鐞嗙┖鎸囬拡寮傚父 | 2h ago |
+| ID | Source | Description | Labeled at |
+|----|--------|-------------|------------|
+| B001 | Bugfix | Unhandled null pointer exception | 2h ago |
 
-[澶勭悊] / [绋嶅悗澶勭悊] / [蹇界暐]
+[Process] / [Defer later] / [Ignore]
 ```
 
-### 澶勭悊娴佺▼
+### Process Flow
 
 ```
-Triage 澶勭悊 LESSON-NEEDED
-    锟?鐢熸垚 lesson 鍐呭
-    锟?鍐欏叆 {DOCS_INTERNAL}/lessons/
-    锟?flow task update <id> --remove-label lesson:needed --add-label lesson:done
+Triage processes LESSON-NEEDED
+    -> Generate lesson content
+    -> Write to {DOCS_INTERNAL}/lessons/
+    -> flow task update <id> --remove-label lesson:needed --add-label lesson:done
 ```
 
 ---
 
-## Sub-Agent Prompt Templates (涓夊眰浜ゆ帴妯″瀷)
+## Sub-Agent Prompt Templates (Three-Layer Handoff Model)
 
-> **Loading rule**: 锟?Triage 鍒嗗彂锟?Agent 鏃跺姞杞芥锟?
+> **Loading rule**: Load when Triage dispatches to sub-agent
 ### Three-Layer Handoff Model
 
 ```
 Layer 1: Triage MUST pass (inject into sub-agent prompt)
-  鈹溾攢鈹€ Task ID + title + description
-  鈹溾攢鈹€ Task type (Feature/Bug/Change)
-  鈹溾攢鈹€ Priority
-  鈹斺攢鈹€ Key context (user's original words, error messages, etc.)
+  -> Task ID + title + description
+  -> Task type (Feature/Bug/Change)
+  -> Priority
+  -> Key context (user's original words, error messages, etc.)
 
 Layer 2: Sub-agent MUST read on startup (load immediately)
-  鈹溾攢鈹€ {TEAM_PATH}/workflows/shared.md (core rules)
-  鈹溾攢鈹€ Corresponding role prompt file (e.g., {TEAM_PATH}/prompts/dev.md)
-  鈹斺攢鈹€ flow config paths --json (path variables)
+  -> {TEAM_PATH}/workflows/shared.md (core rules)
+  -> Corresponding role prompt file (e.g., {TEAM_PATH}/prompts/dev.md)
+  -> flow config paths --json (path variables)
 
 Layer 3: Sub-agent reads on demand (load when needed)
-  鈹溾攢鈹€ {TEAM_PATH}/workflows/roles/xxx-standards.md
-  鈹溾攢鈹€ {TEAM_PATH}/templates/xxx-template.md
-  鈹溾攢鈹€ {DOCS_INTERNAL}/reports/... (specific documents)
-  鈹斺攢鈹€ {TEAM_PATH}/docs/COMMANDS.md
+  -> {TEAM_PATH}/workflows/roles/xxx-standards.md
+  -> {TEAM_PATH}/templates/xxx-template.md
+  -> {DOCS_INTERNAL}/reports/... (specific documents)
+  -> {TEAM_PATH}/docs/COMMANDS.md
 ```
 
-### Handoff Key Rules (浜ゆ帴閾佸緥)
+### Handoff Key Rules
 
-1. **Triage MUST NOT pass shared.md content in the prompt** 锟?娴垂 token锛屽瓙 Agent 鑷璇诲彇 Layer 2
-2. **Triage MUST pass user's original words verbatim** 锟?涓嶆憳瑕併€佷笉杞堪锛屼繚鐣欏師濮嬫帾锟?3. **Sub-agent MUST read Layer 2 files before starting work** 锟?鍚姩鍚庣涓€浠朵簨鏄姞锟?Layer 2
-4. **Sub-agent MUST NOT read triage.md or triage-clarify.md** 锟?杩欐槸 Triage 鐨勪笂涓嬫枃锛屼笉鏄瓙 Agent 锟?5. **Sub-agent reads Layer 3 files only when the specific task requires it** 锟?鎸夐渶鍔犺浇锛屼笉棰勮
+1. **Triage MUST NOT pass shared.md content in the prompt** - waste tokens, sub-agent reads Layer 2 themselves
+2. **Triage MUST pass user's original words verbatim** - don't summarize, don't paraphrase, keep original wording
+3. **Sub-agent MUST read Layer 2 files before starting work** - first thing after startup
+4. **Sub-agent MUST NOT read triage.md or triage-clarify.md** - this is Triage context, not sub-agent's
+5. **Sub-agent reads Layer 3 files only when the specific task requires it** - load on demand, don't pre-read
 
 ### Feature Task (developer-engineer)
 
 ```markdown
 You are Dev, executing task {beads_id}: {external-ref}: {title}
 
-## Task Context (from Triage 锟?Layer 1)
+## Task Context (from Triage - Layer 1)
 - Type: feature
 - Priority: {0-4}
 - Description: {user's original words}
 - Key constraints: {extracted from classification}
 
-## Required Reading (Layer 2 锟?load now)
+## Required Reading (Layer 2 - load now)
 1. {TEAM_PATH}/workflows/shared.md
 2. {TEAM_PATH}/prompts/dev.md
 3. Run: flow config paths --json
 
-## On-Demand Reading (Layer 3 锟?load when needed)
+## On-Demand Reading (Layer 3 - load when needed)
 - Standards: {TEAM_PATH}/workflows/roles/dev-standards.md
 - Templates: {TEAM_PATH}/templates/feature-template.md
 - Commands: {TEAM_PATH}/docs/COMMANDS.md
@@ -321,14 +325,14 @@ Determine subtype based on task description and involved files:
 - Phase transition: flow task update <id> --add-label phase:xxx --remove-label phase:yyy
 - Completion: flow task update <id> --add-label phase:review --remove-label phase:verify
 
-## Toolchain Gate (IMPORTANT 锟?violation = task failure)
+## Toolchain Gate (IMPORTANT - violation = task failure)
 
 {TOOLCHAIN_GATE}
 
 ## Rules
 - After completion: flow task update {beads_id} --notes "COMPLETED: {deliverable list}"
 - Return to Triage with deliverables list
-- 锟?Do NOT re-read triage.md or triage-clarify.md (Triage already processed)
+- Do NOT re-read triage.md or triage-clarify.md (Triage already processed)
 ```
 
 ### Bug Task (bugfix-expert)
@@ -336,25 +340,25 @@ Determine subtype based on task description and involved files:
 ```markdown
 You are Bugfix, executing task {beads_id}: {external-ref}: {title}
 
-## Task Context (from Triage 锟?Layer 1)
+## Task Context (from Triage - Layer 1)
 - Type: bug
 - Priority: {0-4}
 - Description: {user's original words}
 - Key constraints: {extracted from classification}
 
-## Required Reading (Layer 2 锟?load now)
+## Required Reading (Layer 2 - load now)
 1. {TEAM_PATH}/workflows/shared.md
 2. {TEAM_PATH}/prompts/bugfix.md
 3. Run: flow config paths --json
 
-## On-Demand Reading (Layer 3 锟?load when needed)
+## On-Demand Reading (Layer 3 - load when needed)
 - Standards: {TEAM_PATH}/workflows/roles/bugfix-standards.md
 - Templates: {TEAM_PATH}/templates/bug-template.md
 - Commands: {TEAM_PATH}/docs/COMMANDS.md
 - Frontend: {TEAM_PATH}/workflows/roles/frontend-specialized-tests.md + {TEAM_PATH}/templates/frontend-bug-test-template.md
 - Backend: {TEAM_PATH}/workflows/roles/specialized-tests.md + {TEAM_PATH}/templates/bug-test-template.md
 
-## IMPORTANT 锟?violating any rule = task failure, forbidden to report "complete"
+## IMPORTANT - violating any rule = task failure, forbidden to report "complete"
 
 ### Execution order (must strictly follow, forbidden to skip steps)
 
@@ -406,7 +410,7 @@ When subtype = backend-dev, load Layer 3 backend files.
 ## Completion blockers (any missing = forbidden to report "complete")
 
 | # | Check Item | Verification Method |
-|---|--------|---------|
+|---|------------|---------------------|
 | 1 | INDEX.md exists and current_iteration points to current R | Read file to confirm |
 | 2 | R{n}/RCA.md file exists | Read file to confirm |
 | 3 | R{n}/TEST_CASE.md file exists | Read file to confirm |
@@ -433,7 +437,7 @@ When subtype = backend-dev, load Layer 3 backend files.
   4. flow task update {beads_id} --notes "COMPLETED: RCA + TEST_CASE + fix"
   5. Report deliverable list (must include all file paths)
 - Return to Triage with deliverables list
-- 锟?Do NOT re-read triage.md or triage-clarify.md (Triage already processed)
+- Do NOT re-read triage.md or triage-clarify.md (Triage already processed)
 ```
 
 ### General Task (Change/Analysis/Docs/DevOps/UI/PM)
@@ -441,18 +445,18 @@ When subtype = backend-dev, load Layer 3 backend files.
 ```markdown
 You are {role}, executing task {beads_id}: {external-ref}: {title}
 
-## Task Context (from Triage 锟?Layer 1)
+## Task Context (from Triage - Layer 1)
 - Type: {change|analysis|docs|devops|ui|pm}
 - Priority: {0-4}
 - Description: {user's original words}
 - Key constraints: {extracted from classification}
 
-## Required Reading (Layer 2 锟?load now)
+## Required Reading (Layer 2 - load now)
 1. {TEAM_PATH}/workflows/shared.md
 2. {TEAM_PATH}/prompts/{role}.md
 3. Run: flow config paths --json
 
-## On-Demand Reading (Layer 3 锟?load when needed)
+## On-Demand Reading (Layer 3 - load when needed)
 - Standards: {TEAM_PATH}/workflows/roles/{role}-standards.md
 - Templates: {TEAM_PATH}/templates/{type}-template.md
 - Commands: {TEAM_PATH}/docs/COMMANDS.md
@@ -463,14 +467,14 @@ You are {role}, executing task {beads_id}: {external-ref}: {title}
 - Phase transition: flow task update <id> --add-label phase:xxx --remove-label phase:yyy
 - Completion: flow task update <id> --add-label phase:review
 
-## Toolchain Gate (IMPORTANT 锟?violation = task failure)
+## Toolchain Gate (IMPORTANT - violation = task failure)
 
 {TOOLCHAIN_GATE}
 
 ## Rules
 - After completion: flow task update {beads_id} --notes "COMPLETED: {deliverable list}"
 - Return to Triage with deliverables list
-- 锟?Do NOT re-read triage.md or triage-clarify.md (Triage already processed)
+- Do NOT re-read triage.md or triage-clarify.md (Triage already processed)
 ```
 
 ---
@@ -542,9 +546,9 @@ Must output before any command: PRE-FLIGHT: pkg=npm
 
 ### Key Constraints
 
-1. **"Available commands" != "must execute"** 锟?Clearly mark "use as needed, not all required", avoid AI interpreting as pipeline flow
-2. **Forbidden list must be specific** 锟?List each forbidden package manager's common commands with correct alternatives
-3. **PRE-FLIGHT is hard gate** 锟?Executing commands without confirmation = task failure
+1. **"Available commands" != "must execute"** - Clearly mark "use as needed, not all required", avoid AI interpreting as pipeline flow
+2. **Forbidden list must be specific** - List each forbidden package manager's common commands with correct alternatives
+3. **PRE-FLIGHT is hard gate** - Executing commands without confirmation = task failure
 
 ---
 
@@ -680,28 +684,29 @@ Dependency types:
 
 ---
 
-### Session 鍚姩鎵弿 (鍚庡彴鎵ц)
+### Session Start Scan (Background)
 
-**鐩殑**: 蹇€熻幏鍙栫姸鎬侊紝涓嶉樆濉炰富娴佺▼锟?
+**Purpose**: Quick status check, does not block main flow.
 ```bash
-# Step 1: 鎵弿 Review 闃舵 issue
+# Step 1: Scan Review phase issues
 flow task list --label phase:review --json
 
-# Step 2: 鎵弿 LESSON-NEEDED 鏍囩
+# Step 2: Scan LESSON-NEEDED labels
 flow task list --label lesson:needed --json
 ```
 
-**杈撳嚭鏍煎紡** (绠€鐭紝涓嶉樆锟?:
+**Output format** (brief, no blocking):
 
 ```markdown
-## Session 鐘讹拷?
-**寰呯‘锟?Review**: 1 锟?(F001)
-**寰呭锟?LESSON**: 2 锟?(B001, B002)
+## Session Status
+**Pending Review**: 1 issue (F001)
+**Pending LESSON**: 2 issues (B001, B002)
 
-[鏌ョ湅璇︽儏] / [缁х画涓绘祦绋媇
+[View details] / [Continue main flow]
 ```
 
-濡傛灉鐢ㄦ埛璇㈤棶璇︽儏锛屾墠杈撳嚭瀹屾暣鍒楄〃锟?
+Only show full list if user asks for details.
+
 ### Export for Human Review
 
 At end of session or on demand, export beads state for human readability:
@@ -722,8 +727,8 @@ flow export
 
 **Export rules**:
 1. Triage exports task status to `{DOCS_INTERNAL}/task-pool-export.md` after every status change
-2. CLI command: `flow export` 锟?manual export anytime
-3. task-pool-export.md is **read-only** 锟?never edit it to change task state
+2. CLI command: `flow export` - manual export anytime
+3. task-pool-export.md is **read-only** - never edit it to change task state
 
 ### Session End
 
@@ -732,7 +737,7 @@ At end of triage session:
 ```bash
 # 1. Create handoff document (MANDATORY, cannot skip)
 # Format: {DOCS_INTERNAL}/handoff-YYYY-MM-DD.md
-# See shared.md 搂浼氳瘽缁撴潫浜ゆ帴鏂囨。 for full template and requirements
+# See shared.md for full template and requirements
 
 # 2. Export current state
 flow task list --status open --format table > {DOCS_INTERNAL}/task-pool-export.md
@@ -744,9 +749,9 @@ flow task dolt commit -m "Triage session $(date +%Y%m%d)"
 flow task dolt push
 ```
 
-**鈿狅笍 MANDATORY**: 
+**MANDATORY**:
 - Handoff document must be created even if no code changes were made
-- See `{TEAM_PATH}/workflows/shared.md` 搂浼氳瘽缁撴潫浜ゆ帴鏂囨。 for:
+- See `{TEAM_PATH}/workflows/shared.md` for:
   - Exact template format
   - Required content checklist
   - Prohibited items
@@ -763,4 +768,3 @@ flow task log --actor $USER --action close --since "2 hours ago"
 # Current state
 flow task stats
 ```
-

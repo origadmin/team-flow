@@ -38,7 +38,11 @@
 
 ## Conversation Records
 
-`flow task append {id} "[{role}] message text"` — maps to `bd note <id> [text...]`.
+Use `flow task append` to record conversation entries:
+
+```bash
+flow task append {id} "[{role}] message text"
+```
 
 Role prefix convention: `[Triage]`, `[Dev]`, `[QA]`, etc. Auto-includes `--actor` from git config.
 
