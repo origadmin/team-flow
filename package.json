@@ -1,0 +1,75 @@
+{
+  "name": "@origadmin/team-flow",
+  "version": "3.0.0",
+  "description": "Multi-agent AI collaboration framework with flow-driven task management. Compatible with Claude Code, Cursor, Trae, Windsurf, and 40+ AI tools.",
+  "main": "SKILL.md",
+  "bin": {
+    "flow": "./bin/flow",
+    "flow.exe": "./bin/flow.exe"
+  },
+  "files": [
+    "SKILL.md",
+    "bin/",
+    "prompts/",
+    "workflows/",
+    "templates/",
+    "config/",
+    "references/",
+    "docs/",
+    "lessons/",
+    "v2/skills/",
+    "BOUNDARY.md",
+    "INSTALL.md",
+    "README.md"
+  ],
+  "scripts": {
+    "postinstall": "node scripts/postinstall.js",
+    "build:flow": "cd cmd/flow && go build -o ../../bin/flow .",
+    "build:flow:win": "cd cmd/flow && go build -o ../../bin/flow.exe .",
+    "prepublishOnly": "npm run build:flow && npm run build:flow:win"
+  },
+  "keywords": [
+    "ai-agent",
+    "multi-agent",
+    "collaboration",
+    "workflow",
+    "task-management",
+    "beads",
+    "skill",
+    "claude-code",
+    "cursor",
+    "trae"
+  ],
+  "author": "origadmin",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/origadmin/team-flow.git"
+  },
+  "bugs": {
+    "url": "https://github.com/origadmin/team-flow/issues"
+  },
+  "homepage": "https://github.com/origadmin/team-flow#readme",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "skill": {
+    "name": "team-flow",
+    "version": "3.0.0",
+    "entry": "SKILL.md",
+    "description": "Multi-agent AI collaboration framework with flow-driven task management",
+    "compatible_with": [
+      "claude-code",
+      "cursor",
+      "trae",
+      "windsurf",
+      "github-copilot",
+      "opencode",
+      "openclaw",
+      "cline",
+      "gemini-cli",
+      "workbuddy",
+      "qclaw"
+    ]
+  }
+}

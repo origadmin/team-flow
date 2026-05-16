@@ -1,11 +1,11 @@
 ---
 name: team-flow
-version: 2.3
+version: 2.4
 description: |
   Multi-agent AI collaboration framework with beads-based task management.
   Provides Triage→TechLead→Dev→QA pipeline, three-layer gates, and 11 role definitions.
   Task management via flow task CLI (routes to beads v2 / docs v1).
-  Path resolution via flow config paths --json.
+  This is the core skill that routes to specialized skills by role.
   Compatible: Go backend + React/TypeScript frontend projects.
 tools:
   - name: task
@@ -17,12 +17,13 @@ config:
   project_file: ".team/project.md"
 evolution:
   v2: "beads migration, task management centralization"
+  v2.4: "multi-skill architecture: core + design + build + review"
   v3: "flow as center, tools/plugins/rules unified management"
 ---
 
 # team-flow v2 SKILL.md — Entry Point
 
-> **Version**: v2.3 | **Date**: 2026-05-09
+> **Version**: v2.4 | **Date**: 2026-05-14
 
 ## Status Line (MANDATORY — Highest Priority)
 
@@ -38,6 +39,36 @@ Every AI response MUST start with: `[Role: {role} | TaskPool: {beads-id}#{cr-ind
 **⛔ Task-first**: Session 启动时，Triage 必须先创建/查找任务。每次对话都有 TaskPool 值，N/A is forbidden。
 
 **Phase 与 TaskPool 同步**: Phase 是 `analyze`/`design`/`implement` 等时，TaskPool 必须显示 `{beads-id}#{cr-index}`，禁止显示 N/A。
+
+## Skill Routing
+
+When a task requires specialized capabilities, invoke the appropriate skill via the Skill tool:
+
+| Role | Phase | Skill to invoke |
+|------|-------|----------------|
+| TechLead | design | `team-flow-design` |
+| Dev | implement | `team-flow-build` |
+| Dev | git ops | `team-flow-git` |
+| Dev/QA | verify | `team-flow-check-impl` |
+| QA | review | `team-flow-review` |
+| QA (maintenance) | - | `team-flow-evolve` |
+| Triage | any | `team-flow` (self) |
+
+**Routing decision**:
+
+```
+User input classified by Triage
+    │
+    ├── Design/Architecture/Spec → TechLead → team-flow-design
+    ├── Code/Implement/Bugfix    → Dev      → team-flow-build
+    ├── Branch/Commit/Push/PR    → Dev      → team-flow-git
+    ├── Check impl vs spec       → Dev/QA   → team-flow-check-impl
+    ├── Review/QA/Verify         → QA       → team-flow-review
+    ├── Evolve review rules      → QA       → team-flow-evolve
+    └── Status query/Task mgmt   → Triage   → team-flow (self)
+```
+
+Each skill is self-contained — when loaded via the Skill tool, its SKILL.md content is injected into context by the platform. No need to read sub-files from other skills.
 
 ## Role Switching
 
@@ -171,7 +202,7 @@ After completion: flow task update <id> --notes "COMPLETED: ..." --add-label pha
 
 ```
 {TEAM_PATH}/
-├── SKILL.md              ← You are here
+├── SKILL.md              ← You are here (core: Triage, routing, gates)
 ├── BOUNDARY.md           # Layer architecture definition
 ├── prompts/              # Role execution rules (11 roles)
 ├── workflows/            # Shared workflows + role standards
@@ -183,6 +214,13 @@ After completion: flow task update <id> --notes "COMPLETED: ..." --add-label pha
 │   ├── commands.md       # Full command reference + routing
 │   ├── path-resolution.md # Path variables and anchor rules
 │   └── agent-mapping.md  # Agent mapping + role config + MILESTONES
+├── skills/               # Specialized domain skills (loaded via Skill tool)
+│   ├── team-flow-design/     # TechLead: Spec-driven design, spec review
+│   ├── team-flow-build/      # Dev: Implementation, bugfix, testing
+│   ├── team-flow-git/        # Dev: Git operations (branch, commit, push, PR)
+│   ├── team-flow-check-impl/ # Dev/QA: Verify implementation matches specs
+│   ├── team-flow-review/     # QA: PR review, spec review, QA verification
+│   └── team-flow-evolve/     # QA: Review evolution from feedback
 └── docs/                 # Project docs: {PROJECT}/docs/v1/ and docs/v2/
 ```
 
