@@ -4,7 +4,11 @@
     "name": "novel-flow",
     "description": "Novel writing flow: Concept → Outline → Characters & World → Gate → Chapter Writing → Gate → Editing → Terminal",
     "author": "team-flow",
-    "tags": ["novel", "writing", "creative"]
+    "tags": [
+      "novel",
+      "writing",
+      "creative"
+    ]
   },
   "config": {
     "task_type": "development",
@@ -27,13 +31,25 @@
         "id": "writer",
         "name": "Writer",
         "description": "Creative writer responsible for concept, outline, world building, and manuscript creation. Must follow narrative standards and maintain character consistency throughout.",
-        "capabilities": ["creative-writing", "story-structuring", "character-development", "world-building", "dialogue-crafting"]
+        "capabilities": [
+          "creative-writing",
+          "story-structuring",
+          "character-development",
+          "world-building",
+          "dialogue-crafting"
+        ]
       },
       {
         "id": "editor",
         "name": "Editor",
         "description": "Editor responsible for reviewing, polishing, and ensuring manuscript quality. Focuses on prose quality, grammar, style consistency, and narrative coherence.",
-        "capabilities": ["prose-editing", "grammar-correction", "style-consistency", "narrative-review", "quality-assessment"]
+        "capabilities": [
+          "prose-editing",
+          "grammar-correction",
+          "style-consistency",
+          "narrative-review",
+          "quality-assessment"
+        ]
       }
     ],
     "rules": [
@@ -92,6 +108,34 @@
         "type": "behavioral_constraint",
         "enforcement": "hard",
         "description": "Content generation must avoid hallucination: (1) Do not invent character details not established in CHARACTERS.md. (2) Do not create world elements contradicting WORLDBUILDING.md. (3) If unsure about a detail, check the reference documents first. (4) If a detail is not established, either leave it ambiguous or explicitly note it needs definition. (5) Never fabricate plot events to fill gaps — flag the gap instead."
+      },
+      {
+        "id": "qg1-think-before-coding",
+        "name": "QG-1: Think Before Coding",
+        "description": "Before any action, verify assumptions: what assumptions am I acting on? What's the worst case if wrong? What should I clarify first?",
+        "enforcement": "hard",
+        "trigger": "pre_action"
+      },
+      {
+        "id": "qg2-simplicity-first",
+        "name": "QG-2: Simplicity First",
+        "description": "Can this be solved with less code? Am I adding unrequested features? Is this over-engineered?",
+        "enforcement": "hard",
+        "trigger": "pre_output"
+      },
+      {
+        "id": "qg3-surgical-changes",
+        "name": "QG-3: Surgical Changes",
+        "description": "Only modify code within task scope. Never optimize or refactor adjacent code. Clean up orphan code from own changes.",
+        "enforcement": "hard",
+        "trigger": "code_change"
+      },
+      {
+        "id": "qg4-goal-driven",
+        "name": "QG-4: Goal-Driven Execution",
+        "description": "Define success criteria before executing. Each step must have concrete verification criteria. Never use vague 'completed' descriptions.",
+        "enforcement": "hard",
+        "trigger": "task_start"
       }
     ],
     "tools": [
@@ -99,7 +143,11 @@
         "id": "task",
         "name": "Task Manager",
         "type": "builtin",
-        "commands": ["show", "update", "append"],
+        "commands": [
+          "show",
+          "update",
+          "append"
+        ],
         "scope": "docs"
       },
       {
@@ -136,13 +184,29 @@
       "type": "phase",
       "name": "Novel Concept",
       "description": "Define the novel concept including genre, themes, target audience, and narrative vision",
-      "config": { "role": "Writer" },
+      "config": {
+        "role": "Writer"
+      },
       "components": {
-        "roles": [{ "ref": "writer", "source": "builtin" }],
+        "roles": [
+          {
+            "ref": "writer",
+            "source": "builtin"
+          }
+        ],
         "rules": [
-          { "ref": "output-guard", "source": "builtin" },
-          { "ref": "narrative-standards", "source": "builtin" },
-          { "ref": "no-hallucination", "source": "builtin" }
+          {
+            "ref": "output-guard",
+            "source": "builtin"
+          },
+          {
+            "ref": "narrative-standards",
+            "source": "builtin"
+          },
+          {
+            "ref": "no-hallucination",
+            "source": "builtin"
+          }
         ]
       },
       "docs": [
@@ -155,7 +219,10 @@
         }
       ],
       "on_enter": [
-        { "action": "update_task_phase", "phase": "analyze" }
+        {
+          "action": "update_task_phase",
+          "phase": "analyze"
+        }
       ]
     },
     {
@@ -163,13 +230,29 @@
       "type": "phase",
       "name": "Story Outline",
       "description": "Create the detailed story outline with narrative arc, chapter breakdown, and key plot points",
-      "config": { "role": "Writer" },
+      "config": {
+        "role": "Writer"
+      },
       "components": {
-        "roles": [{ "ref": "writer", "source": "builtin" }],
+        "roles": [
+          {
+            "ref": "writer",
+            "source": "builtin"
+          }
+        ],
         "rules": [
-          { "ref": "output-guard", "source": "builtin" },
-          { "ref": "narrative-standards", "source": "builtin" },
-          { "ref": "no-hallucination", "source": "builtin" }
+          {
+            "ref": "output-guard",
+            "source": "builtin"
+          },
+          {
+            "ref": "narrative-standards",
+            "source": "builtin"
+          },
+          {
+            "ref": "no-hallucination",
+            "source": "builtin"
+          }
         ]
       },
       "docs": [
@@ -182,7 +265,10 @@
         }
       ],
       "on_enter": [
-        { "action": "update_task_phase", "phase": "design" }
+        {
+          "action": "update_task_phase",
+          "phase": "design"
+        }
       ]
     },
     {
@@ -190,14 +276,33 @@
       "type": "phase",
       "name": "Character & World Building",
       "description": "Develop character profiles, relationships, world settings, and rules",
-      "config": { "role": "Writer" },
+      "config": {
+        "role": "Writer"
+      },
       "components": {
-        "roles": [{ "ref": "writer", "source": "builtin" }],
+        "roles": [
+          {
+            "ref": "writer",
+            "source": "builtin"
+          }
+        ],
         "rules": [
-          { "ref": "output-guard", "source": "builtin" },
-          { "ref": "character-consistency", "source": "builtin" },
-          { "ref": "world-consistency", "source": "builtin" },
-          { "ref": "no-hallucination", "source": "builtin" }
+          {
+            "ref": "output-guard",
+            "source": "builtin"
+          },
+          {
+            "ref": "character-consistency",
+            "source": "builtin"
+          },
+          {
+            "ref": "world-consistency",
+            "source": "builtin"
+          },
+          {
+            "ref": "no-hallucination",
+            "source": "builtin"
+          }
         ]
       },
       "docs": [
@@ -217,7 +322,10 @@
         }
       ],
       "on_enter": [
-        { "action": "update_task_phase", "phase": "design" }
+        {
+          "action": "update_task_phase",
+          "phase": "design"
+        }
       ]
     },
     {
@@ -230,13 +338,20 @@
           {
             "type": "deliverables_complete",
             "required": true,
-            "deliverables": ["OUTLINE.md", "CHARACTERS.md", "WORLDBUILDING.md"],
+            "deliverables": [
+              "OUTLINE.md",
+              "CHARACTERS.md",
+              "WORLDBUILDING.md"
+            ],
             "check": "All three documents exist and contain substantive content"
           }
         ],
         "on_pass": "nw05",
         "on_fail": "nc02",
-        "auto_retry": { "max_attempts": 2, "delay_minutes": 5 }
+        "auto_retry": {
+          "max_attempts": 2,
+          "delay_minutes": 5
+        }
       }
     },
     {
@@ -244,23 +359,57 @@
       "type": "phase",
       "name": "Chapter Writing",
       "description": "Write the full manuscript following the outline, character profiles, and world settings",
-      "config": { "role": "Writer" },
+      "config": {
+        "role": "Writer"
+      },
       "components": {
-        "roles": [{ "ref": "writer", "source": "builtin" }],
+        "roles": [
+          {
+            "ref": "writer",
+            "source": "builtin"
+          }
+        ],
         "rules": [
-          { "ref": "output-guard", "source": "builtin" },
-          { "ref": "narrative-standards", "source": "builtin" },
-          { "ref": "character-consistency", "source": "builtin" },
-          { "ref": "world-consistency", "source": "builtin" },
-          { "ref": "outline-adherence", "source": "builtin" },
-          { "ref": "no-hallucination", "source": "builtin" }
+          {
+            "ref": "output-guard",
+            "source": "builtin"
+          },
+          {
+            "ref": "narrative-standards",
+            "source": "builtin"
+          },
+          {
+            "ref": "character-consistency",
+            "source": "builtin"
+          },
+          {
+            "ref": "world-consistency",
+            "source": "builtin"
+          },
+          {
+            "ref": "outline-adherence",
+            "source": "builtin"
+          },
+          {
+            "ref": "no-hallucination",
+            "source": "builtin"
+          }
         ],
         "tools": [
-          { "ref": "task" },
-          { "ref": "file-write" }
+          {
+            "ref": "task"
+          },
+          {
+            "ref": "file-write"
+          }
         ],
         "constraints": [
-          { "type": "file_write", "allowed_paths": ["{docs_path}/{task_id}/"] }
+          {
+            "type": "file_write",
+            "allowed_paths": [
+              "{docs_path}/{task_id}/"
+            ]
+          }
         ]
       },
       "docs": [
@@ -273,7 +422,10 @@
         }
       ],
       "on_enter": [
-        { "action": "update_task_phase", "phase": "implement" }
+        {
+          "action": "update_task_phase",
+          "phase": "implement"
+        }
       ]
     },
     {
@@ -286,13 +438,18 @@
           {
             "type": "deliverables_complete",
             "required": true,
-            "deliverables": ["MANUSCRIPT.md"],
+            "deliverables": [
+              "MANUSCRIPT.md"
+            ],
             "check": "Manuscript exists with all chapters from the outline"
           }
         ],
         "on_pass": "ne07",
         "on_fail": "nw05",
-        "auto_retry": { "max_attempts": 2, "delay_minutes": 5 }
+        "auto_retry": {
+          "max_attempts": 2,
+          "delay_minutes": 5
+        }
       }
     },
     {
@@ -300,15 +457,37 @@
       "type": "phase",
       "name": "Editing & Polish",
       "description": "Edit for prose quality, grammar, style consistency, and produce final manuscript",
-      "config": { "role": "Editor" },
+      "config": {
+        "role": "Editor"
+      },
       "components": {
-        "roles": [{ "ref": "editor", "source": "builtin" }],
+        "roles": [
+          {
+            "ref": "editor",
+            "source": "builtin"
+          }
+        ],
         "rules": [
-          { "ref": "output-guard", "source": "builtin" },
-          { "ref": "editing-standards", "source": "builtin" },
-          { "ref": "character-consistency", "source": "builtin" },
-          { "ref": "world-consistency", "source": "builtin" },
-          { "ref": "no-hallucination", "source": "builtin" }
+          {
+            "ref": "output-guard",
+            "source": "builtin"
+          },
+          {
+            "ref": "editing-standards",
+            "source": "builtin"
+          },
+          {
+            "ref": "character-consistency",
+            "source": "builtin"
+          },
+          {
+            "ref": "world-consistency",
+            "source": "builtin"
+          },
+          {
+            "ref": "no-hallucination",
+            "source": "builtin"
+          }
         ]
       },
       "docs": [
@@ -321,7 +500,10 @@
         }
       ],
       "on_enter": [
-        { "action": "update_task_phase", "phase": "review" }
+        {
+          "action": "update_task_phase",
+          "phase": "review"
+        }
       ]
     },
     {
@@ -329,25 +511,91 @@
       "type": "terminal",
       "name": "Novel Complete",
       "description": "Novel manuscript completed and ready for publication",
-      "config": { "status": "success", "message": "Novel writing flow completed successfully" }
+      "config": {
+        "status": "success",
+        "message": "Novel writing flow completed successfully"
+      }
     },
     {
       "id": "nr08",
       "type": "terminal",
       "name": "Major Revision Needed",
       "description": "Manuscript requires fundamental rework of story structure",
-      "config": { "status": "rejected", "message": "Story structure or world building needs fundamental revision" }
+      "config": {
+        "status": "rejected",
+        "message": "Story structure or world building needs fundamental revision"
+      }
     }
   ],
   "edges": [
-    { "id": "e-nc01-nc02", "from": "nc01", "to": "nc02" },
-    { "id": "e-nc02-nc03", "from": "nc02", "to": "nc03" },
-    { "id": "e-nc03-ngo4", "from": "nc03", "to": "ngo4" },
-    { "id": "e-ngo4-nw05", "from": "ngo4", "to": "nw05", "type": "conditional", "conditions": [{ "expression": "gate.passed" }] },
-    { "id": "e-ngo4-nr08", "from": "ngo4", "to": "nr08", "type": "conditional", "conditions": [{ "expression": "!gate.passed" }] },
-    { "id": "e-nw05-ngl6", "from": "nw05", "to": "ngl6" },
-    { "id": "e-ngl6-ne07", "from": "ngl6", "to": "ne07", "type": "conditional", "conditions": [{ "expression": "gate.passed" }] },
-    { "id": "e-ngl6-nr08", "from": "ngl6", "to": "nr08", "type": "conditional", "conditions": [{ "expression": "!gate.passed" }] },
-    { "id": "e-ne07-ns00", "from": "ne07", "to": "ns00" }
+    {
+      "id": "e-nc01-nc02",
+      "from": "nc01",
+      "to": "nc02"
+    },
+    {
+      "id": "e-nc02-nc03",
+      "from": "nc02",
+      "to": "nc03"
+    },
+    {
+      "id": "e-nc03-ngo4",
+      "from": "nc03",
+      "to": "ngo4"
+    },
+    {
+      "id": "e-ngo4-nw05",
+      "from": "ngo4",
+      "to": "nw05",
+      "type": "conditional",
+      "conditions": [
+        {
+          "expression": "gate.passed"
+        }
+      ]
+    },
+    {
+      "id": "e-ngo4-nr08",
+      "from": "ngo4",
+      "to": "nr08",
+      "type": "conditional",
+      "conditions": [
+        {
+          "expression": "!gate.passed"
+        }
+      ]
+    },
+    {
+      "id": "e-nw05-ngl6",
+      "from": "nw05",
+      "to": "ngl6"
+    },
+    {
+      "id": "e-ngl6-ne07",
+      "from": "ngl6",
+      "to": "ne07",
+      "type": "conditional",
+      "conditions": [
+        {
+          "expression": "gate.passed"
+        }
+      ]
+    },
+    {
+      "id": "e-ngl6-nr08",
+      "from": "ngl6",
+      "to": "nr08",
+      "type": "conditional",
+      "conditions": [
+        {
+          "expression": "!gate.passed"
+        }
+      ]
+    },
+    {
+      "id": "e-ne07-ns00",
+      "from": "ne07",
+      "to": "ns00"
+    }
   ]
 }

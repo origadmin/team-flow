@@ -174,6 +174,34 @@
         "source": "builtin",
         "type": "quality_constraint",
         "enforcement": "hard"
+      },
+      {
+        "id": "qg1-think-before-coding",
+        "name": "QG-1: Think Before Coding",
+        "description": "Before any action, verify assumptions: what assumptions am I acting on? What's the worst case if wrong? What should I clarify first?",
+        "enforcement": "hard",
+        "trigger": "pre_action"
+      },
+      {
+        "id": "qg2-simplicity-first",
+        "name": "QG-2: Simplicity First",
+        "description": "Can this be solved with less code? Am I adding unrequested features? Is this over-engineered?",
+        "enforcement": "hard",
+        "trigger": "pre_output"
+      },
+      {
+        "id": "qg3-surgical-changes",
+        "name": "QG-3: Surgical Changes",
+        "description": "Only modify code within task scope. Never optimize or refactor adjacent code. Clean up orphan code from own changes.",
+        "enforcement": "hard",
+        "trigger": "code_change"
+      },
+      {
+        "id": "qg4-goal-driven",
+        "name": "QG-4: Goal-Driven Execution",
+        "description": "Define success criteria before executing. Each step must have concrete verification criteria. Never use vague 'completed' descriptions.",
+        "enforcement": "hard",
+        "trigger": "task_start"
       }
     ],
     "tools": [
@@ -353,7 +381,8 @@
           "description": "Feature specification document detailing requirements, scope, and constraints",
           "content_rules": [
             "Must contain: overview, requirements, constraints, dependencies"
-          ]
+          ],
+          "template": "{TEAM_PATH}/templates/prd-template.md"
         },
         {
           "name": "AC.md",
@@ -364,7 +393,8 @@
           "content_rules": [
             "Must contain: acceptance criteria as testable assertions",
             "Each criterion must be verifiable (pass/fail)"
-          ]
+          ],
+          "template": "{TEAM_PATH}/templates/prd-template.md"
         }
       ],
       "gates": [
@@ -433,21 +463,24 @@
           "format": "markdown",
           "path": "{docs_path}/{task_id}/R1_DATA_MODEL.md",
           "required": true,
-          "description": "Data model design including entity relationships and schema definitions"
+          "description": "Data model design including entity relationships and schema definitions",
+          "template": "{TEAM_PATH}/templates/architecture-template.md"
         },
         {
           "name": "R2_STATE_MACHINE.md",
           "format": "markdown",
           "path": "{docs_path}/{task_id}/R2_STATE_MACHINE.md",
           "required": true,
-          "description": "State machine design defining transitions, events, and lifecycle"
+          "description": "State machine design defining transitions, events, and lifecycle",
+          "template": "{TEAM_PATH}/templates/architecture-template.md"
         },
         {
           "name": "R3_API_CONTRACT.md",
           "format": "markdown",
           "path": "{docs_path}/{task_id}/R3_API_CONTRACT.md",
           "required": true,
-          "description": "API contract definitions including endpoints, request/response schemas"
+          "description": "API contract definitions including endpoints, request/response schemas",
+          "template": "{TEAM_PATH}/templates/api-issue-template.md"
         }
       ],
       "on_enter": [
@@ -592,7 +625,8 @@
           "format": "markdown",
           "path": "{docs_path}/{task_id}/TEST_COVERAGE.md",
           "required": true,
-          "description": "Test coverage report including unit, integration, and E2E test results"
+          "description": "Test coverage report including unit, integration, and E2E test results",
+          "template": "{TEAM_PATH}/templates/feature-test-template.md"
         }
       ],
       "on_enter": [
@@ -648,7 +682,8 @@
           "description": "Completion scope document summarizing what was implemented, changed, and any known issues",
           "content_rules": [
             "Must contain: changed files, added files, deleted files, risk assessment"
-          ]
+          ],
+          "template": "{TEAM_PATH}/templates/scope-template.md"
         }
       ],
       "on_enter": [
@@ -705,6 +740,66 @@
             "type": "custom",
             "check": "User confirmation received",
             "required": true
+          },
+          {
+            "type": "custom",
+            "required": true,
+            "check": "AC Compliance Matrix no failures"
+          },
+          {
+            "type": "custom",
+            "required": true,
+            "check": "R0_NAVIGATION_MATRIX.md exists and all entries implemented"
+          },
+          {
+            "type": "custom",
+            "required": true,
+            "check": "SPEC.md and AC.md exist and non-empty"
+          },
+          {
+            "type": "custom",
+            "required": true,
+            "check": "R1_DATA_MODEL.md exists and non-empty"
+          },
+          {
+            "type": "custom",
+            "required": true,
+            "check": "R3_API_CONTRACT.md exists and non-empty"
+          },
+          {
+            "type": "custom",
+            "required": true,
+            "check": "Frontend-backend API paths 100% match"
+          },
+          {
+            "type": "custom",
+            "required": true,
+            "check": "Frontend-backend param names 100% match"
+          },
+          {
+            "type": "custom",
+            "required": true,
+            "check": "Frontend-backend response types 100% match"
+          },
+          {
+            "type": "custom",
+            "required": true,
+            "check": "All Proto APIs have handler registrations"
+          },
+          {
+            "type": "custom",
+            "required": true,
+            "check": "No Chinese comments in code"
+          },
+          {
+            "type": "custom",
+            "required": true,
+            "check": "SCOPE.md generated"
+          },
+          {
+            "type": "custom",
+            "required": true,
+            "check": "TEST_COVERAGE.md exists"
           }
         ],
         "on_pass": "terminal-success",

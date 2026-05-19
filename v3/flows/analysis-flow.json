@@ -88,6 +88,34 @@
         "source": "framework",
         "type": "process_constraint",
         "enforcement": "hard"
+      },
+      {
+        "id": "qg1-think-before-coding",
+        "name": "QG-1: Think Before Coding",
+        "description": "Before any action, verify assumptions: what assumptions am I acting on? What's the worst case if wrong? What should I clarify first?",
+        "enforcement": "hard",
+        "trigger": "pre_action"
+      },
+      {
+        "id": "qg2-simplicity-first",
+        "name": "QG-2: Simplicity First",
+        "description": "Can this be solved with less code? Am I adding unrequested features? Is this over-engineered?",
+        "enforcement": "hard",
+        "trigger": "pre_output"
+      },
+      {
+        "id": "qg3-surgical-changes",
+        "name": "QG-3: Surgical Changes",
+        "description": "Only modify code within task scope. Never optimize or refactor adjacent code. Clean up orphan code from own changes.",
+        "enforcement": "hard",
+        "trigger": "code_change"
+      },
+      {
+        "id": "qg4-goal-driven",
+        "name": "QG-4: Goal-Driven Execution",
+        "description": "Define success criteria before executing. Each step must have concrete verification criteria. Never use vague 'completed' descriptions.",
+        "enforcement": "hard",
+        "trigger": "task_start"
       }
     ],
     "tools": [

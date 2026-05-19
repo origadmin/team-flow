@@ -148,6 +148,34 @@
         "source": "builtin",
         "type": "behavioral_constraint",
         "enforcement": "hard"
+      },
+      {
+        "id": "qg1-think-before-coding",
+        "name": "QG-1: Think Before Coding",
+        "description": "Before any action, verify assumptions: what assumptions am I acting on? What's the worst case if wrong? What should I clarify first?",
+        "enforcement": "hard",
+        "trigger": "pre_action"
+      },
+      {
+        "id": "qg2-simplicity-first",
+        "name": "QG-2: Simplicity First",
+        "description": "Can this be solved with less code? Am I adding unrequested features? Is this over-engineered?",
+        "enforcement": "hard",
+        "trigger": "pre_output"
+      },
+      {
+        "id": "qg3-surgical-changes",
+        "name": "QG-3: Surgical Changes",
+        "description": "Only modify code within task scope. Never optimize or refactor adjacent code. Clean up orphan code from own changes.",
+        "enforcement": "hard",
+        "trigger": "code_change"
+      },
+      {
+        "id": "qg4-goal-driven",
+        "name": "QG-4: Goal-Driven Execution",
+        "description": "Define success criteria before executing. Each step must have concrete verification criteria. Never use vague 'completed' descriptions.",
+        "enforcement": "hard",
+        "trigger": "task_start"
       }
     ],
     "tools": [
@@ -306,7 +334,8 @@
             "Must contain: phenomenon, root_cause, impact, prevention",
             "Data flow trace required for API/permission/state bugs",
             "Real scenario verification required (not mock-only)"
-          ]
+          ],
+          "template": "{TEAM_PATH}/templates/bug-test-template.md"
         }
       ],
       "on_enter": [
@@ -389,7 +418,8 @@
           "description": "Change scope document: what was fixed, what changed, known side effects",
           "content_rules": [
             "Must contain: changed files, added files, deleted files, risk assessment"
-          ]
+          ],
+          "template": "{TEAM_PATH}/templates/scope-template.md"
         }
       ],
       "on_enter": [
@@ -426,6 +456,41 @@
             "type": "custom",
             "check": "Regression tests added for the fix",
             "required": true
+          },
+          {
+            "type": "custom",
+            "required": true,
+            "check": "RCA.md contains: phenomenon, root_cause, impact, prevention"
+          },
+          {
+            "type": "custom",
+            "required": true,
+            "check": "TEST_CASE.md contains: reproduce steps, expected result, verification result"
+          },
+          {
+            "type": "custom",
+            "required": true,
+            "check": "Bug reproduce test passed (show test output)"
+          },
+          {
+            "type": "custom",
+            "required": true,
+            "check": "No Chinese comments in code"
+          },
+          {
+            "type": "custom",
+            "required": true,
+            "check": "Data flow tracing included in RCA (for API/auth/state/interaction bugs)"
+          },
+          {
+            "type": "custom",
+            "required": true,
+            "check": "Real scenario verification passed (not just mock tests)"
+          },
+          {
+            "type": "custom",
+            "required": true,
+            "check": "Full chain verified (not just breakpoint fix)"
           }
         ],
         "on_pass": "branch-r-iteration",
@@ -507,7 +572,8 @@
           "content_rules": [
             "Must contain: reproduction steps, expected result, actual result",
             "Regression test cases required for bugfixes"
-          ]
+          ],
+          "template": "{TEAM_PATH}/templates/bug-test-template.md"
         }
       ],
       "on_enter": [
@@ -556,6 +622,21 @@
             "type": "custom",
             "check": "User confirmation received",
             "required": true
+          },
+          {
+            "type": "custom",
+            "required": true,
+            "check": "AC Compliance Matrix no failures"
+          },
+          {
+            "type": "custom",
+            "required": true,
+            "check": "SCOPE.md generated"
+          },
+          {
+            "type": "custom",
+            "required": true,
+            "check": "API changes: frontend-backend interface/path/param/response match checked"
           }
         ],
         "on_pass": "terminal-success",

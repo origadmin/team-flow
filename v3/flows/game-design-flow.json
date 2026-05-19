@@ -4,7 +4,11 @@
     "name": "game-design-flow",
     "description": "Game design flow: Concept → GDD → Prototype → Gate → Art & Levels → Gate → Polish → Terminal",
     "author": "team-flow",
-    "tags": ["game", "design", "creative"]
+    "tags": [
+      "game",
+      "design",
+      "creative"
+    ]
   },
   "config": {
     "task_type": "game-design",
@@ -26,12 +30,25 @@
       "type": "phase",
       "name": "Game Concept",
       "description": "Define the game concept including genre, target audience, core loop, and creative vision",
-      "config": { "role": "GameDesigner" },
+      "config": {
+        "role": "GameDesigner"
+      },
       "components": {
-        "roles": [{ "ref": "game-designer", "source": "builtin" }],
+        "roles": [
+          {
+            "ref": "game-designer",
+            "source": "builtin"
+          }
+        ],
         "rules": [
-          { "ref": "output-guard", "source": "framework" },
-          { "ref": "game-concept-standards", "source": "builtin" }
+          {
+            "ref": "output-guard",
+            "source": "framework"
+          },
+          {
+            "ref": "game-concept-standards",
+            "source": "builtin"
+          }
         ]
       },
       "docs": [
@@ -44,7 +61,10 @@
         }
       ],
       "on_enter": [
-        { "action": "update_task_phase", "phase": "analyze" }
+        {
+          "action": "update_task_phase",
+          "phase": "analyze"
+        }
       ]
     },
     {
@@ -52,12 +72,25 @@
       "type": "phase",
       "name": "Game Design Document",
       "description": "Write the full GDD covering mechanics, systems, progression, economy, and balance",
-      "config": { "role": "GameDesigner" },
+      "config": {
+        "role": "GameDesigner"
+      },
       "components": {
-        "roles": [{ "ref": "game-designer", "source": "builtin" }],
+        "roles": [
+          {
+            "ref": "game-designer",
+            "source": "builtin"
+          }
+        ],
         "rules": [
-          { "ref": "output-guard", "source": "framework" },
-          { "ref": "game-design-standards", "source": "builtin" }
+          {
+            "ref": "output-guard",
+            "source": "framework"
+          },
+          {
+            "ref": "game-design-standards",
+            "source": "builtin"
+          }
         ]
       },
       "docs": [
@@ -70,7 +103,10 @@
         }
       ],
       "on_enter": [
-        { "action": "update_task_phase", "phase": "design" }
+        {
+          "action": "update_task_phase",
+          "phase": "design"
+        }
       ]
     },
     {
@@ -78,21 +114,48 @@
       "type": "phase",
       "name": "Prototype",
       "description": "Build a minimal playable prototype to validate core mechanics and fun factor",
-      "config": { "role": "GameDev" },
+      "config": {
+        "role": "GameDev"
+      },
       "components": {
-        "roles": [{ "ref": "game-dev", "source": "builtin" }],
+        "roles": [
+          {
+            "ref": "game-dev",
+            "source": "builtin"
+          }
+        ],
         "rules": [
-          { "ref": "output-guard", "source": "framework" },
-          { "ref": "prototype-standards", "source": "builtin" }
+          {
+            "ref": "output-guard",
+            "source": "framework"
+          },
+          {
+            "ref": "prototype-standards",
+            "source": "builtin"
+          }
         ],
         "tools": [
-          { "ref": "task" },
-          { "ref": "search" },
-          { "ref": "file-write" }
+          {
+            "ref": "task"
+          },
+          {
+            "ref": "search"
+          },
+          {
+            "ref": "file-write"
+          }
         ],
         "constraints": [
-          { "type": "file_write", "allowed_paths": ["{workspace}/"] },
-          { "type": "timeout", "minutes": 120 }
+          {
+            "type": "file_write",
+            "allowed_paths": [
+              "{workspace}/"
+            ]
+          },
+          {
+            "type": "timeout",
+            "minutes": 120
+          }
         ]
       },
       "docs": [
@@ -105,7 +168,10 @@
         }
       ],
       "on_enter": [
-        { "action": "update_task_phase", "phase": "implement" }
+        {
+          "action": "update_task_phase",
+          "phase": "implement"
+        }
       ]
     },
     {
@@ -115,11 +181,19 @@
       "description": "Evaluate if the prototype validates the core gameplay concept",
       "config": {
         "conditions": [
-          { "type": "deliverables_complete", "required": ["PROTOTYPE.md"] }
+          {
+            "type": "deliverables_complete",
+            "required": [
+              "PROTOTYPE.md"
+            ]
+          }
         ],
         "on_pass": "ga05",
         "on_fail": "gc01",
-        "auto_retry": { "max_attempts": 2, "delay_minutes": 10 }
+        "auto_retry": {
+          "max_attempts": 2,
+          "delay_minutes": 10
+        }
       }
     },
     {
@@ -127,12 +201,25 @@
       "type": "phase",
       "name": "Art Direction",
       "description": "Define visual style, create art guidelines, and produce key concept art",
-      "config": { "role": "Artist" },
+      "config": {
+        "role": "Artist"
+      },
       "components": {
-        "roles": [{ "ref": "artist", "source": "builtin" }],
+        "roles": [
+          {
+            "ref": "artist",
+            "source": "builtin"
+          }
+        ],
         "rules": [
-          { "ref": "output-guard", "source": "framework" },
-          { "ref": "art-standards", "source": "builtin" }
+          {
+            "ref": "output-guard",
+            "source": "framework"
+          },
+          {
+            "ref": "art-standards",
+            "source": "builtin"
+          }
         ]
       },
       "docs": [
@@ -145,7 +232,10 @@
         }
       ],
       "on_enter": [
-        { "action": "update_task_phase", "phase": "implement" }
+        {
+          "action": "update_task_phase",
+          "phase": "implement"
+        }
       ]
     },
     {
@@ -153,12 +243,25 @@
       "type": "phase",
       "name": "Level Design",
       "description": "Design game levels, environments, puzzles, and difficulty progression",
-      "config": { "role": "LevelDesigner" },
+      "config": {
+        "role": "LevelDesigner"
+      },
       "components": {
-        "roles": [{ "ref": "level-designer", "source": "builtin" }],
+        "roles": [
+          {
+            "ref": "level-designer",
+            "source": "builtin"
+          }
+        ],
         "rules": [
-          { "ref": "output-guard", "source": "framework" },
-          { "ref": "level-design-standards", "source": "builtin" }
+          {
+            "ref": "output-guard",
+            "source": "framework"
+          },
+          {
+            "ref": "level-design-standards",
+            "source": "builtin"
+          }
         ]
       },
       "docs": [
@@ -171,7 +274,10 @@
         }
       ],
       "on_enter": [
-        { "action": "update_task_phase", "phase": "implement" }
+        {
+          "action": "update_task_phase",
+          "phase": "implement"
+        }
       ]
     },
     {
@@ -181,11 +287,20 @@
       "description": "Verify all design elements are complete",
       "config": {
         "conditions": [
-          { "type": "deliverables_complete", "required": ["ART_DIRECTION.md", "LEVELS.md"] }
+          {
+            "type": "deliverables_complete",
+            "required": [
+              "ART_DIRECTION.md",
+              "LEVELS.md"
+            ]
+          }
         ],
         "on_pass": "gp08",
         "on_fail": "ga05",
-        "auto_retry": { "max_attempts": 2, "delay_minutes": 10 }
+        "auto_retry": {
+          "max_attempts": 2,
+          "delay_minutes": 10
+        }
       }
     },
     {
@@ -193,12 +308,25 @@
       "type": "phase",
       "name": "Polish & Integration",
       "description": "Integrate all design elements, polish details, and produce final design package",
-      "config": { "role": "GameDesigner" },
+      "config": {
+        "role": "GameDesigner"
+      },
       "components": {
-        "roles": [{ "ref": "game-designer", "source": "builtin" }],
+        "roles": [
+          {
+            "ref": "game-designer",
+            "source": "builtin"
+          }
+        ],
         "rules": [
-          { "ref": "output-guard", "source": "framework" },
-          { "ref": "review-standards", "source": "builtin" }
+          {
+            "ref": "output-guard",
+            "source": "framework"
+          },
+          {
+            "ref": "review-standards",
+            "source": "builtin"
+          }
         ]
       },
       "docs": [
@@ -211,7 +339,10 @@
         }
       ],
       "on_enter": [
-        { "action": "update_task_phase", "phase": "review" }
+        {
+          "action": "update_task_phase",
+          "phase": "review"
+        }
       ]
     },
     {
@@ -219,26 +350,128 @@
       "type": "terminal",
       "name": "Design Complete",
       "description": "Game design package completed and ready for development",
-      "config": { "status": "success", "message": "Game design flow completed successfully" }
+      "config": {
+        "status": "success",
+        "message": "Game design flow completed successfully"
+      }
     },
     {
       "id": "gr09",
       "type": "terminal",
       "name": "Rework Required",
       "description": "Design requires significant rework from concept stage",
-      "config": { "status": "rejected", "message": "Core concept or prototype did not pass review - rework needed" }
+      "config": {
+        "status": "rejected",
+        "message": "Core concept or prototype did not pass review - rework needed"
+      }
     }
   ],
   "edges": [
-    { "id": "e-gc01-gc02", "from": "gc01", "to": "gc02" },
-    { "id": "e-gc02-gp03", "from": "gc02", "to": "gp03" },
-    { "id": "e-gp03-gpt4", "from": "gp03", "to": "gpt4" },
-    { "id": "e-gpt4-ga05", "from": "gpt4", "to": "ga05", "type": "conditional", "conditions": [{ "expression": "gate.passed" }] },
-    { "id": "e-gpt4-gr09", "from": "gpt4", "to": "gr09", "type": "conditional", "conditions": [{ "expression": "!gate.passed" }] },
-    { "id": "e-ga05-gl06", "from": "ga05", "to": "gl06" },
-    { "id": "e-gl06-gcs7", "from": "gl06", "to": "gcs7" },
-    { "id": "e-gcs7-gp08", "from": "gcs7", "to": "gp08", "type": "conditional", "conditions": [{ "expression": "gate.passed" }] },
-    { "id": "e-gcs7-gr09", "from": "gcs7", "to": "gr09", "type": "conditional", "conditions": [{ "expression": "!gate.passed" }] },
-    { "id": "e-gp08-gs00", "from": "gp08", "to": "gs00" }
-  ]
+    {
+      "id": "e-gc01-gc02",
+      "from": "gc01",
+      "to": "gc02"
+    },
+    {
+      "id": "e-gc02-gp03",
+      "from": "gc02",
+      "to": "gp03"
+    },
+    {
+      "id": "e-gp03-gpt4",
+      "from": "gp03",
+      "to": "gpt4"
+    },
+    {
+      "id": "e-gpt4-ga05",
+      "from": "gpt4",
+      "to": "ga05",
+      "type": "conditional",
+      "conditions": [
+        {
+          "expression": "gate.passed"
+        }
+      ]
+    },
+    {
+      "id": "e-gpt4-gr09",
+      "from": "gpt4",
+      "to": "gr09",
+      "type": "conditional",
+      "conditions": [
+        {
+          "expression": "!gate.passed"
+        }
+      ]
+    },
+    {
+      "id": "e-ga05-gl06",
+      "from": "ga05",
+      "to": "gl06"
+    },
+    {
+      "id": "e-gl06-gcs7",
+      "from": "gl06",
+      "to": "gcs7"
+    },
+    {
+      "id": "e-gcs7-gp08",
+      "from": "gcs7",
+      "to": "gp08",
+      "type": "conditional",
+      "conditions": [
+        {
+          "expression": "gate.passed"
+        }
+      ]
+    },
+    {
+      "id": "e-gcs7-gr09",
+      "from": "gcs7",
+      "to": "gr09",
+      "type": "conditional",
+      "conditions": [
+        {
+          "expression": "!gate.passed"
+        }
+      ]
+    },
+    {
+      "id": "e-gp08-gs00",
+      "from": "gp08",
+      "to": "gs00"
+    }
+  ],
+  "components": {
+    "rules": [
+      {
+        "id": "qg1-think-before-coding",
+        "name": "QG-1: Think Before Coding",
+        "description": "Before any action, verify assumptions: what assumptions am I acting on? What's the worst case if wrong? What should I clarify first?",
+        "enforcement": "hard",
+        "trigger": "pre_action"
+      },
+      {
+        "id": "qg2-simplicity-first",
+        "name": "QG-2: Simplicity First",
+        "description": "Can this be solved with less code? Am I adding unrequested features? Is this over-engineered?",
+        "enforcement": "hard",
+        "trigger": "pre_output"
+      },
+      {
+        "id": "qg3-surgical-changes",
+        "name": "QG-3: Surgical Changes",
+        "description": "Only modify code within task scope. Never optimize or refactor adjacent code. Clean up orphan code from own changes.",
+        "enforcement": "hard",
+        "trigger": "code_change"
+      },
+      {
+        "id": "qg4-goal-driven",
+        "name": "QG-4: Goal-Driven Execution",
+        "description": "Define success criteria before executing. Each step must have concrete verification criteria. Never use vague 'completed' descriptions.",
+        "enforcement": "hard",
+        "trigger": "task_start"
+      }
+    ]
+  }
 }
