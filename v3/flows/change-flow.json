@@ -4,7 +4,11 @@
     "name": "change-flow",
     "description": "Change management flow: Triage → Gate → Plan → Execute → Gate → Review → Terminal",
     "author": "team-flow",
-    "tags": ["change", "software", "refactor"]
+    "tags": [
+      "change",
+      "software",
+      "refactor"
+    ]
   },
   "config": {
     "task_type": "change",
@@ -19,24 +23,133 @@
   },
   "components": {
     "roles": [
-      { "id": "triage", "name": "Triage Agent", "description": "Classify and dispatch change requests", "capabilities": ["classify", "dispatch"] },
-      { "id": "tech-lead", "name": "Tech Lead", "description": "Plan change scope and review impact", "capabilities": ["plan", "review", "architect"] },
-      { "id": "dev", "name": "Developer", "description": "Execute change implementation", "capabilities": ["implement", "test"] },
-      { "id": "qa", "name": "QA Engineer", "description": "Verify change completeness", "capabilities": ["verify", "validate"] }
+      {
+        "id": "triage",
+        "name": "Triage Agent",
+        "description": "Classify and dispatch change requests",
+        "capabilities": [
+          "classify",
+          "dispatch"
+        ],
+        "prompt_source": "{TEAM_PATH}/prompts/triage.md",
+        "standards_source": "{TEAM_PATH}/workflows/roles/triage-standards.md"
+      },
+      {
+        "id": "tech-lead",
+        "name": "Tech Lead",
+        "description": "Plan change scope and review impact",
+        "capabilities": [
+          "plan",
+          "review",
+          "architect"
+        ],
+        "prompt_source": "{TEAM_PATH}/prompts/tech-lead.md",
+        "standards_source": "{TEAM_PATH}/workflows/roles/architecture-standards.md"
+      },
+      {
+        "id": "dev",
+        "name": "Developer",
+        "description": "Execute change implementation",
+        "capabilities": [
+          "implement",
+          "test"
+        ],
+        "prompt_source": "{TEAM_PATH}/prompts/dev.md",
+        "standards_source": "{TEAM_PATH}/workflows/roles/development-standards.md"
+      },
+      {
+        "id": "qa",
+        "name": "QA Engineer",
+        "description": "Verify change completeness",
+        "capabilities": [
+          "verify",
+          "validate"
+        ],
+        "prompt_source": "{TEAM_PATH}/prompts/qa-engineer.md",
+        "standards_source": "{TEAM_PATH}/workflows/roles/test-standards.md"
+      }
     ],
     "rules": [
-      { "id": "dispatch-guard", "name": "Dispatch Guard", "description": "Triage must dispatch, never execute directly", "source": "builtin", "type": "process_constraint", "enforcement": "hard" },
-      { "id": "output-guard", "name": "Output Guard Protocol", "description": "5-step self-assessment before completion", "source": "framework", "type": "process_constraint", "enforcement": "hard" },
-      { "id": "regression-guard", "name": "Regression Prevention", "description": "Prevent regressions during change", "source": "builtin", "type": "quality_constraint", "enforcement": "hard" },
-      { "id": "hard-constraints", "name": "Hard Constraints", "description": "No file deletion, no PowerShell Set-Content/Out-File, no skip toolchain gate", "source": "builtin", "type": "behavioral_constraint", "enforcement": "hard" },
-      { "id": "development-standards", "name": "Development Standards", "description": "No Chinese comments/commits, TDD, no BOM-polluting tools", "source": "builtin", "type": "behavioral_constraint", "enforcement": "hard" },
-      { "id": "architecture-standards", "name": "Architecture Standards", "description": "Design artifacts must follow R1-R3 format", "source": "builtin", "type": "output_constraint", "enforcement": "hard" },
-      { "id": "review-standards", "name": "Review Standards", "description": "Architecture compliance, SCOPE.md generation", "source": "builtin", "type": "quality_constraint", "enforcement": "hard" }
+      {
+        "id": "dispatch-guard",
+        "name": "Dispatch Guard",
+        "description": "Triage must dispatch, never execute directly",
+        "source": "builtin",
+        "type": "process_constraint",
+        "enforcement": "hard"
+      },
+      {
+        "id": "output-guard",
+        "name": "Output Guard Protocol",
+        "description": "5-step self-assessment before completion",
+        "source": "framework",
+        "type": "process_constraint",
+        "enforcement": "hard"
+      },
+      {
+        "id": "regression-guard",
+        "name": "Regression Prevention",
+        "description": "Prevent regressions during change",
+        "source": "builtin",
+        "type": "quality_constraint",
+        "enforcement": "hard"
+      },
+      {
+        "id": "hard-constraints",
+        "name": "Hard Constraints",
+        "description": "No file deletion, no PowerShell Set-Content/Out-File, no skip toolchain gate",
+        "source": "builtin",
+        "type": "behavioral_constraint",
+        "enforcement": "hard"
+      },
+      {
+        "id": "development-standards",
+        "name": "Development Standards",
+        "description": "No Chinese comments/commits, TDD, no BOM-polluting tools",
+        "source": "builtin",
+        "type": "behavioral_constraint",
+        "enforcement": "hard"
+      },
+      {
+        "id": "architecture-standards",
+        "name": "Architecture Standards",
+        "description": "Design artifacts must follow R1-R3 format",
+        "source": "builtin",
+        "type": "output_constraint",
+        "enforcement": "hard"
+      },
+      {
+        "id": "review-standards",
+        "name": "Review Standards",
+        "description": "Architecture compliance, SCOPE.md generation",
+        "source": "builtin",
+        "type": "quality_constraint",
+        "enforcement": "hard"
+      }
     ],
     "tools": [
-      { "id": "task", "name": "Task CLI", "type": "cli", "commands": ["create", "update", "close", "show", "list"] },
-      { "id": "search", "name": "Code Search", "type": "builtin" },
-      { "id": "file-ops", "name": "File Operations", "type": "builtin" }
+      {
+        "id": "task",
+        "name": "Task CLI",
+        "type": "cli",
+        "commands": [
+          "create",
+          "update",
+          "close",
+          "show",
+          "list"
+        ]
+      },
+      {
+        "id": "search",
+        "name": "Code Search",
+        "type": "builtin"
+      },
+      {
+        "id": "file-ops",
+        "name": "File Operations",
+        "type": "builtin"
+      }
     ]
   },
   "nodes": [
@@ -50,8 +163,25 @@
         "auto_dispatch": true
       },
       "components": {
-        "roles": [{ "ref": "triage", "source": "builtin" }],
-        "rules": [{ "ref": "dispatch-guard", "source": "builtin" }]
+        "roles": [
+          {
+            "ref": "triage",
+            "source": "builtin"
+          }
+        ],
+        "rules": [
+          {
+            "ref": "dispatch-guard",
+            "source": "builtin"
+          }
+        ],
+        "prompts": [
+          {
+            "ref": "triage",
+            "source": "file",
+            "path": "{TEAM_PATH}/prompts/triage.md"
+          }
+        ]
       },
       "docs": [
         {
@@ -63,7 +193,10 @@
         }
       ],
       "on_enter": [
-        { "action": "update_task_phase", "phase": "ready" }
+        {
+          "action": "update_task_phase",
+          "phase": "ready"
+        }
       ]
     },
     {
@@ -73,8 +206,13 @@
       "description": "Validate change request has sufficient context and type matches",
       "config": {
         "conditions": [
-          { "type": "task_exists" },
-          { "type": "type_matches", "expected": "change" }
+          {
+            "type": "task_exists"
+          },
+          {
+            "type": "type_matches",
+            "expected": "change"
+          }
         ],
         "on_pass": "phase-plan",
         "on_fail": "terminal-reject"
@@ -88,17 +226,47 @@
       "config": {
         "role": "TechLead",
         "auto_dispatch": true,
-        "deliverables": ["SCOPE.md", "IMPACT.md"]
+        "deliverables": [
+          "SCOPE.md",
+          "IMPACT.md"
+        ]
       },
       "components": {
-        "roles": [{ "ref": "tech-lead", "source": "builtin" }],
+        "roles": [
+          {
+            "ref": "tech-lead",
+            "source": "builtin"
+          }
+        ],
         "rules": [
-          { "ref": "architecture-standards", "source": "builtin" },
-          { "ref": "output-guard", "source": "framework" }
+          {
+            "ref": "architecture-standards",
+            "source": "builtin"
+          },
+          {
+            "ref": "output-guard",
+            "source": "framework"
+          }
         ],
         "tools": [
-          { "ref": "task", "commands": ["show", "update", "append"] },
-          { "ref": "search" }
+          {
+            "ref": "task",
+            "commands": [
+              "show",
+              "update",
+              "append"
+            ]
+          },
+          {
+            "ref": "search"
+          }
+        ],
+        "prompts": [
+          {
+            "ref": "tech-lead",
+            "source": "file",
+            "path": "{TEAM_PATH}/prompts/tech-lead.md"
+          }
         ]
       },
       "docs": [
@@ -118,7 +286,10 @@
         }
       ],
       "on_enter": [
-        { "action": "update_task_phase", "phase": "analyze" }
+        {
+          "action": "update_task_phase",
+          "phase": "analyze"
+        }
       ]
     },
     {
@@ -129,18 +300,45 @@
       "config": {
         "role": "Dev",
         "auto_dispatch": true,
-        "deliverables": ["code", "updated_tests"]
+        "deliverables": [
+          "code",
+          "updated_tests"
+        ]
       },
       "components": {
-        "roles": [{ "ref": "dev", "source": "builtin" }],
+        "roles": [
+          {
+            "ref": "dev",
+            "source": "builtin"
+          }
+        ],
         "rules": [
-          { "ref": "development-standards", "source": "builtin" },
-          { "ref": "regression-guard", "source": "builtin" }
+          {
+            "ref": "development-standards",
+            "source": "builtin"
+          },
+          {
+            "ref": "regression-guard",
+            "source": "builtin"
+          }
         ],
         "tools": [
-          { "ref": "task" },
-          { "ref": "search" },
-          { "ref": "file-ops" }
+          {
+            "ref": "task"
+          },
+          {
+            "ref": "search"
+          },
+          {
+            "ref": "file-ops"
+          }
+        ],
+        "prompts": [
+          {
+            "ref": "dev",
+            "source": "file",
+            "path": "{TEAM_PATH}/prompts/dev.md"
+          }
         ]
       },
       "docs": [
@@ -153,7 +351,10 @@
         }
       ],
       "on_enter": [
-        { "action": "update_task_phase", "phase": "implement" }
+        {
+          "action": "update_task_phase",
+          "phase": "implement"
+        }
       ]
     },
     {
@@ -163,13 +364,24 @@
       "description": "Verify changes pass all tests and no regressions introduced",
       "config": {
         "conditions": [
-          { "type": "tests_pass", "threshold": "100%" },
-          { "type": "lint_pass", "threshold": "0 errors" },
-          { "type": "no_regressions" }
+          {
+            "type": "tests_pass",
+            "threshold": "100%"
+          },
+          {
+            "type": "lint_pass",
+            "threshold": "0 errors"
+          },
+          {
+            "type": "no_regressions"
+          }
         ],
         "on_pass": "phase-review",
         "on_fail": "phase-execute",
-        "auto_retry": { "max_attempts": 2, "delay_minutes": 5 }
+        "auto_retry": {
+          "max_attempts": 2,
+          "delay_minutes": 5
+        }
       }
     },
     {
@@ -180,11 +392,30 @@
       "config": {
         "role": "TechLead",
         "auto_dispatch": true,
-        "deliverables": ["SCOPE.md"]
+        "deliverables": [
+          "SCOPE.md"
+        ]
       },
       "components": {
-        "roles": [{ "ref": "tech-lead", "source": "builtin" }],
-        "rules": [{ "ref": "review-standards", "source": "builtin" }]
+        "roles": [
+          {
+            "ref": "tech-lead",
+            "source": "builtin"
+          }
+        ],
+        "rules": [
+          {
+            "ref": "review-standards",
+            "source": "builtin"
+          }
+        ],
+        "prompts": [
+          {
+            "ref": "tech-lead",
+            "source": "file",
+            "path": "{TEAM_PATH}/prompts/tech-lead.md"
+          }
+        ]
       },
       "docs": [
         {
@@ -196,7 +427,10 @@
         }
       ],
       "on_enter": [
-        { "action": "update_task_phase", "phase": "review" }
+        {
+          "action": "update_task_phase",
+          "phase": "review"
+        }
       ]
     },
     {
@@ -221,13 +455,69 @@
     }
   ],
   "edges": [
-    { "id": "e-triage-gate", "from": "phase-triage", "to": "gate-entry" },
-    { "id": "e-gate-plan", "from": "gate-entry", "to": "phase-plan", "type": "conditional", "conditions": [{ "expression": "gate.passed" }] },
-    { "id": "e-gate-reject", "from": "gate-entry", "to": "terminal-reject", "type": "conditional", "conditions": [{ "expression": "!gate.passed" }] },
-    { "id": "e-plan-execute", "from": "phase-plan", "to": "phase-execute" },
-    { "id": "e-execute-gate", "from": "phase-execute", "to": "gate-quality" },
-    { "id": "e-gate-review", "from": "gate-quality", "to": "phase-review", "type": "conditional", "conditions": [{ "expression": "gate.passed" }] },
-    { "id": "e-gate-execute", "from": "gate-quality", "to": "phase-execute", "type": "conditional", "conditions": [{ "expression": "!gate.passed" }] },
-    { "id": "e-review-success", "from": "phase-review", "to": "terminal-success" }
+    {
+      "id": "e-triage-gate",
+      "from": "phase-triage",
+      "to": "gate-entry"
+    },
+    {
+      "id": "e-gate-plan",
+      "from": "gate-entry",
+      "to": "phase-plan",
+      "type": "conditional",
+      "conditions": [
+        {
+          "expression": "gate.passed"
+        }
+      ]
+    },
+    {
+      "id": "e-gate-reject",
+      "from": "gate-entry",
+      "to": "terminal-reject",
+      "type": "conditional",
+      "conditions": [
+        {
+          "expression": "!gate.passed"
+        }
+      ]
+    },
+    {
+      "id": "e-plan-execute",
+      "from": "phase-plan",
+      "to": "phase-execute"
+    },
+    {
+      "id": "e-execute-gate",
+      "from": "phase-execute",
+      "to": "gate-quality"
+    },
+    {
+      "id": "e-gate-review",
+      "from": "gate-quality",
+      "to": "phase-review",
+      "type": "conditional",
+      "conditions": [
+        {
+          "expression": "gate.passed"
+        }
+      ]
+    },
+    {
+      "id": "e-gate-execute",
+      "from": "gate-quality",
+      "to": "phase-execute",
+      "type": "conditional",
+      "conditions": [
+        {
+          "expression": "!gate.passed"
+        }
+      ]
+    },
+    {
+      "id": "e-review-success",
+      "from": "phase-review",
+      "to": "terminal-success"
+    }
   ]
 }

@@ -1,0 +1,375 @@
+{
+  "version": "v3",
+  "metadata": {
+    "name": "batch-flow",
+    "description": "Batch task flow: Triage receives multiple requests → scope analysis → user confirmation → parallel dispatch → result collection → status update",
+    "author": "team-flow",
+    "tags": ["batch", "multi-task", "software"]
+  },
+  "config": {
+    "task_type": "feature",
+    "domain": "batch",
+    "auto_dispatch": true,
+    "parallel_limit": 3,
+    "timeout_minutes": 960
+  },
+  "variables": {
+    "docs_path": "",
+    "TEAM_PATH": "",
+    "batch_id": "",
+    "task_id": "",
+    "iteration": "R0"
+  },
+  "components": {
+    "roles": [
+      {
+        "id": "triage",
+        "name": "Triage Agent",
+        "description": "Classify batch requests, manage concurrent dispatch, collect results",
+        "prompt_source": "{TEAM_PATH}/prompts/triage.md",
+        "standards_source": "{TEAM_PATH}/workflows/roles/triage-standards.md",
+        "capabilities": ["classify", "dispatch", "assess", "batch-manage"]
+      },
+      {
+        "id": "tech-lead",
+        "name": "Tech Lead",
+        "description": "Analyze requirements, design architecture, review code",
+        "prompt_source": "{TEAM_PATH}/prompts/tech-lead.md",
+        "standards_source": "{TEAM_PATH}/workflows/roles/architecture-standards.md",
+        "capabilities": ["analyze", "design", "review", "architect"]
+      },
+      {
+        "id": "dev",
+        "name": "Developer",
+        "description": "Implement features, write code and unit tests",
+        "prompt_source": "{TEAM_PATH}/prompts/dev.md",
+        "standards_source": "{TEAM_PATH}/workflows/roles/development-standards.md",
+        "capabilities": ["implement", "test", "debug"]
+      },
+      {
+        "id": "qa",
+        "name": "QA Engineer",
+        "description": "Verify implementations, run integration and E2E tests",
+        "prompt_source": "{TEAM_PATH}/prompts/qa-engineer.md",
+        "standards_source": "{TEAM_PATH}/workflows/roles/test-standards.md",
+        "capabilities": ["verify", "test", "validate"]
+      }
+    ],
+    "rules": [
+      {
+        "id": "dispatch-guard",
+        "name": "Dispatch Guard",
+        "description": "Triage must dispatch tasks to sub-agents, never execute directly",
+        "source": "builtin",
+        "type": "process_constraint",
+        "enforcement": "hard"
+      },
+      {
+        "id": "output-guard",
+        "name": "Output Guard Protocol",
+        "description": "5-step self-assessment before completion gate: AC compliance matrix, compile check, test execution, self-critique, output summary",
+        "source": "framework",
+        "type": "process_constraint",
+        "enforcement": "hard"
+      },
+      {
+        "id": "concurrency-control",
+        "name": "Concurrency Control",
+        "description": "Sub-tasks <=3: dispatch simultaneously; >3: batch of 3, wait for completion before next batch; conflicting tasks: sequential; dependent tasks: wait for dependency",
+        "source": "builtin",
+        "type": "process_constraint",
+        "enforcement": "hard"
+      },
+      {
+        "id": "batch-failure-retry",
+        "name": "Batch Failure Retry",
+        "description": "Single task failure: retry up to 3 times; still failed: mark FAILED and continue with remaining tasks",
+        "source": "builtin",
+        "type": "process_constraint",
+        "enforcement": "soft"
+      },
+      {
+        "id": "hard-constraints",
+        "name": "Hard Constraints",
+        "description": "Never delete files (use trash), never use PowerShell Set-Content/Out-File (BOM pollution), never skip toolchain gate",
+        "source": "builtin",
+        "type": "behavioral_constraint",
+        "enforcement": "hard"
+      },
+      {
+        "id": "regression-guard",
+        "name": "Regression Prevention",
+        "description": "Prevent regressions in existing functionality during implementation",
+        "source": "builtin",
+        "type": "quality_constraint",
+        "enforcement": "hard"
+      }
+    ],
+    "tools": [
+      {
+        "id": "task",
+        "name": "Task CLI",
+        "type": "cli",
+        "commands": ["create", "update", "close", "show", "list", "ready", "append", "dep"]
+      },
+      {
+        "id": "search",
+        "name": "Code Search",
+        "type": "builtin"
+      },
+      {
+        "id": "file-ops",
+        "name": "File Operations",
+        "type": "builtin"
+      }
+    ],
+    "skills": []
+  },
+  "nodes": [
+    {
+      "id": "batch-create",
+      "type": "phase",
+      "name": "Batch Creation",
+      "description": "Triage recognizes multiple requests, creates batch with individual sub-tasks",
+      "config": {
+        "role": "Triage",
+        "auto_dispatch": true,
+        "deliverables": ["PLAN.md"]
+      },
+      "components": {
+        "roles": [{ "ref": "triage", "source": "builtin" }],
+        "rules": [{ "ref": "dispatch-guard", "source": "builtin" }],
+        "prompts": [{ "ref": "triage", "source": "file", "path": "{TEAM_PATH}/prompts/triage.md" }]
+      },
+      "docs": [
+        {
+          "name": "PLAN.md",
+          "format": "markdown",
+          "path": "{docs_path}/batch/{batch_id}/PLAN.md",
+          "required": true,
+          "description": "Batch execution plan with sub-task list, priorities, dependencies, and dispatch order"
+        }
+      ],
+      "on_enter": [
+        { "action": "update_task_phase", "phase": "ready" }
+      ]
+    },
+    {
+      "id": "gate-batch-entry",
+      "type": "gate",
+      "name": "Batch Entry Gate",
+      "description": "Validate batch has at least 2 sub-tasks with sufficient information",
+      "config": {
+        "conditions": [
+          { "type": "custom", "check": "Batch has >= 2 sub-tasks", "required": true },
+          { "type": "custom", "check": "Each sub-task has sufficient information for classification", "required": true }
+        ],
+        "on_pass": "batch-scope",
+        "on_fail": "terminal-reject"
+      }
+    },
+    {
+      "id": "batch-scope",
+      "type": "phase",
+      "name": "Scope Analysis",
+      "description": "Analyze scope of all sub-tasks, identify dependencies and conflicts",
+      "config": {
+        "role": "Triage",
+        "auto_dispatch": true,
+        "deliverables": ["SCOPE_ANALYSIS.md"]
+      },
+      "components": {
+        "roles": [{ "ref": "triage", "source": "builtin" }],
+        "rules": [{ "ref": "concurrency-control", "source": "builtin" }],
+        "prompts": [{ "ref": "triage", "source": "file", "path": "{TEAM_PATH}/prompts/triage.md" }]
+      },
+      "docs": [
+        {
+          "name": "SCOPE_ANALYSIS.md",
+          "format": "markdown",
+          "path": "{docs_path}/batch/{batch_id}/SCOPE_ANALYSIS.md",
+          "required": true,
+          "description": "Scope analysis: dependency graph, conflict detection, dispatch grouping, execution order"
+        }
+      ],
+      "on_enter": [
+        { "action": "update_task_phase", "phase": "analyze" }
+      ]
+    },
+    {
+      "id": "batch-confirm",
+      "type": "manual",
+      "name": "User Confirmation",
+      "description": "Present batch plan to user for approval before dispatch",
+      "config": {
+        "approvers": [
+          { "role": "User", "required": true }
+        ],
+        "approval_strategy": "all",
+        "timeout_minutes": 60,
+        "on_timeout": "terminal-cancelled"
+      }
+    },
+    {
+      "id": "batch-dispatch",
+      "type": "phase",
+      "name": "Batch Dispatch",
+      "description": "Dispatch sub-tasks to appropriate flows (feature/bugfix/change) respecting concurrency limits",
+      "config": {
+        "role": "Triage",
+        "auto_dispatch": true,
+        "deliverables": ["DISPATCH_RECORD.md"]
+      },
+      "components": {
+        "roles": [{ "ref": "triage", "source": "builtin" }],
+        "rules": [
+          { "ref": "dispatch-guard", "source": "builtin" },
+          { "ref": "concurrency-control", "source": "builtin" },
+          { "ref": "batch-failure-retry", "source": "builtin" }
+        ],
+        "prompts": [{ "ref": "triage", "source": "file", "path": "{TEAM_PATH}/prompts/triage.md" }]
+      },
+      "docs": [
+        {
+          "name": "DISPATCH_RECORD.md",
+          "format": "markdown",
+          "path": "{docs_path}/batch/{batch_id}/DISPATCH_RECORD.md",
+          "required": true,
+          "description": "Record of which sub-tasks dispatched to which flows, in what order, with which agents"
+        }
+      ],
+      "on_enter": [
+        { "action": "update_task_phase", "phase": "implement" }
+      ]
+    },
+    {
+      "id": "batch-execute",
+      "type": "parallel",
+      "name": "Parallel Execution",
+      "description": "Execute sub-tasks in parallel respecting concurrency limits and dependencies",
+      "config": {
+        "max_concurrency": 3,
+        "strategy": "all_success",
+        "merge_strategy": "wait_all",
+        "branches": []
+      }
+    },
+    {
+      "id": "batch-verify",
+      "type": "phase",
+      "name": "Results Verification",
+      "description": "Triage verifies all sub-task results, checks for consistency and completeness",
+      "config": {
+        "role": "Triage",
+        "auto_dispatch": true,
+        "deliverables": ["VERIFICATION_REPORT.md"]
+      },
+      "components": {
+        "roles": [{ "ref": "triage", "source": "builtin" }],
+        "rules": [{ "ref": "output-guard", "source": "framework" }],
+        "prompts": [{ "ref": "triage", "source": "file", "path": "{TEAM_PATH}/prompts/triage.md" }]
+      },
+      "docs": [
+        {
+          "name": "VERIFICATION_REPORT.md",
+          "format": "markdown",
+          "path": "{docs_path}/batch/{batch_id}/VERIFICATION_REPORT.md",
+          "required": true,
+          "description": "Verification of all sub-task results: pass/fail status, cross-task consistency check"
+        }
+      ],
+      "on_enter": [
+        { "action": "update_task_phase", "phase": "verify" }
+      ]
+    },
+    {
+      "id": "batch-collect",
+      "type": "phase",
+      "name": "Results Collection",
+      "description": "Collect all sub-task artifacts and produce summary",
+      "config": {
+        "role": "Triage",
+        "auto_dispatch": true,
+        "deliverables": ["BATCH_SUMMARY.md"]
+      },
+      "components": {
+        "roles": [{ "ref": "triage", "source": "builtin" }],
+        "prompts": [{ "ref": "triage", "source": "file", "path": "{TEAM_PATH}/prompts/triage.md" }]
+      },
+      "docs": [
+        {
+          "name": "BATCH_SUMMARY.md",
+          "format": "markdown",
+          "path": "{docs_path}/batch/{batch_id}/BATCH_SUMMARY.md",
+          "required": true,
+          "description": "Batch summary: all sub-task deliverables, git references, known issues"
+        }
+      ],
+      "on_enter": [
+        { "action": "update_task_phase", "phase": "review" }
+      ]
+    },
+    {
+      "id": "gate-completion",
+      "type": "gate",
+      "name": "Batch Completion Gate",
+      "description": "Verify all sub-tasks completed, no failures remain, user confirmation received",
+      "config": {
+        "conditions": [
+          { "type": "custom", "check": "All sub-tasks completed (SUCCESS or user-accepted)", "required": true },
+          { "type": "custom", "check": "No FAILED sub-tasks without user acceptance", "required": true },
+          { "type": "custom", "check": "Output Guard Summary all passed", "required": true },
+          { "type": "custom", "check": "User confirmation received", "required": true }
+        ],
+        "on_pass": "terminal-success",
+        "on_fail": "batch-dispatch"
+      }
+    },
+    {
+      "id": "terminal-success",
+      "type": "terminal",
+      "name": "Batch Completed",
+      "description": "Batch flow completed successfully",
+      "config": {
+        "status": "success",
+        "message": "Batch flow completed successfully"
+      },
+      "on_exit": [
+        { "action": "custom", "name": "handoff-doc", "message": "Generate handoff document at session end" }
+      ]
+    },
+    {
+      "id": "terminal-reject",
+      "type": "terminal",
+      "name": "Rejected",
+      "description": "Batch rejected at entry gate",
+      "config": {
+        "status": "rejected",
+        "message": "Batch does not meet minimum requirements (need >= 2 sub-tasks with sufficient information)"
+      }
+    },
+    {
+      "id": "terminal-cancelled",
+      "type": "terminal",
+      "name": "Cancelled",
+      "description": "Batch cancelled due to user timeout or rejection",
+      "config": {
+        "status": "cancelled",
+        "message": "Batch cancelled: user did not confirm within timeout"
+      }
+    }
+  ],
+  "edges": [
+    { "id": "e-create-gate", "from": "batch-create", "to": "gate-batch-entry" },
+    { "id": "e-gate-scope", "from": "gate-batch-entry", "to": "batch-scope", "type": "conditional", "conditions": [{ "expression": "gate.passed" }] },
+    { "id": "e-gate-reject", "from": "gate-batch-entry", "to": "terminal-reject", "type": "conditional", "conditions": [{ "expression": "!gate.passed" }] },
+    { "id": "e-scope-confirm", "from": "batch-scope", "to": "batch-confirm" },
+    { "id": "e-confirm-dispatch", "from": "batch-confirm", "to": "batch-dispatch" },
+    { "id": "e-dispatch-execute", "from": "batch-dispatch", "to": "batch-execute" },
+    { "id": "e-execute-verify", "from": "batch-execute", "to": "batch-verify" },
+    { "id": "e-verify-collect", "from": "batch-verify", "to": "batch-collect" },
+    { "id": "e-collect-completion", "from": "batch-collect", "to": "gate-completion" },
+    { "id": "e-completion-success", "from": "gate-completion", "to": "terminal-success", "type": "conditional", "conditions": [{ "expression": "gate.passed" }] },
+    { "id": "e-completion-dispatch", "from": "gate-completion", "to": "batch-dispatch", "type": "conditional", "conditions": [{ "expression": "!gate.passed" }] }
+  ]
+}

@@ -96,7 +96,7 @@
         "task_type": {
           "type": "string",
           "description": "Task type this flow handles",
-          "enum": ["feature", "bug", "change", "analysis", "docs", "hotfix", "release"]
+          "enum": ["feature", "bug", "change", "analysis", "docs", "hotfix", "release", "batch"]
         },
         "auto_dispatch": {
           "type": "boolean",

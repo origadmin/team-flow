@@ -24,18 +24,24 @@
         "id": "triage",
         "name": "Triage Agent",
         "description": "Classify and dispatch bug reports",
+        "prompt_source": "{TEAM_PATH}/prompts/triage.md",
+        "standards_source": "{TEAM_PATH}/workflows/roles/triage-standards.md",
         "capabilities": ["classify", "dispatch", "assess"]
       },
       {
         "id": "dev",
         "name": "Developer",
         "description": "Investigate root cause, implement bug fix, add regression tests",
+        "prompt_source": "{TEAM_PATH}/prompts/dev.md",
+        "standards_source": "{TEAM_PATH}/workflows/roles/bugfix-standards.md",
         "capabilities": ["investigate", "implement", "test", "debug"]
       },
       {
         "id": "qa",
         "name": "QA Engineer",
         "description": "Verify bug fix, run regression tests, validate completeness",
+        "prompt_source": "{TEAM_PATH}/prompts/qa-engineer.md",
+        "standards_source": "{TEAM_PATH}/workflows/roles/test-standards.md",
         "capabilities": ["verify", "test", "validate"]
       }
     ],
@@ -137,7 +143,8 @@
       },
       "components": {
         "roles": [{ "ref": "triage", "source": "builtin" }],
-        "rules": [{ "ref": "dispatch-guard", "source": "builtin" }]
+        "rules": [{ "ref": "dispatch-guard", "source": "builtin" }],
+        "prompts": [{ "ref": "triage", "source": "file", "path": "{TEAM_PATH}/prompts/triage.md" }]
       },
       "docs": [
         {
@@ -185,7 +192,8 @@
         "tools": [
           { "ref": "task", "commands": ["show", "update", "append"] },
           { "ref": "search" }
-        ]
+        ],
+        "prompts": [{ "ref": "dev", "source": "file", "path": "{TEAM_PATH}/prompts/dev.md" }]
       },
       "docs": [
         {
@@ -222,7 +230,8 @@
           { "ref": "task" },
           { "ref": "search" },
           { "ref": "file-ops" }
-        ]
+        ],
+        "prompts": [{ "ref": "dev", "source": "file", "path": "{TEAM_PATH}/prompts/dev.md" }]
       },
       "docs": [
         {
@@ -301,7 +310,8 @@
         "rules": [
           { "ref": "test-standards", "source": "builtin" },
           { "ref": "regression-guard", "source": "builtin" }
-        ]
+        ],
+        "prompts": [{ "ref": "qa", "source": "file", "path": "{TEAM_PATH}/prompts/qa-engineer.md" }]
       },
       "docs": [
         {

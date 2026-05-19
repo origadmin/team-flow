@@ -34,6 +34,7 @@ const (
 	TaskTypeDocs     TaskType = "docs"
 	TaskTypeHotfix   TaskType = "hotfix"
 	TaskTypeRelease  TaskType = "release"
+	TaskTypeBatch    TaskType = "batch"
 )
 
 type ComponentSource string

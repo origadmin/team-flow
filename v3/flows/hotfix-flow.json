@@ -4,7 +4,11 @@
     "name": "hotfix-flow",
     "description": "Emergency hotfix flow: Triage → Fix → Verify → Terminal",
     "author": "team-flow",
-    "tags": ["hotfix", "emergency", "software"]
+    "tags": [
+      "hotfix",
+      "emergency",
+      "software"
+    ]
   },
   "config": {
     "task_type": "hotfix",
@@ -19,23 +23,124 @@
   },
   "components": {
     "roles": [
-      { "id": "triage", "name": "Triage Agent", "description": "Classify and dispatch hotfix requests", "capabilities": ["classify", "dispatch"] },
-      { "id": "dev", "name": "Developer", "description": "Implement urgent fix", "capabilities": ["implement", "test", "debug"] },
-      { "id": "qa", "name": "QA Engineer", "description": "Verify hotfix", "capabilities": ["verify", "validate"] },
-      { "id": "devops", "name": "DevOps", "description": "Deploy and monitor hotfix", "capabilities": ["deploy", "monitor"] }
+      {
+        "id": "triage",
+        "name": "Triage Agent",
+        "description": "Classify and dispatch hotfix requests",
+        "capabilities": [
+          "classify",
+          "dispatch"
+        ],
+        "prompt_source": "{TEAM_PATH}/prompts/triage.md",
+        "standards_source": "{TEAM_PATH}/workflows/roles/triage-standards.md"
+      },
+      {
+        "id": "dev",
+        "name": "Developer",
+        "description": "Implement urgent fix",
+        "capabilities": [
+          "implement",
+          "test",
+          "debug"
+        ],
+        "prompt_source": "{TEAM_PATH}/prompts/dev.md",
+        "standards_source": "{TEAM_PATH}/workflows/roles/development-standards.md"
+      },
+      {
+        "id": "qa",
+        "name": "QA Engineer",
+        "description": "Verify hotfix",
+        "capabilities": [
+          "verify",
+          "validate"
+        ],
+        "prompt_source": "{TEAM_PATH}/prompts/qa-engineer.md",
+        "standards_source": "{TEAM_PATH}/workflows/roles/test-standards.md"
+      },
+      {
+        "id": "devops",
+        "name": "DevOps",
+        "description": "Deploy and monitor hotfix",
+        "capabilities": [
+          "deploy",
+          "monitor"
+        ],
+        "prompt_source": "{TEAM_PATH}/prompts/devops.md",
+        "standards_source": "{TEAM_PATH}/workflows/roles/devops-standards.md"
+      }
     ],
     "rules": [
-      { "id": "dispatch-guard", "name": "Dispatch Guard", "description": "Triage must dispatch, never execute directly", "source": "builtin", "type": "process_constraint", "enforcement": "hard" },
-      { "id": "output-guard", "name": "Output Guard Protocol", "description": "5-step self-assessment before completion", "source": "framework", "type": "process_constraint", "enforcement": "hard" },
-      { "id": "regression-guard", "name": "Regression Prevention", "description": "Every hotfix must include regression tests", "source": "builtin", "type": "quality_constraint", "enforcement": "hard" },
-      { "id": "hard-constraints", "name": "Hard Constraints", "description": "No file deletion, no PowerShell Set-Content/Out-File", "source": "builtin", "type": "behavioral_constraint", "enforcement": "hard" },
-      { "id": "development-standards", "name": "Development Standards", "description": "No Chinese comments/commits, TDD", "source": "builtin", "type": "behavioral_constraint", "enforcement": "hard" },
-      { "id": "test-standards", "name": "Test Standards", "description": "Unit tests pass, regression tests required, coverage report", "source": "builtin", "type": "quality_constraint", "enforcement": "hard" }
+      {
+        "id": "dispatch-guard",
+        "name": "Dispatch Guard",
+        "description": "Triage must dispatch, never execute directly",
+        "source": "builtin",
+        "type": "process_constraint",
+        "enforcement": "hard"
+      },
+      {
+        "id": "output-guard",
+        "name": "Output Guard Protocol",
+        "description": "5-step self-assessment before completion",
+        "source": "framework",
+        "type": "process_constraint",
+        "enforcement": "hard"
+      },
+      {
+        "id": "regression-guard",
+        "name": "Regression Prevention",
+        "description": "Every hotfix must include regression tests",
+        "source": "builtin",
+        "type": "quality_constraint",
+        "enforcement": "hard"
+      },
+      {
+        "id": "hard-constraints",
+        "name": "Hard Constraints",
+        "description": "No file deletion, no PowerShell Set-Content/Out-File",
+        "source": "builtin",
+        "type": "behavioral_constraint",
+        "enforcement": "hard"
+      },
+      {
+        "id": "development-standards",
+        "name": "Development Standards",
+        "description": "No Chinese comments/commits, TDD",
+        "source": "builtin",
+        "type": "behavioral_constraint",
+        "enforcement": "hard"
+      },
+      {
+        "id": "test-standards",
+        "name": "Test Standards",
+        "description": "Unit tests pass, regression tests required, coverage report",
+        "source": "builtin",
+        "type": "quality_constraint",
+        "enforcement": "hard"
+      }
     ],
     "tools": [
-      { "id": "task", "name": "Task CLI", "type": "cli", "commands": ["create", "update", "close", "show"] },
-      { "id": "search", "name": "Code Search", "type": "builtin" },
-      { "id": "file-ops", "name": "File Operations", "type": "builtin" }
+      {
+        "id": "task",
+        "name": "Task CLI",
+        "type": "cli",
+        "commands": [
+          "create",
+          "update",
+          "close",
+          "show"
+        ]
+      },
+      {
+        "id": "search",
+        "name": "Code Search",
+        "type": "builtin"
+      },
+      {
+        "id": "file-ops",
+        "name": "File Operations",
+        "type": "builtin"
+      }
     ]
   },
   "nodes": [
@@ -49,8 +154,25 @@
         "auto_dispatch": true
       },
       "components": {
-        "roles": [{ "ref": "triage", "source": "builtin" }],
-        "rules": [{ "ref": "dispatch-guard", "source": "builtin" }]
+        "roles": [
+          {
+            "ref": "triage",
+            "source": "builtin"
+          }
+        ],
+        "rules": [
+          {
+            "ref": "dispatch-guard",
+            "source": "builtin"
+          }
+        ],
+        "prompts": [
+          {
+            "ref": "triage",
+            "source": "file",
+            "path": "{TEAM_PATH}/prompts/triage.md"
+          }
+        ]
       },
       "docs": [
         {
@@ -62,7 +184,10 @@
         }
       ],
       "on_enter": [
-        { "action": "update_task_phase", "phase": "ready" }
+        {
+          "action": "update_task_phase",
+          "phase": "ready"
+        }
       ]
     },
     {
@@ -73,18 +198,45 @@
       "config": {
         "role": "Dev",
         "auto_dispatch": true,
-        "deliverables": ["code", "RCA.md"]
+        "deliverables": [
+          "code",
+          "RCA.md"
+        ]
       },
       "components": {
-        "roles": [{ "ref": "dev", "source": "builtin" }],
+        "roles": [
+          {
+            "ref": "dev",
+            "source": "builtin"
+          }
+        ],
         "rules": [
-          { "ref": "development-standards", "source": "builtin" },
-          { "ref": "regression-guard", "source": "builtin" }
+          {
+            "ref": "development-standards",
+            "source": "builtin"
+          },
+          {
+            "ref": "regression-guard",
+            "source": "builtin"
+          }
         ],
         "tools": [
-          { "ref": "task" },
-          { "ref": "search" },
-          { "ref": "file-ops" }
+          {
+            "ref": "task"
+          },
+          {
+            "ref": "search"
+          },
+          {
+            "ref": "file-ops"
+          }
+        ],
+        "prompts": [
+          {
+            "ref": "dev",
+            "source": "file",
+            "path": "{TEAM_PATH}/prompts/dev.md"
+          }
         ]
       },
       "docs": [
@@ -97,12 +249,19 @@
         }
       ],
       "on_enter": [
-        { "action": "update_task_phase", "phase": "implement" }
+        {
+          "action": "update_task_phase",
+          "phase": "implement"
+        }
       ],
       "on_error": {
         "strategy": "fail",
         "on_error": [
-          { "action": "notify", "message": "Hotfix implementation failed - escalation required", "channel": "emergency" }
+          {
+            "action": "notify",
+            "message": "Hotfix implementation failed - escalation required",
+            "channel": "emergency"
+          }
         ]
       }
     },
@@ -114,11 +273,30 @@
       "config": {
         "role": "QA",
         "auto_dispatch": true,
-        "deliverables": ["TEST_CASE.md"]
+        "deliverables": [
+          "TEST_CASE.md"
+        ]
       },
       "components": {
-        "roles": [{ "ref": "qa", "source": "builtin" }],
-        "rules": [{ "ref": "test-standards", "source": "builtin" }]
+        "roles": [
+          {
+            "ref": "qa",
+            "source": "builtin"
+          }
+        ],
+        "rules": [
+          {
+            "ref": "test-standards",
+            "source": "builtin"
+          }
+        ],
+        "prompts": [
+          {
+            "ref": "qa",
+            "source": "file",
+            "path": "{TEAM_PATH}/prompts/qa-engineer.md"
+          }
+        ]
       },
       "docs": [
         {
@@ -137,7 +315,10 @@
         }
       ],
       "on_enter": [
-        { "action": "update_task_phase", "phase": "verify" }
+        {
+          "action": "update_task_phase",
+          "phase": "verify"
+        }
       ]
     },
     {
@@ -162,9 +343,31 @@
     }
   ],
   "edges": [
-    { "id": "e-triage-fix", "from": "phase-triage", "to": "phase-fix" },
-    { "id": "e-fix-verify", "from": "phase-fix", "to": "phase-verify" },
-    { "id": "e-verify-success", "from": "phase-verify", "to": "terminal-success" },
-    { "id": "e-verify-failed", "from": "phase-verify", "to": "terminal-failed", "type": "conditional", "conditions": [{ "expression": "!gate.passed" }] }
+    {
+      "id": "e-triage-fix",
+      "from": "phase-triage",
+      "to": "phase-fix"
+    },
+    {
+      "id": "e-fix-verify",
+      "from": "phase-fix",
+      "to": "phase-verify"
+    },
+    {
+      "id": "e-verify-success",
+      "from": "phase-verify",
+      "to": "terminal-success"
+    },
+    {
+      "id": "e-verify-failed",
+      "from": "phase-verify",
+      "to": "terminal-failed",
+      "type": "conditional",
+      "conditions": [
+        {
+          "expression": "!gate.passed"
+        }
+      ]
+    }
   ]
 }

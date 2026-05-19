@@ -23,24 +23,32 @@
         "id": "triage",
         "name": "Triage Agent",
         "description": "Classify and dispatch incoming tasks to appropriate flows",
+        "prompt_source": "{TEAM_PATH}/prompts/triage.md",
+        "standards_source": "{TEAM_PATH}/workflows/roles/triage-standards.md",
         "capabilities": ["classify", "dispatch", "assess"]
       },
       {
         "id": "tech-lead",
         "name": "Tech Lead",
         "description": "Analyze requirements, design architecture, review code",
+        "prompt_source": "{TEAM_PATH}/prompts/tech-lead.md",
+        "standards_source": "{TEAM_PATH}/workflows/roles/architecture-standards.md",
         "capabilities": ["analyze", "design", "review", "architect"]
       },
       {
         "id": "dev",
         "name": "Developer",
         "description": "Implement features, write code and unit tests",
+        "prompt_source": "{TEAM_PATH}/prompts/dev.md",
+        "standards_source": "{TEAM_PATH}/workflows/roles/development-standards.md",
         "capabilities": ["implement", "test", "debug"]
       },
       {
         "id": "qa",
         "name": "QA Engineer",
         "description": "Verify implementations, run integration and E2E tests",
+        "prompt_source": "{TEAM_PATH}/prompts/qa-engineer.md",
+        "standards_source": "{TEAM_PATH}/workflows/roles/test-standards.md",
         "capabilities": ["verify", "test", "validate"]
       }
     ],
@@ -163,7 +171,8 @@
       },
       "components": {
         "roles": [{ "ref": "triage", "source": "builtin" }],
-        "rules": [{ "ref": "dispatch-guard", "source": "builtin" }]
+        "rules": [{ "ref": "dispatch-guard", "source": "builtin" }],
+        "prompts": [{ "ref": "triage", "source": "file", "path": "{TEAM_PATH}/prompts/triage.md" }]
       },
       "docs": [
         {
@@ -212,7 +221,8 @@
           { "ref": "task", "commands": ["show", "update", "append"] },
           { "ref": "search" }
         ],
-        "skills": [{ "ref": "api-design" }]
+        "skills": [{ "ref": "api-design" }],
+        "prompts": [{ "ref": "tech-lead", "source": "file", "path": "{TEAM_PATH}/prompts/tech-lead.md" }]
       },
       "docs": [
         {
@@ -254,7 +264,8 @@
       "components": {
         "roles": [{ "ref": "tech-lead", "source": "builtin" }],
         "rules": [{ "ref": "architecture-standards", "source": "builtin" }],
-        "skills": [{ "ref": "protobuf" }, { "ref": "api-design" }]
+        "skills": [{ "ref": "protobuf" }, { "ref": "api-design" }],
+        "prompts": [{ "ref": "tech-lead", "source": "file", "path": "{TEAM_PATH}/prompts/tech-lead.md" }]
       },
       "docs": [
         {
@@ -304,7 +315,8 @@
           { "ref": "task" },
           { "ref": "search" },
           { "ref": "file-ops" }
-        ]
+        ],
+        "prompts": [{ "ref": "dev", "source": "file", "path": "{TEAM_PATH}/prompts/dev.md" }]
       },
       "docs": [
         {
@@ -347,7 +359,8 @@
       },
       "components": {
         "roles": [{ "ref": "qa", "source": "builtin" }],
-        "rules": [{ "ref": "test-standards", "source": "builtin" }]
+        "rules": [{ "ref": "test-standards", "source": "builtin" }],
+        "prompts": [{ "ref": "qa", "source": "file", "path": "{TEAM_PATH}/prompts/qa-engineer.md" }]
       },
       "docs": [
         {
@@ -377,7 +390,8 @@
         "rules": [
           { "ref": "review-standards", "source": "builtin" },
           { "ref": "output-guard", "source": "framework" }
-        ]
+        ],
+        "prompts": [{ "ref": "tech-lead", "source": "file", "path": "{TEAM_PATH}/prompts/tech-lead.md" }]
       },
       "docs": [
         {

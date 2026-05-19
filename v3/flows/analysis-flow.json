@@ -4,7 +4,11 @@
     "name": "analysis-flow",
     "description": "Technical analysis flow: Triage → Analyze → Report → Terminal",
     "author": "team-flow",
-    "tags": ["analysis", "research", "software"]
+    "tags": [
+      "analysis",
+      "research",
+      "software"
+    ]
   },
   "config": {
     "task_type": "analysis",
@@ -19,17 +23,75 @@
   },
   "components": {
     "roles": [
-      { "id": "triage", "name": "Triage Agent", "description": "Classify and dispatch analysis tasks", "capabilities": ["classify", "dispatch"] },
-      { "id": "analysis", "name": "Analyst", "description": "Perform analysis and produce reports", "capabilities": ["analyze", "research", "report"] },
-      { "id": "tech-lead", "name": "Tech Lead", "description": "Review analysis findings", "capabilities": ["review", "architect"] }
+      {
+        "id": "triage",
+        "name": "Triage Agent",
+        "description": "Classify and dispatch analysis tasks",
+        "capabilities": [
+          "classify",
+          "dispatch"
+        ],
+        "prompt_source": "{TEAM_PATH}/prompts/triage.md",
+        "standards_source": "{TEAM_PATH}/workflows/roles/triage-standards.md"
+      },
+      {
+        "id": "analysis",
+        "name": "Analyst",
+        "description": "Perform analysis and produce reports",
+        "capabilities": [
+          "analyze",
+          "research",
+          "report"
+        ],
+        "prompt_source": "{TEAM_PATH}/prompts/analysis.md",
+        "standards_source": "{TEAM_PATH}/workflows/roles/analysis-standards.md"
+      },
+      {
+        "id": "tech-lead",
+        "name": "Tech Lead",
+        "description": "Review analysis findings",
+        "capabilities": [
+          "review",
+          "architect"
+        ],
+        "prompt_source": "{TEAM_PATH}/prompts/tech-lead.md",
+        "standards_source": "{TEAM_PATH}/workflows/roles/architecture-standards.md"
+      }
     ],
     "rules": [
-      { "id": "dispatch-guard", "name": "Dispatch Guard", "description": "Triage must dispatch, never execute directly", "source": "builtin", "type": "process_constraint", "enforcement": "hard" },
-      { "id": "output-guard", "name": "Output Guard Protocol", "description": "5-step self-assessment before completion", "source": "framework", "type": "process_constraint", "enforcement": "hard" }
+      {
+        "id": "dispatch-guard",
+        "name": "Dispatch Guard",
+        "description": "Triage must dispatch, never execute directly",
+        "source": "builtin",
+        "type": "process_constraint",
+        "enforcement": "hard"
+      },
+      {
+        "id": "output-guard",
+        "name": "Output Guard Protocol",
+        "description": "5-step self-assessment before completion",
+        "source": "framework",
+        "type": "process_constraint",
+        "enforcement": "hard"
+      }
     ],
     "tools": [
-      { "id": "task", "name": "Task CLI", "type": "cli", "commands": ["create", "update", "show"] },
-      { "id": "search", "name": "Code Search", "type": "builtin" }
+      {
+        "id": "task",
+        "name": "Task CLI",
+        "type": "cli",
+        "commands": [
+          "create",
+          "update",
+          "show"
+        ]
+      },
+      {
+        "id": "search",
+        "name": "Code Search",
+        "type": "builtin"
+      }
     ]
   },
   "nodes": [
@@ -43,8 +105,25 @@
         "auto_dispatch": true
       },
       "components": {
-        "roles": [{ "ref": "triage", "source": "builtin" }],
-        "rules": [{ "ref": "dispatch-guard", "source": "builtin" }]
+        "roles": [
+          {
+            "ref": "triage",
+            "source": "builtin"
+          }
+        ],
+        "rules": [
+          {
+            "ref": "dispatch-guard",
+            "source": "builtin"
+          }
+        ],
+        "prompts": [
+          {
+            "ref": "triage",
+            "source": "file",
+            "path": "{TEAM_PATH}/prompts/triage.md"
+          }
+        ]
       },
       "docs": [
         {
@@ -56,7 +135,10 @@
         }
       ],
       "on_enter": [
-        { "action": "update_task_phase", "phase": "ready" }
+        {
+          "action": "update_task_phase",
+          "phase": "ready"
+        }
       ]
     },
     {
@@ -67,16 +149,42 @@
       "config": {
         "role": "Analysis",
         "auto_dispatch": true,
-        "deliverables": ["FINDINGS.md"]
+        "deliverables": [
+          "FINDINGS.md"
+        ]
       },
       "components": {
-        "roles": [{ "ref": "analysis", "source": "builtin" }],
+        "roles": [
+          {
+            "ref": "analysis",
+            "source": "builtin"
+          }
+        ],
         "rules": [
-          { "ref": "output-guard", "source": "framework" }
+          {
+            "ref": "output-guard",
+            "source": "framework"
+          }
         ],
         "tools": [
-          { "ref": "task", "commands": ["show", "update", "append"] },
-          { "ref": "search" }
+          {
+            "ref": "task",
+            "commands": [
+              "show",
+              "update",
+              "append"
+            ]
+          },
+          {
+            "ref": "search"
+          }
+        ],
+        "prompts": [
+          {
+            "ref": "analysis",
+            "source": "file",
+            "path": "{TEAM_PATH}/prompts/analysis.md"
+          }
         ]
       },
       "docs": [
@@ -89,7 +197,10 @@
         }
       ],
       "on_enter": [
-        { "action": "update_task_phase", "phase": "analyze" }
+        {
+          "action": "update_task_phase",
+          "phase": "analyze"
+        }
       ]
     },
     {
@@ -100,11 +211,30 @@
       "config": {
         "role": "Analysis",
         "auto_dispatch": true,
-        "deliverables": ["REPORT.md"]
+        "deliverables": [
+          "REPORT.md"
+        ]
       },
       "components": {
-        "roles": [{ "ref": "analysis", "source": "builtin" }],
-        "rules": [{ "ref": "output-guard", "source": "framework" }]
+        "roles": [
+          {
+            "ref": "analysis",
+            "source": "builtin"
+          }
+        ],
+        "rules": [
+          {
+            "ref": "output-guard",
+            "source": "framework"
+          }
+        ],
+        "prompts": [
+          {
+            "ref": "analysis",
+            "source": "file",
+            "path": "{TEAM_PATH}/prompts/analysis.md"
+          }
+        ]
       },
       "docs": [
         {
@@ -116,7 +246,10 @@
         }
       ],
       "on_enter": [
-        { "action": "update_task_phase", "phase": "review" }
+        {
+          "action": "update_task_phase",
+          "phase": "review"
+        }
       ]
     },
     {
@@ -131,8 +264,20 @@
     }
   ],
   "edges": [
-    { "id": "e-triage-analyze", "from": "phase-triage", "to": "phase-analyze" },
-    { "id": "e-analyze-report", "from": "phase-analyze", "to": "phase-report" },
-    { "id": "e-report-success", "from": "phase-report", "to": "terminal-success" }
+    {
+      "id": "e-triage-analyze",
+      "from": "phase-triage",
+      "to": "phase-analyze"
+    },
+    {
+      "id": "e-analyze-report",
+      "from": "phase-analyze",
+      "to": "phase-report"
+    },
+    {
+      "id": "e-report-success",
+      "from": "phase-report",
+      "to": "terminal-success"
+    }
   ]
 }

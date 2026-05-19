@@ -35,9 +35,12 @@ type CurrentNode struct {
 	Name            string            `json:"name"`
 	Description     string            `json:"description"`
 	Role            string            `json:"role"`
+	PromptSource    string            `json:"prompt_source,omitempty"`
+	StandardsSource string            `json:"standards_source,omitempty"`
 	Rules           []RuleOutput      `json:"rules"`
 	Tools           []ToolOutput      `json:"tools"`
 	Skills          []SkillOutput     `json:"skills"`
+	Prompts         []PromptOutput    `json:"prompts"`
 	Docs            []DocOutput       `json:"docs"`
 	OnEnter         []OnEnterAction   `json:"on_enter"`
 	GateConditions  []GateCondOutput  `json:"gate_conditions"`
@@ -52,6 +55,12 @@ type RuleOutput struct {
 	Name        string `json:"name,omitempty"`
 	Description string `json:"description,omitempty"`
 	Enforcement string `json:"enforcement,omitempty"`
+}
+
+type PromptOutput struct {
+	Ref    string `json:"ref"`
+	Source string `json:"source,omitempty"`
+	Path   string `json:"path,omitempty"`
 }
 
 type ToolOutput struct {
@@ -167,9 +176,11 @@ func buildCurrentNode(node *flow.FlowNode, fl *flow.Flow, vars map[string]string
 	switch node.Type {
 	case flow.NodeTypePhase, flow.NodeTypeStart:
 		current.Role = extractRole(node)
+		current.PromptSource, current.StandardsSource = extractRoleSources(node, fl)
 		current.Rules = extractRules(node, fl)
 		current.Tools = extractTools(node)
 		current.Skills = extractSkills(node)
+		current.Prompts = extractPrompts(node)
 		current.Docs = extractDocs(node, vars)
 		current.OnEnter = extractOnEnter(node)
 		current.GateConditions = nil
@@ -193,9 +204,11 @@ func buildCurrentNode(node *flow.FlowNode, fl *flow.Flow, vars map[string]string
 
 	default:
 		current.Role = extractRole(node)
+		current.PromptSource, current.StandardsSource = extractRoleSources(node, fl)
 		current.Rules = extractRules(node, fl)
 		current.Tools = extractTools(node)
 		current.Skills = extractSkills(node)
+		current.Prompts = extractPrompts(node)
 		current.Docs = extractDocs(node, vars)
 		current.OnEnter = extractOnEnter(node)
 	}
@@ -212,6 +225,40 @@ func extractRole(node *flow.FlowNode) string {
 		return phaseCfg.Role
 	}
 	return ""
+}
+
+// extractRoleSources resolves prompt_source and standards_source from the flow-level
+// component registry by matching the node's role ref to the RoleDefinition.
+func extractRoleSources(node *flow.FlowNode, fl *flow.Flow) (promptSource, standardsSource string) {
+	if node.Components == nil || len(node.Components.Roles) == 0 {
+		return "", ""
+	}
+	roleRef := node.Components.Roles[0].Ref
+	if fl.Components == nil {
+		return "", ""
+	}
+	for _, r := range fl.Components.Roles {
+		if r.ID == roleRef {
+			return r.PromptSource, r.StandardsSource
+		}
+	}
+	return "", ""
+}
+
+// extractPrompts returns prompt file references from node components.
+func extractPrompts(node *flow.FlowNode) []PromptOutput {
+	if node.Components == nil || len(node.Components.Prompts) == 0 {
+		return nil
+	}
+	prompts := make([]PromptOutput, 0, len(node.Components.Prompts))
+	for _, p := range node.Components.Prompts {
+		prompts = append(prompts, PromptOutput{
+			Ref:    p.Ref,
+			Source: string(p.Source),
+			Path:   p.Path,
+		})
+	}
+	return prompts
 }
 
 func extractRules(node *flow.FlowNode, fl *flow.Flow) []RuleOutput {
