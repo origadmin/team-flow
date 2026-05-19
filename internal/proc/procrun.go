@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/origadmin/team-flow/internal/bd"
 	"github.com/origadmin/team-flow/internal/flow"
 )
 
@@ -21,6 +22,14 @@ type ProcRunResult struct {
 	Current     CurrentNode  `json:"current"`
 	NextOptions []NextOption `json:"next_options"`
 	StatusLine  string       `json:"status_line"`
+	Task        *TaskInfo    `json:"task,omitempty"`
+}
+
+type TaskInfo struct {
+	BeadsID string `json:"beads_id,omitempty"`
+	Phase   string `json:"phase,omitempty"`
+	Status  string `json:"status,omitempty"`
+	URL     string `json:"url,omitempty"`
 }
 
 type FlowMeta struct {
@@ -30,23 +39,24 @@ type FlowMeta struct {
 }
 
 type CurrentNode struct {
-	NodeID          string            `json:"node_id"`
-	NodeType        string            `json:"node_type"`
-	Name            string            `json:"name"`
-	Description     string            `json:"description"`
-	Role            string            `json:"role"`
-	PromptSource    string            `json:"prompt_source,omitempty"`
-	StandardsSource string            `json:"standards_source,omitempty"`
-	Rules           []RuleOutput      `json:"rules"`
-	Tools           []ToolOutput      `json:"tools"`
-	Skills          []SkillOutput     `json:"skills"`
-	Prompts         []PromptOutput    `json:"prompts"`
-	Docs            []DocOutput       `json:"docs"`
-	OnEnter         []OnEnterAction   `json:"on_enter"`
-	GateConditions  []GateCondOutput  `json:"gate_conditions"`
-	IsTerminal      bool              `json:"is_terminal"`
-	TerminalStatus  string            `json:"terminal_status,omitempty"`
-	TerminalMessage string            `json:"terminal_message,omitempty"`
+	NodeID           string           `json:"node_id"`
+	NodeType         string           `json:"node_type"`
+	Name             string           `json:"name"`
+	Description      string           `json:"description"`
+	Role             string           `json:"role"`
+	PromptSource     string           `json:"prompt_source,omitempty"`
+	StandardsSource  string           `json:"standards_source,omitempty"`
+	PromptDirectives []string         `json:"prompt_directives,omitempty"`
+	Rules            []RuleOutput     `json:"rules"`
+	Tools            []ToolOutput     `json:"tools"`
+	Skills           []SkillOutput    `json:"skills"`
+	Prompts          []PromptOutput   `json:"prompts"`
+	Docs             []DocOutput      `json:"docs"`
+	OnEnter          []OnEnterAction  `json:"on_enter"`
+	GateConditions   []GateCondOutput `json:"gate_conditions"`
+	IsTerminal       bool             `json:"is_terminal"`
+	TerminalStatus   string           `json:"terminal_status,omitempty"`
+	TerminalMessage  string           `json:"terminal_message,omitempty"`
 }
 
 type RuleOutput struct {
@@ -70,16 +80,21 @@ type ToolOutput struct {
 }
 
 type SkillOutput struct {
-	Ref    string `json:"ref"`
-	Source string `json:"source,omitempty"`
+	Ref         string `json:"ref"`
+	Source      string `json:"source,omitempty"`
+	Trigger     string `json:"trigger,omitempty"`
+	Path        string `json:"path,omitempty"`
+	Description string `json:"description,omitempty"`
 }
 
 type DocOutput struct {
-	Name        string `json:"name"`
-	Path        string `json:"path"`
-	Format      string `json:"format"`
-	Required    bool   `json:"required"`
-	Description string `json:"description,omitempty"`
+	Name         string   `json:"name"`
+	Path         string   `json:"path"`
+	Format       string   `json:"format"`
+	Required     bool     `json:"required"`
+	Description  string   `json:"description,omitempty"`
+	Template     string   `json:"template,omitempty"`
+	ContentRules []string `json:"content_rules,omitempty"`
 }
 
 type OnEnterAction struct {
@@ -131,7 +146,88 @@ func (e *ProcRunEngine) Run(ctx context.Context, req ProcRunRequest) (*ProcRunRe
 
 	result := generateResult(fl, node, vars)
 
+	// Integrate beads task state if available
+	if taskInfo := resolveTaskInfo(req.TaskID); taskInfo != nil {
+		result.Task = taskInfo
+		// Override StatusLine with beads data when available
+		if taskInfo.BeadsID != "" {
+			phase := taskInfo.Phase
+			if phase == "" {
+				for _, a := range result.Current.OnEnter {
+					if a.Action == "update_task_phase" && a.Phase != "" {
+						phase = a.Phase
+						break
+					}
+				}
+			}
+			role := result.Current.Role
+			if role == "" {
+				role = "System"
+			}
+			domain := string(fl.Config.TaskType)
+			if domain == "" {
+				domain = fl.Metadata.Name
+			}
+			asset := ""
+			if len(result.Current.Docs) > 0 {
+				asset = result.Current.Docs[0].Name
+			}
+			result.StatusLine = fmt.Sprintf("[%s|%s|%s|%s]", role, taskInfo.BeadsID, phase, asset)
+		}
+	}
+
 	return result, nil
+}
+
+// resolveTaskInfo queries the beads backend via flow task CLI for current task state.
+// Returns nil if beads is not available or no current task exists.
+func resolveTaskInfo(taskID string) *TaskInfo {
+	if !bd.IsAvailable() {
+		return nil
+	}
+
+	args := []string{"show", "--current", "--json"}
+	if taskID != "" {
+		args = []string{"show", taskID, "--json"}
+	}
+
+	output, err := bd.RunQuiet(args...)
+	if err != nil || output == "" {
+		return nil
+	}
+
+	// Parse JSON output from bd CLI
+	var raw map[string]interface{}
+	if err := json.Unmarshal([]byte(output), &raw); err != nil {
+		return nil
+	}
+
+	info := &TaskInfo{}
+	if id, ok := raw["id"].(string); ok {
+		info.BeadsID = id
+	}
+	if status, ok := raw["status"].(string); ok {
+		info.Status = status
+	}
+	if url, ok := raw["url"].(string); ok {
+		info.URL = url
+	}
+
+	// Extract phase from labels (phase:xxx)
+	if labels, ok := raw["labels"].([]interface{}); ok {
+		for _, l := range labels {
+			if s, ok := l.(string); ok && len(s) > 6 && s[:6] == "phase:" {
+				info.Phase = s[6:]
+				break
+			}
+		}
+	}
+
+	if info.BeadsID == "" && info.Phase == "" {
+		return nil
+	}
+
+	return info
 }
 
 func generateResult(fl *flow.Flow, node *flow.FlowNode, vars map[string]string) *ProcRunResult {
@@ -176,10 +272,10 @@ func buildCurrentNode(node *flow.FlowNode, fl *flow.Flow, vars map[string]string
 	switch node.Type {
 	case flow.NodeTypePhase, flow.NodeTypeStart:
 		current.Role = extractRole(node)
-		current.PromptSource, current.StandardsSource = extractRoleSources(node, fl)
+		current.PromptSource, current.StandardsSource, current.PromptDirectives = extractRoleSources(node, fl)
 		current.Rules = extractRules(node, fl)
 		current.Tools = extractTools(node)
-		current.Skills = extractSkills(node)
+		current.Skills = extractSkills(node, fl)
 		current.Prompts = extractPrompts(node)
 		current.Docs = extractDocs(node, vars)
 		current.OnEnter = extractOnEnter(node)
@@ -204,10 +300,10 @@ func buildCurrentNode(node *flow.FlowNode, fl *flow.Flow, vars map[string]string
 
 	default:
 		current.Role = extractRole(node)
-		current.PromptSource, current.StandardsSource = extractRoleSources(node, fl)
+		current.PromptSource, current.StandardsSource, current.PromptDirectives = extractRoleSources(node, fl)
 		current.Rules = extractRules(node, fl)
 		current.Tools = extractTools(node)
-		current.Skills = extractSkills(node)
+		current.Skills = extractSkills(node, fl)
 		current.Prompts = extractPrompts(node)
 		current.Docs = extractDocs(node, vars)
 		current.OnEnter = extractOnEnter(node)
@@ -227,22 +323,22 @@ func extractRole(node *flow.FlowNode) string {
 	return ""
 }
 
-// extractRoleSources resolves prompt_source and standards_source from the flow-level
-// component registry by matching the node's role ref to the RoleDefinition.
-func extractRoleSources(node *flow.FlowNode, fl *flow.Flow) (promptSource, standardsSource string) {
+// extractRoleSources resolves prompt_source, standards_source, and prompt_directives
+// from the flow-level component registry by matching the node's role ref to the RoleDefinition.
+func extractRoleSources(node *flow.FlowNode, fl *flow.Flow) (promptSource, standardsSource string, directives []string) {
 	if node.Components == nil || len(node.Components.Roles) == 0 {
-		return "", ""
+		return "", "", nil
 	}
 	roleRef := node.Components.Roles[0].Ref
 	if fl.Components == nil {
-		return "", ""
+		return "", "", nil
 	}
 	for _, r := range fl.Components.Roles {
 		if r.ID == roleRef {
-			return r.PromptSource, r.StandardsSource
+			return r.PromptSource, r.StandardsSource, r.PromptDirectives
 		}
 	}
-	return "", ""
+	return "", "", nil
 }
 
 // extractPrompts returns prompt file references from node components.
@@ -308,16 +404,33 @@ func extractTools(node *flow.FlowNode) []ToolOutput {
 	return tools
 }
 
-func extractSkills(node *flow.FlowNode) []SkillOutput {
+// extractSkills resolves skill references from node components and enriches them
+// with trigger, path, and description from the flow-level skill registry.
+func extractSkills(node *flow.FlowNode, fl *flow.Flow) []SkillOutput {
 	if node.Components == nil {
 		return nil
 	}
+	skillDefs := make(map[string]flow.SkillDefinition)
+	if fl.Components != nil {
+		for _, s := range fl.Components.Skills {
+			skillDefs[s.ID] = s
+		}
+	}
 	skills := make([]SkillOutput, 0, len(node.Components.Skills))
 	for _, s := range node.Components.Skills {
-		skills = append(skills, SkillOutput{
+		out := SkillOutput{
 			Ref:    s.Ref,
 			Source: string(s.Source),
-		})
+		}
+		if def, ok := skillDefs[s.Ref]; ok {
+			out.Trigger = def.Trigger
+			out.Path = def.Path
+			out.Description = def.Name
+			if def.Description != "" {
+				out.Description = def.Description
+			}
+		}
+		skills = append(skills, out)
 	}
 	if len(skills) == 0 {
 		return nil
@@ -336,13 +449,19 @@ func extractDocs(node *flow.FlowNode, vars map[string]string) []DocOutput {
 		if d.Required != nil {
 			required = *d.Required
 		}
-		docs = append(docs, DocOutput{
+		template := substituteVars(d.Template, vars)
+		out := DocOutput{
 			Name:        d.Name,
 			Path:        path,
 			Format:      d.Format,
 			Required:    required,
 			Description: d.Description,
-		})
+			Template:    template,
+		}
+		if len(d.ContentRules) > 0 {
+			out.ContentRules = d.ContentRules
+		}
+		docs = append(docs, out)
 	}
 	return docs
 }

@@ -4,7 +4,11 @@
     "name": "batch-flow",
     "description": "Batch task flow: Triage receives multiple requests → scope analysis → user confirmation → parallel dispatch → result collection → status update",
     "author": "team-flow",
-    "tags": ["batch", "multi-task", "software"]
+    "tags": [
+      "batch",
+      "multi-task",
+      "software"
+    ]
   },
   "config": {
     "task_type": "feature",
@@ -28,7 +32,19 @@
         "description": "Classify batch requests, manage concurrent dispatch, collect results",
         "prompt_source": "{TEAM_PATH}/prompts/triage.md",
         "standards_source": "{TEAM_PATH}/workflows/roles/triage-standards.md",
-        "capabilities": ["classify", "dispatch", "assess", "batch-manage"]
+        "capabilities": [
+          "classify",
+          "dispatch",
+          "assess",
+          "batch-manage"
+        ],
+        "prompt_directives": [
+          "Dispatch tasks to sub-agents, never execute directly",
+          "Classify all user input before action: Feature/Bug/Change/Analysis/Batch",
+          "Read .team/project.md for project constraints before dispatch",
+          "Use flow task create/show for all task state management",
+          "Report deliverables and handoff to next role on completion"
+        ]
       },
       {
         "id": "tech-lead",
@@ -36,7 +52,19 @@
         "description": "Analyze requirements, design architecture, review code",
         "prompt_source": "{TEAM_PATH}/prompts/tech-lead.md",
         "standards_source": "{TEAM_PATH}/workflows/roles/architecture-standards.md",
-        "capabilities": ["analyze", "design", "review", "architect"]
+        "capabilities": [
+          "analyze",
+          "design",
+          "review",
+          "architect"
+        ],
+        "prompt_directives": [
+          "Design before implement: SPEC.md + AC.md + Data Model mandatory",
+          "Ensure R0 Navigation Matrix covers all entry points",
+          "Review all API contracts for consistency",
+          "Verify design satisfies all acceptance criteria",
+          "Output Guard self-check before marking phase complete"
+        ]
       },
       {
         "id": "dev",
@@ -44,7 +72,19 @@
         "description": "Implement features, write code and unit tests",
         "prompt_source": "{TEAM_PATH}/prompts/dev.md",
         "standards_source": "{TEAM_PATH}/workflows/roles/development-standards.md",
-        "capabilities": ["implement", "test", "debug"]
+        "capabilities": [
+          "implement",
+          "test",
+          "debug"
+        ],
+        "prompt_directives": [
+          "Read SCOPE.md before starting implementation",
+          "Surgical changes only: never modify files outside task scope",
+          "Run tests before marking phase complete",
+          "No Chinese comments or commit messages",
+          "Never delete files unless explicitly asked",
+          "Output Guard 5-step self-check mandatory before completion gate"
+        ]
       },
       {
         "id": "qa",
@@ -52,7 +92,18 @@
         "description": "Verify implementations, run integration and E2E tests",
         "prompt_source": "{TEAM_PATH}/prompts/qa-engineer.md",
         "standards_source": "{TEAM_PATH}/workflows/roles/test-standards.md",
-        "capabilities": ["verify", "test", "validate"]
+        "capabilities": [
+          "verify",
+          "test",
+          "validate"
+        ],
+        "prompt_directives": [
+          "Verify implementation matches SPEC.md and AC.md",
+          "Run full regression tests, not just new tests",
+          "Check front-back interface consistency (paths, params, response)",
+          "For bugfixes: data flow trace + real scenario verification required",
+          "Output Guard self-check before marking review complete"
+        ]
       }
     ],
     "rules": [
@@ -110,7 +161,16 @@
         "id": "task",
         "name": "Task CLI",
         "type": "cli",
-        "commands": ["create", "update", "close", "show", "list", "ready", "append", "dep"]
+        "commands": [
+          "create",
+          "update",
+          "close",
+          "show",
+          "list",
+          "ready",
+          "append",
+          "dep"
+        ]
       },
       {
         "id": "search",
@@ -134,12 +194,30 @@
       "config": {
         "role": "Triage",
         "auto_dispatch": true,
-        "deliverables": ["PLAN.md"]
+        "deliverables": [
+          "PLAN.md"
+        ]
       },
       "components": {
-        "roles": [{ "ref": "triage", "source": "builtin" }],
-        "rules": [{ "ref": "dispatch-guard", "source": "builtin" }],
-        "prompts": [{ "ref": "triage", "source": "file", "path": "{TEAM_PATH}/prompts/triage.md" }]
+        "roles": [
+          {
+            "ref": "triage",
+            "source": "builtin"
+          }
+        ],
+        "rules": [
+          {
+            "ref": "dispatch-guard",
+            "source": "builtin"
+          }
+        ],
+        "prompts": [
+          {
+            "ref": "triage",
+            "source": "file",
+            "path": "{TEAM_PATH}/prompts/triage.md"
+          }
+        ]
       },
       "docs": [
         {
@@ -151,7 +229,10 @@
         }
       ],
       "on_enter": [
-        { "action": "update_task_phase", "phase": "ready" }
+        {
+          "action": "update_task_phase",
+          "phase": "ready"
+        }
       ]
     },
     {
@@ -161,8 +242,16 @@
       "description": "Validate batch has at least 2 sub-tasks with sufficient information",
       "config": {
         "conditions": [
-          { "type": "custom", "check": "Batch has >= 2 sub-tasks", "required": true },
-          { "type": "custom", "check": "Each sub-task has sufficient information for classification", "required": true }
+          {
+            "type": "custom",
+            "check": "Batch has >= 2 sub-tasks",
+            "required": true
+          },
+          {
+            "type": "custom",
+            "check": "Each sub-task has sufficient information for classification",
+            "required": true
+          }
         ],
         "on_pass": "batch-scope",
         "on_fail": "terminal-reject"
@@ -176,12 +265,30 @@
       "config": {
         "role": "Triage",
         "auto_dispatch": true,
-        "deliverables": ["SCOPE_ANALYSIS.md"]
+        "deliverables": [
+          "SCOPE_ANALYSIS.md"
+        ]
       },
       "components": {
-        "roles": [{ "ref": "triage", "source": "builtin" }],
-        "rules": [{ "ref": "concurrency-control", "source": "builtin" }],
-        "prompts": [{ "ref": "triage", "source": "file", "path": "{TEAM_PATH}/prompts/triage.md" }]
+        "roles": [
+          {
+            "ref": "triage",
+            "source": "builtin"
+          }
+        ],
+        "rules": [
+          {
+            "ref": "concurrency-control",
+            "source": "builtin"
+          }
+        ],
+        "prompts": [
+          {
+            "ref": "triage",
+            "source": "file",
+            "path": "{TEAM_PATH}/prompts/triage.md"
+          }
+        ]
       },
       "docs": [
         {
@@ -193,7 +300,10 @@
         }
       ],
       "on_enter": [
-        { "action": "update_task_phase", "phase": "analyze" }
+        {
+          "action": "update_task_phase",
+          "phase": "analyze"
+        }
       ]
     },
     {
@@ -203,7 +313,10 @@
       "description": "Present batch plan to user for approval before dispatch",
       "config": {
         "approvers": [
-          { "role": "User", "required": true }
+          {
+            "role": "User",
+            "required": true
+          }
         ],
         "approval_strategy": "all",
         "timeout_minutes": 60,
@@ -218,16 +331,38 @@
       "config": {
         "role": "Triage",
         "auto_dispatch": true,
-        "deliverables": ["DISPATCH_RECORD.md"]
+        "deliverables": [
+          "DISPATCH_RECORD.md"
+        ]
       },
       "components": {
-        "roles": [{ "ref": "triage", "source": "builtin" }],
-        "rules": [
-          { "ref": "dispatch-guard", "source": "builtin" },
-          { "ref": "concurrency-control", "source": "builtin" },
-          { "ref": "batch-failure-retry", "source": "builtin" }
+        "roles": [
+          {
+            "ref": "triage",
+            "source": "builtin"
+          }
         ],
-        "prompts": [{ "ref": "triage", "source": "file", "path": "{TEAM_PATH}/prompts/triage.md" }]
+        "rules": [
+          {
+            "ref": "dispatch-guard",
+            "source": "builtin"
+          },
+          {
+            "ref": "concurrency-control",
+            "source": "builtin"
+          },
+          {
+            "ref": "batch-failure-retry",
+            "source": "builtin"
+          }
+        ],
+        "prompts": [
+          {
+            "ref": "triage",
+            "source": "file",
+            "path": "{TEAM_PATH}/prompts/triage.md"
+          }
+        ]
       },
       "docs": [
         {
@@ -239,7 +374,10 @@
         }
       ],
       "on_enter": [
-        { "action": "update_task_phase", "phase": "implement" }
+        {
+          "action": "update_task_phase",
+          "phase": "implement"
+        }
       ]
     },
     {
@@ -262,12 +400,30 @@
       "config": {
         "role": "Triage",
         "auto_dispatch": true,
-        "deliverables": ["VERIFICATION_REPORT.md"]
+        "deliverables": [
+          "VERIFICATION_REPORT.md"
+        ]
       },
       "components": {
-        "roles": [{ "ref": "triage", "source": "builtin" }],
-        "rules": [{ "ref": "output-guard", "source": "framework" }],
-        "prompts": [{ "ref": "triage", "source": "file", "path": "{TEAM_PATH}/prompts/triage.md" }]
+        "roles": [
+          {
+            "ref": "triage",
+            "source": "builtin"
+          }
+        ],
+        "rules": [
+          {
+            "ref": "output-guard",
+            "source": "framework"
+          }
+        ],
+        "prompts": [
+          {
+            "ref": "triage",
+            "source": "file",
+            "path": "{TEAM_PATH}/prompts/triage.md"
+          }
+        ]
       },
       "docs": [
         {
@@ -279,7 +435,10 @@
         }
       ],
       "on_enter": [
-        { "action": "update_task_phase", "phase": "verify" }
+        {
+          "action": "update_task_phase",
+          "phase": "verify"
+        }
       ]
     },
     {
@@ -290,11 +449,24 @@
       "config": {
         "role": "Triage",
         "auto_dispatch": true,
-        "deliverables": ["BATCH_SUMMARY.md"]
+        "deliverables": [
+          "BATCH_SUMMARY.md"
+        ]
       },
       "components": {
-        "roles": [{ "ref": "triage", "source": "builtin" }],
-        "prompts": [{ "ref": "triage", "source": "file", "path": "{TEAM_PATH}/prompts/triage.md" }]
+        "roles": [
+          {
+            "ref": "triage",
+            "source": "builtin"
+          }
+        ],
+        "prompts": [
+          {
+            "ref": "triage",
+            "source": "file",
+            "path": "{TEAM_PATH}/prompts/triage.md"
+          }
+        ]
       },
       "docs": [
         {
@@ -306,7 +478,10 @@
         }
       ],
       "on_enter": [
-        { "action": "update_task_phase", "phase": "review" }
+        {
+          "action": "update_task_phase",
+          "phase": "review"
+        }
       ]
     },
     {
@@ -316,10 +491,26 @@
       "description": "Verify all sub-tasks completed, no failures remain, user confirmation received",
       "config": {
         "conditions": [
-          { "type": "custom", "check": "All sub-tasks completed (SUCCESS or user-accepted)", "required": true },
-          { "type": "custom", "check": "No FAILED sub-tasks without user acceptance", "required": true },
-          { "type": "custom", "check": "Output Guard Summary all passed", "required": true },
-          { "type": "custom", "check": "User confirmation received", "required": true }
+          {
+            "type": "custom",
+            "check": "All sub-tasks completed (SUCCESS or user-accepted)",
+            "required": true
+          },
+          {
+            "type": "custom",
+            "check": "No FAILED sub-tasks without user acceptance",
+            "required": true
+          },
+          {
+            "type": "custom",
+            "check": "Output Guard Summary all passed",
+            "required": true
+          },
+          {
+            "type": "custom",
+            "check": "User confirmation received",
+            "required": true
+          }
         ],
         "on_pass": "terminal-success",
         "on_fail": "batch-dispatch"
@@ -335,7 +526,11 @@
         "message": "Batch flow completed successfully"
       },
       "on_exit": [
-        { "action": "custom", "name": "handoff-doc", "message": "Generate handoff document at session end" }
+        {
+          "action": "custom",
+          "name": "handoff-doc",
+          "message": "Generate handoff document at session end"
+        }
       ]
     },
     {
@@ -360,16 +555,84 @@
     }
   ],
   "edges": [
-    { "id": "e-create-gate", "from": "batch-create", "to": "gate-batch-entry" },
-    { "id": "e-gate-scope", "from": "gate-batch-entry", "to": "batch-scope", "type": "conditional", "conditions": [{ "expression": "gate.passed" }] },
-    { "id": "e-gate-reject", "from": "gate-batch-entry", "to": "terminal-reject", "type": "conditional", "conditions": [{ "expression": "!gate.passed" }] },
-    { "id": "e-scope-confirm", "from": "batch-scope", "to": "batch-confirm" },
-    { "id": "e-confirm-dispatch", "from": "batch-confirm", "to": "batch-dispatch" },
-    { "id": "e-dispatch-execute", "from": "batch-dispatch", "to": "batch-execute" },
-    { "id": "e-execute-verify", "from": "batch-execute", "to": "batch-verify" },
-    { "id": "e-verify-collect", "from": "batch-verify", "to": "batch-collect" },
-    { "id": "e-collect-completion", "from": "batch-collect", "to": "gate-completion" },
-    { "id": "e-completion-success", "from": "gate-completion", "to": "terminal-success", "type": "conditional", "conditions": [{ "expression": "gate.passed" }] },
-    { "id": "e-completion-dispatch", "from": "gate-completion", "to": "batch-dispatch", "type": "conditional", "conditions": [{ "expression": "!gate.passed" }] }
+    {
+      "id": "e-create-gate",
+      "from": "batch-create",
+      "to": "gate-batch-entry"
+    },
+    {
+      "id": "e-gate-scope",
+      "from": "gate-batch-entry",
+      "to": "batch-scope",
+      "type": "conditional",
+      "conditions": [
+        {
+          "expression": "gate.passed"
+        }
+      ]
+    },
+    {
+      "id": "e-gate-reject",
+      "from": "gate-batch-entry",
+      "to": "terminal-reject",
+      "type": "conditional",
+      "conditions": [
+        {
+          "expression": "!gate.passed"
+        }
+      ]
+    },
+    {
+      "id": "e-scope-confirm",
+      "from": "batch-scope",
+      "to": "batch-confirm"
+    },
+    {
+      "id": "e-confirm-dispatch",
+      "from": "batch-confirm",
+      "to": "batch-dispatch"
+    },
+    {
+      "id": "e-dispatch-execute",
+      "from": "batch-dispatch",
+      "to": "batch-execute"
+    },
+    {
+      "id": "e-execute-verify",
+      "from": "batch-execute",
+      "to": "batch-verify"
+    },
+    {
+      "id": "e-verify-collect",
+      "from": "batch-verify",
+      "to": "batch-collect"
+    },
+    {
+      "id": "e-collect-completion",
+      "from": "batch-collect",
+      "to": "gate-completion"
+    },
+    {
+      "id": "e-completion-success",
+      "from": "gate-completion",
+      "to": "terminal-success",
+      "type": "conditional",
+      "conditions": [
+        {
+          "expression": "gate.passed"
+        }
+      ]
+    },
+    {
+      "id": "e-completion-dispatch",
+      "from": "gate-completion",
+      "to": "batch-dispatch",
+      "type": "conditional",
+      "conditions": [
+        {
+          "expression": "!gate.passed"
+        }
+      ]
+    }
   ]
 }

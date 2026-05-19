@@ -32,7 +32,14 @@
           "dispatch"
         ],
         "prompt_source": "{TEAM_PATH}/prompts/triage.md",
-        "standards_source": "{TEAM_PATH}/workflows/roles/triage-standards.md"
+        "standards_source": "{TEAM_PATH}/workflows/roles/triage-standards.md",
+        "prompt_directives": [
+          "Dispatch tasks to sub-agents, never execute directly",
+          "Classify all user input before action: Feature/Bug/Change/Analysis/Batch",
+          "Read .team/project.md for project constraints before dispatch",
+          "Use flow task create/show for all task state management",
+          "Report deliverables and handoff to next role on completion"
+        ]
       },
       {
         "id": "dev",
@@ -44,7 +51,15 @@
           "debug"
         ],
         "prompt_source": "{TEAM_PATH}/prompts/dev.md",
-        "standards_source": "{TEAM_PATH}/workflows/roles/development-standards.md"
+        "standards_source": "{TEAM_PATH}/workflows/roles/development-standards.md",
+        "prompt_directives": [
+          "Read SCOPE.md before starting implementation",
+          "Surgical changes only: never modify files outside task scope",
+          "Run tests before marking phase complete",
+          "No Chinese comments or commit messages",
+          "Never delete files unless explicitly asked",
+          "Output Guard 5-step self-check mandatory before completion gate"
+        ]
       },
       {
         "id": "qa",
@@ -55,7 +70,14 @@
           "validate"
         ],
         "prompt_source": "{TEAM_PATH}/prompts/qa-engineer.md",
-        "standards_source": "{TEAM_PATH}/workflows/roles/test-standards.md"
+        "standards_source": "{TEAM_PATH}/workflows/roles/test-standards.md",
+        "prompt_directives": [
+          "Verify implementation matches SPEC.md and AC.md",
+          "Run full regression tests, not just new tests",
+          "Check front-back interface consistency (paths, params, response)",
+          "For bugfixes: data flow trace + real scenario verification required",
+          "Output Guard self-check before marking review complete"
+        ]
       },
       {
         "id": "devops",
@@ -66,7 +88,14 @@
           "monitor"
         ],
         "prompt_source": "{TEAM_PATH}/prompts/devops.md",
-        "standards_source": "{TEAM_PATH}/workflows/roles/devops-standards.md"
+        "standards_source": "{TEAM_PATH}/workflows/roles/devops-standards.md",
+        "prompt_directives": [
+          "Verify CI pipeline passes before any deployment",
+          "Always have rollback plan before deployment",
+          "Check Docker image build success",
+          "Run smoke tests after deployment",
+          "Update CHANGELOG and version number"
+        ]
       }
     ],
     "rules": [
@@ -245,7 +274,12 @@
           "format": "markdown",
           "path": "{docs_path}/{task_id}/RCA.md",
           "required": true,
-          "description": "Root cause analysis for the emergency issue including incident timeline and fix description"
+          "description": "Root cause analysis for the emergency issue including incident timeline and fix description",
+          "content_rules": [
+            "Must contain: phenomenon, root_cause, impact, prevention",
+            "Data flow trace required for API/permission/state bugs",
+            "Real scenario verification required (not mock-only)"
+          ]
         }
       ],
       "on_enter": [
@@ -304,7 +338,11 @@
           "format": "markdown",
           "path": "{docs_path}/{task_id}/TEST_CASE.md",
           "required": true,
-          "description": "Test case document verifying the hotfix resolves the emergency issue"
+          "description": "Test case document verifying the hotfix resolves the emergency issue",
+          "content_rules": [
+            "Must contain: reproduction steps, expected result, actual result",
+            "Regression test cases required for bugfixes"
+          ]
         }
       ],
       "gates": [

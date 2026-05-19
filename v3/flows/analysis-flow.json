@@ -32,7 +32,14 @@
           "dispatch"
         ],
         "prompt_source": "{TEAM_PATH}/prompts/triage.md",
-        "standards_source": "{TEAM_PATH}/workflows/roles/triage-standards.md"
+        "standards_source": "{TEAM_PATH}/workflows/roles/triage-standards.md",
+        "prompt_directives": [
+          "Dispatch tasks to sub-agents, never execute directly",
+          "Classify all user input before action: Feature/Bug/Change/Analysis/Batch",
+          "Read .team/project.md for project constraints before dispatch",
+          "Use flow task create/show for all task state management",
+          "Report deliverables and handoff to next role on completion"
+        ]
       },
       {
         "id": "analysis",
@@ -55,7 +62,14 @@
           "architect"
         ],
         "prompt_source": "{TEAM_PATH}/prompts/tech-lead.md",
-        "standards_source": "{TEAM_PATH}/workflows/roles/architecture-standards.md"
+        "standards_source": "{TEAM_PATH}/workflows/roles/architecture-standards.md",
+        "prompt_directives": [
+          "Design before implement: SPEC.md + AC.md + Data Model mandatory",
+          "Ensure R0 Navigation Matrix covers all entry points",
+          "Review all API contracts for consistency",
+          "Verify design satisfies all acceptance criteria",
+          "Output Guard self-check before marking phase complete"
+        ]
       }
     ],
     "rules": [

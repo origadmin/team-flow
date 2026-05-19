@@ -4,7 +4,11 @@
     "name": "bugfix-flow",
     "description": "Bug fix flow with R-iteration: Triage → Gate → Investigate → Fix(R0..Rn) → Quality Gate → Verify → Completion Gate → Terminal",
     "author": "team-flow",
-    "tags": ["bug", "bugfix", "software"]
+    "tags": [
+      "bug",
+      "bugfix",
+      "software"
+    ]
   },
   "config": {
     "task_type": "bug",
@@ -26,7 +30,18 @@
         "description": "Classify and dispatch bug reports",
         "prompt_source": "{TEAM_PATH}/prompts/triage.md",
         "standards_source": "{TEAM_PATH}/workflows/roles/triage-standards.md",
-        "capabilities": ["classify", "dispatch", "assess"]
+        "capabilities": [
+          "classify",
+          "dispatch",
+          "assess"
+        ],
+        "prompt_directives": [
+          "Dispatch tasks to sub-agents, never execute directly",
+          "Classify all user input before action: Feature/Bug/Change/Analysis/Batch",
+          "Read .team/project.md for project constraints before dispatch",
+          "Use flow task create/show for all task state management",
+          "Report deliverables and handoff to next role on completion"
+        ]
       },
       {
         "id": "dev",
@@ -34,7 +49,20 @@
         "description": "Investigate root cause, implement bug fix, add regression tests",
         "prompt_source": "{TEAM_PATH}/prompts/dev.md",
         "standards_source": "{TEAM_PATH}/workflows/roles/bugfix-standards.md",
-        "capabilities": ["investigate", "implement", "test", "debug"]
+        "capabilities": [
+          "investigate",
+          "implement",
+          "test",
+          "debug"
+        ],
+        "prompt_directives": [
+          "Read SCOPE.md before starting implementation",
+          "Surgical changes only: never modify files outside task scope",
+          "Run tests before marking phase complete",
+          "No Chinese comments or commit messages",
+          "Never delete files unless explicitly asked",
+          "Output Guard 5-step self-check mandatory before completion gate"
+        ]
       },
       {
         "id": "qa",
@@ -42,7 +70,18 @@
         "description": "Verify bug fix, run regression tests, validate completeness",
         "prompt_source": "{TEAM_PATH}/prompts/qa-engineer.md",
         "standards_source": "{TEAM_PATH}/workflows/roles/test-standards.md",
-        "capabilities": ["verify", "test", "validate"]
+        "capabilities": [
+          "verify",
+          "test",
+          "validate"
+        ],
+        "prompt_directives": [
+          "Verify implementation matches SPEC.md and AC.md",
+          "Run full regression tests, not just new tests",
+          "Check front-back interface consistency (paths, params, response)",
+          "For bugfixes: data flow trace + real scenario verification required",
+          "Output Guard self-check before marking review complete"
+        ]
       }
     ],
     "rules": [
@@ -116,7 +155,16 @@
         "id": "task",
         "name": "Task CLI",
         "type": "cli",
-        "commands": ["create", "update", "close", "show", "list", "ready", "append", "dep"]
+        "commands": [
+          "create",
+          "update",
+          "close",
+          "show",
+          "list",
+          "ready",
+          "append",
+          "dep"
+        ]
       },
       {
         "id": "search",
@@ -142,9 +190,25 @@
         "auto_dispatch": true
       },
       "components": {
-        "roles": [{ "ref": "triage", "source": "builtin" }],
-        "rules": [{ "ref": "dispatch-guard", "source": "builtin" }],
-        "prompts": [{ "ref": "triage", "source": "file", "path": "{TEAM_PATH}/prompts/triage.md" }]
+        "roles": [
+          {
+            "ref": "triage",
+            "source": "builtin"
+          }
+        ],
+        "rules": [
+          {
+            "ref": "dispatch-guard",
+            "source": "builtin"
+          }
+        ],
+        "prompts": [
+          {
+            "ref": "triage",
+            "source": "file",
+            "path": "{TEAM_PATH}/prompts/triage.md"
+          }
+        ]
       },
       "docs": [
         {
@@ -156,7 +220,10 @@
         }
       ],
       "on_enter": [
-        { "action": "update_task_phase", "phase": "ready" }
+        {
+          "action": "update_task_phase",
+          "phase": "ready"
+        }
       ]
     },
     {
@@ -166,8 +233,13 @@
       "description": "Validate bug report has sufficient information and type matches",
       "config": {
         "conditions": [
-          { "type": "task_exists" },
-          { "type": "type_matches", "expected": "bug" }
+          {
+            "type": "task_exists"
+          },
+          {
+            "type": "type_matches",
+            "expected": "bug"
+          }
         ],
         "on_pass": "phase-investigate",
         "on_fail": "terminal-reject"
@@ -181,19 +253,47 @@
       "config": {
         "role": "Dev",
         "auto_dispatch": true,
-        "deliverables": ["RCA.md"]
+        "deliverables": [
+          "RCA.md"
+        ]
       },
       "components": {
-        "roles": [{ "ref": "dev", "source": "builtin" }],
+        "roles": [
+          {
+            "ref": "dev",
+            "source": "builtin"
+          }
+        ],
         "rules": [
-          { "ref": "development-standards", "source": "builtin" },
-          { "ref": "output-guard", "source": "framework" }
+          {
+            "ref": "development-standards",
+            "source": "builtin"
+          },
+          {
+            "ref": "output-guard",
+            "source": "framework"
+          }
         ],
         "tools": [
-          { "ref": "task", "commands": ["show", "update", "append"] },
-          { "ref": "search" }
+          {
+            "ref": "task",
+            "commands": [
+              "show",
+              "update",
+              "append"
+            ]
+          },
+          {
+            "ref": "search"
+          }
         ],
-        "prompts": [{ "ref": "dev", "source": "file", "path": "{TEAM_PATH}/prompts/dev.md" }]
+        "prompts": [
+          {
+            "ref": "dev",
+            "source": "file",
+            "path": "{TEAM_PATH}/prompts/dev.md"
+          }
+        ]
       },
       "docs": [
         {
@@ -201,11 +301,19 @@
           "format": "markdown",
           "path": "{docs_path}/{task_id}/R0/RCA.md",
           "required": true,
-          "description": "Root cause analysis document detailing bug origin, affected components, and reproduction steps"
+          "description": "Root cause analysis document detailing bug origin, affected components, and reproduction steps",
+          "content_rules": [
+            "Must contain: phenomenon, root_cause, impact, prevention",
+            "Data flow trace required for API/permission/state bugs",
+            "Real scenario verification required (not mock-only)"
+          ]
         }
       ],
       "on_enter": [
-        { "action": "update_task_phase", "phase": "analyze" }
+        {
+          "action": "update_task_phase",
+          "phase": "analyze"
+        }
       ]
     },
     {
@@ -216,22 +324,54 @@
       "config": {
         "role": "Dev",
         "auto_dispatch": true,
-        "deliverables": ["code", "regression_tests"]
+        "deliverables": [
+          "code",
+          "regression_tests"
+        ]
       },
       "components": {
-        "roles": [{ "ref": "dev", "source": "builtin" }],
+        "roles": [
+          {
+            "ref": "dev",
+            "source": "builtin"
+          }
+        ],
         "rules": [
-          { "ref": "development-standards", "source": "builtin" },
-          { "ref": "regression-guard", "source": "builtin" },
-          { "ref": "r-iteration-rule", "source": "builtin" },
-          { "ref": "hard-constraints", "source": "builtin" }
+          {
+            "ref": "development-standards",
+            "source": "builtin"
+          },
+          {
+            "ref": "regression-guard",
+            "source": "builtin"
+          },
+          {
+            "ref": "r-iteration-rule",
+            "source": "builtin"
+          },
+          {
+            "ref": "hard-constraints",
+            "source": "builtin"
+          }
         ],
         "tools": [
-          { "ref": "task" },
-          { "ref": "search" },
-          { "ref": "file-ops" }
+          {
+            "ref": "task"
+          },
+          {
+            "ref": "search"
+          },
+          {
+            "ref": "file-ops"
+          }
         ],
-        "prompts": [{ "ref": "dev", "source": "file", "path": "{TEAM_PATH}/prompts/dev.md" }]
+        "prompts": [
+          {
+            "ref": "dev",
+            "source": "file",
+            "path": "{TEAM_PATH}/prompts/dev.md"
+          }
+        ]
       },
       "docs": [
         {
@@ -246,12 +386,22 @@
           "format": "markdown",
           "path": "{docs_path}/{task_id}/{iteration}/SCOPE.md",
           "required": true,
-          "description": "Change scope document: what was fixed, what changed, known side effects"
+          "description": "Change scope document: what was fixed, what changed, known side effects",
+          "content_rules": [
+            "Must contain: changed files, added files, deleted files, risk assessment"
+          ]
         }
       ],
       "on_enter": [
-        { "action": "update_task_phase", "phase": "implement" },
-        { "action": "set_variable", "name": "iteration", "value": "{iteration}" }
+        {
+          "action": "update_task_phase",
+          "phase": "implement"
+        },
+        {
+          "action": "set_variable",
+          "name": "iteration",
+          "value": "{iteration}"
+        }
       ]
     },
     {
@@ -261,14 +411,29 @@
       "description": "Verify fix passes all tests, no regressions introduced, and regression tests exist",
       "config": {
         "conditions": [
-          { "type": "tests_pass", "threshold": "100%" },
-          { "type": "lint_pass", "threshold": "0 errors" },
-          { "type": "no_regressions" },
-          { "type": "custom", "check": "Regression tests added for the fix", "required": true }
+          {
+            "type": "tests_pass",
+            "threshold": "100%"
+          },
+          {
+            "type": "lint_pass",
+            "threshold": "0 errors"
+          },
+          {
+            "type": "no_regressions"
+          },
+          {
+            "type": "custom",
+            "check": "Regression tests added for the fix",
+            "required": true
+          }
         ],
         "on_pass": "branch-r-iteration",
         "on_fail": "phase-fix",
-        "auto_retry": { "max_attempts": 3, "delay_minutes": 5 }
+        "auto_retry": {
+          "max_attempts": 3,
+          "delay_minutes": 5
+        }
       }
     },
     {
@@ -303,15 +468,34 @@
       "config": {
         "role": "QA",
         "auto_dispatch": true,
-        "deliverables": ["TEST_CASE.md"]
+        "deliverables": [
+          "TEST_CASE.md"
+        ]
       },
       "components": {
-        "roles": [{ "ref": "qa", "source": "builtin" }],
-        "rules": [
-          { "ref": "test-standards", "source": "builtin" },
-          { "ref": "regression-guard", "source": "builtin" }
+        "roles": [
+          {
+            "ref": "qa",
+            "source": "builtin"
+          }
         ],
-        "prompts": [{ "ref": "qa", "source": "file", "path": "{TEAM_PATH}/prompts/qa-engineer.md" }]
+        "rules": [
+          {
+            "ref": "test-standards",
+            "source": "builtin"
+          },
+          {
+            "ref": "regression-guard",
+            "source": "builtin"
+          }
+        ],
+        "prompts": [
+          {
+            "ref": "qa",
+            "source": "file",
+            "path": "{TEAM_PATH}/prompts/qa-engineer.md"
+          }
+        ]
       },
       "docs": [
         {
@@ -319,14 +503,25 @@
           "format": "markdown",
           "path": "{docs_path}/{task_id}/{iteration}/TEST_CASE.md",
           "required": true,
-          "description": "Test case document for the bug fix including reproduction steps and verification results"
+          "description": "Test case document for the bug fix including reproduction steps and verification results",
+          "content_rules": [
+            "Must contain: reproduction steps, expected result, actual result",
+            "Regression test cases required for bugfixes"
+          ]
         }
       ],
       "on_enter": [
-        { "action": "update_task_phase", "phase": "verify" }
+        {
+          "action": "update_task_phase",
+          "phase": "verify"
+        }
       ],
       "on_exit": [
-        { "action": "custom", "name": "output-guard-check", "message": "Verify Output Guard 5-step protocol completed" }
+        {
+          "action": "custom",
+          "name": "output-guard-check",
+          "message": "Verify Output Guard 5-step protocol completed"
+        }
       ]
     },
     {
@@ -336,11 +531,32 @@
       "description": "Final gate verifying all deliverables exist, Output Guard passed, and user confirmation received",
       "config": {
         "conditions": [
-          { "type": "deliverables_complete", "deliverables": ["RCA.md", "FIX.md", "SCOPE.md", "TEST_CASE.md"] },
-          { "type": "tests_pass", "threshold": "100%" },
-          { "type": "no_regressions" },
-          { "type": "custom", "check": "Output Guard Summary all passed", "required": true },
-          { "type": "custom", "check": "User confirmation received", "required": true }
+          {
+            "type": "deliverables_complete",
+            "deliverables": [
+              "RCA.md",
+              "FIX.md",
+              "SCOPE.md",
+              "TEST_CASE.md"
+            ]
+          },
+          {
+            "type": "tests_pass",
+            "threshold": "100%"
+          },
+          {
+            "type": "no_regressions"
+          },
+          {
+            "type": "custom",
+            "check": "Output Guard Summary all passed",
+            "required": true
+          },
+          {
+            "type": "custom",
+            "check": "User confirmation received",
+            "required": true
+          }
         ],
         "on_pass": "terminal-success",
         "on_fail": "phase-verify"
@@ -356,7 +572,11 @@
         "message": "Bug fix flow completed successfully"
       },
       "on_exit": [
-        { "action": "custom", "name": "handoff-doc", "message": "Generate handoff document at session end" }
+        {
+          "action": "custom",
+          "name": "handoff-doc",
+          "message": "Generate handoff document at session end"
+        }
       ]
     },
     {
@@ -381,18 +601,106 @@
     }
   ],
   "edges": [
-    { "id": "e-triage-gate", "from": "phase-triage", "to": "gate-entry" },
-    { "id": "e-gate-investigate", "from": "gate-entry", "to": "phase-investigate", "type": "conditional", "conditions": [{ "expression": "gate.passed" }] },
-    { "id": "e-gate-reject", "from": "gate-entry", "to": "terminal-reject", "type": "conditional", "conditions": [{ "expression": "!gate.passed" }] },
-    { "id": "e-investigate-fix", "from": "phase-investigate", "to": "phase-fix" },
-    { "id": "e-fix-gate", "from": "phase-fix", "to": "gate-quality" },
-    { "id": "e-gate-verify", "from": "gate-quality", "to": "branch-r-iteration", "type": "conditional", "conditions": [{ "expression": "gate.passed" }] },
-    { "id": "e-gate-fix-retry", "from": "gate-quality", "to": "phase-fix", "type": "conditional", "conditions": [{ "expression": "!gate.passed" }] },
-    { "id": "e-branch-verify", "from": "branch-r-iteration", "to": "phase-verify" },
-    { "id": "e-branch-fix", "from": "branch-r-iteration", "to": "phase-fix" },
-    { "id": "e-branch-failed", "from": "branch-r-iteration", "to": "terminal-failed" },
-    { "id": "e-verify-completion", "from": "phase-verify", "to": "gate-completion" },
-    { "id": "e-completion-success", "from": "gate-completion", "to": "terminal-success", "type": "conditional", "conditions": [{ "expression": "gate.passed" }] },
-    { "id": "e-completion-verify", "from": "gate-completion", "to": "phase-verify", "type": "conditional", "conditions": [{ "expression": "!gate.passed" }] }
+    {
+      "id": "e-triage-gate",
+      "from": "phase-triage",
+      "to": "gate-entry"
+    },
+    {
+      "id": "e-gate-investigate",
+      "from": "gate-entry",
+      "to": "phase-investigate",
+      "type": "conditional",
+      "conditions": [
+        {
+          "expression": "gate.passed"
+        }
+      ]
+    },
+    {
+      "id": "e-gate-reject",
+      "from": "gate-entry",
+      "to": "terminal-reject",
+      "type": "conditional",
+      "conditions": [
+        {
+          "expression": "!gate.passed"
+        }
+      ]
+    },
+    {
+      "id": "e-investigate-fix",
+      "from": "phase-investigate",
+      "to": "phase-fix"
+    },
+    {
+      "id": "e-fix-gate",
+      "from": "phase-fix",
+      "to": "gate-quality"
+    },
+    {
+      "id": "e-gate-verify",
+      "from": "gate-quality",
+      "to": "branch-r-iteration",
+      "type": "conditional",
+      "conditions": [
+        {
+          "expression": "gate.passed"
+        }
+      ]
+    },
+    {
+      "id": "e-gate-fix-retry",
+      "from": "gate-quality",
+      "to": "phase-fix",
+      "type": "conditional",
+      "conditions": [
+        {
+          "expression": "!gate.passed"
+        }
+      ]
+    },
+    {
+      "id": "e-branch-verify",
+      "from": "branch-r-iteration",
+      "to": "phase-verify"
+    },
+    {
+      "id": "e-branch-fix",
+      "from": "branch-r-iteration",
+      "to": "phase-fix"
+    },
+    {
+      "id": "e-branch-failed",
+      "from": "branch-r-iteration",
+      "to": "terminal-failed"
+    },
+    {
+      "id": "e-verify-completion",
+      "from": "phase-verify",
+      "to": "gate-completion"
+    },
+    {
+      "id": "e-completion-success",
+      "from": "gate-completion",
+      "to": "terminal-success",
+      "type": "conditional",
+      "conditions": [
+        {
+          "expression": "gate.passed"
+        }
+      ]
+    },
+    {
+      "id": "e-completion-verify",
+      "from": "gate-completion",
+      "to": "phase-verify",
+      "type": "conditional",
+      "conditions": [
+        {
+          "expression": "!gate.passed"
+        }
+      ]
+    }
   ]
 }

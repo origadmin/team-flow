@@ -298,6 +298,13 @@
           "items": {
             "type": "string"
           }
+        },
+        "prompt_directives": {
+          "type": "array",
+          "description": "Core directives inlined from prompt file for immediate AI visibility. 5-8 key rules extracted from the full prompt.",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },
@@ -396,8 +403,16 @@
         },
         "trigger": {
           "type": "string",
-          "description": "Activation trigger: auto, manual, or file_pattern:*.ext",
-          "pattern": "^(auto|manual|file_pattern:.+)$"
+          "description": "Activation trigger: auto, manual, phase:xxx, file_pattern:*.ext, or event name",
+          "pattern": "^(auto|manual|phase:.+|file_pattern:.+|event:.+)$"
+        },
+        "path": {
+          "type": "string",
+          "description": "Path to the skill SKILL.md file"
+        },
+        "description": {
+          "type": "string",
+          "description": "One-line description of what this skill does and when to use it"
         }
       }
     },
@@ -773,6 +788,13 @@
         "description": {
           "type": "string",
           "description": "Document description serving as guidance for AI execution"
+        },
+        "content_rules": {
+          "type": "array",
+          "description": "Validation rules for document content. Declarative criteria for AI/automated checker verification.",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },

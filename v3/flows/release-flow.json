@@ -4,7 +4,11 @@
     "name": "release-flow",
     "description": "Release flow: readiness check → integration verification → acceptance → deploy",
     "author": "team-flow",
-    "tags": ["release", "deploy", "milestone"]
+    "tags": [
+      "release",
+      "deploy",
+      "milestone"
+    ]
   },
   "config": {
     "task_type": "release",
@@ -27,7 +31,19 @@
         "description": "Coordinate release readiness check, manage milestone status",
         "prompt_source": "{TEAM_PATH}/prompts/triage.md",
         "standards_source": "{TEAM_PATH}/workflows/roles/triage-standards.md",
-        "capabilities": ["classify", "dispatch", "assess", "coordinate"]
+        "capabilities": [
+          "classify",
+          "dispatch",
+          "assess",
+          "coordinate"
+        ],
+        "prompt_directives": [
+          "Dispatch tasks to sub-agents, never execute directly",
+          "Classify all user input before action: Feature/Bug/Change/Analysis/Batch",
+          "Read .team/project.md for project constraints before dispatch",
+          "Use flow task create/show for all task state management",
+          "Report deliverables and handoff to next role on completion"
+        ]
       },
       {
         "id": "qa",
@@ -35,7 +51,19 @@
         "description": "Run integration and E2E tests, verify release readiness",
         "prompt_source": "{TEAM_PATH}/prompts/qa-engineer.md",
         "standards_source": "{TEAM_PATH}/workflows/roles/test-standards.md",
-        "capabilities": ["verify", "test", "validate", "integration"]
+        "capabilities": [
+          "verify",
+          "test",
+          "validate",
+          "integration"
+        ],
+        "prompt_directives": [
+          "Verify implementation matches SPEC.md and AC.md",
+          "Run full regression tests, not just new tests",
+          "Check front-back interface consistency (paths, params, response)",
+          "For bugfixes: data flow trace + real scenario verification required",
+          "Output Guard self-check before marking review complete"
+        ]
       },
       {
         "id": "devops",
@@ -43,7 +71,19 @@
         "description": "Manage deployment pipeline, monitor rollout, handle rollback",
         "prompt_source": "{TEAM_PATH}/prompts/devops.md",
         "standards_source": "{TEAM_PATH}/workflows/roles/devops-standards.md",
-        "capabilities": ["deploy", "monitor", "rollback", "pipeline"]
+        "capabilities": [
+          "deploy",
+          "monitor",
+          "rollback",
+          "pipeline"
+        ],
+        "prompt_directives": [
+          "Verify CI pipeline passes before any deployment",
+          "Always have rollback plan before deployment",
+          "Check Docker image build success",
+          "Run smoke tests after deployment",
+          "Update CHANGELOG and version number"
+        ]
       },
       {
         "id": "pm",
@@ -51,7 +91,16 @@
         "description": "Acceptance review, stakeholder communication, go/no-go decision",
         "prompt_source": "{TEAM_PATH}/prompts/pm.md",
         "standards_source": "{TEAM_PATH}/workflows/roles/requirements-standards.md",
-        "capabilities": ["accept", "communicate", "decide"]
+        "capabilities": [
+          "accept",
+          "communicate",
+          "decide"
+        ],
+        "prompt_directives": [
+          "Verify 100% acceptance criteria satisfaction",
+          "Confirm business flow end-to-end",
+          "Sign off only after QA approval"
+        ]
       }
     ],
     "rules": [
@@ -101,7 +150,17 @@
         "id": "task",
         "name": "Task CLI",
         "type": "cli",
-        "commands": ["create", "update", "close", "show", "list", "ready", "append", "dep", "dolt"]
+        "commands": [
+          "create",
+          "update",
+          "close",
+          "show",
+          "list",
+          "ready",
+          "append",
+          "dep",
+          "dolt"
+        ]
       },
       {
         "id": "search",
@@ -145,15 +204,34 @@
       "config": {
         "role": "Triage",
         "auto_dispatch": true,
-        "deliverables": ["READINESS_REPORT.md"]
+        "deliverables": [
+          "READINESS_REPORT.md"
+        ]
       },
       "components": {
-        "roles": [{ "ref": "triage", "source": "builtin" }],
-        "rules": [
-          { "ref": "dispatch-guard", "source": "builtin" },
-          { "ref": "milestone-sync", "source": "builtin" }
+        "roles": [
+          {
+            "ref": "triage",
+            "source": "builtin"
+          }
         ],
-        "prompts": [{ "ref": "triage", "source": "file", "path": "{TEAM_PATH}/prompts/triage.md" }]
+        "rules": [
+          {
+            "ref": "dispatch-guard",
+            "source": "builtin"
+          },
+          {
+            "ref": "milestone-sync",
+            "source": "builtin"
+          }
+        ],
+        "prompts": [
+          {
+            "ref": "triage",
+            "source": "file",
+            "path": "{TEAM_PATH}/prompts/triage.md"
+          }
+        ]
       },
       "docs": [
         {
@@ -165,7 +243,10 @@
         }
       ],
       "on_enter": [
-        { "action": "update_task_phase", "phase": "ready" }
+        {
+          "action": "update_task_phase",
+          "phase": "ready"
+        }
       ]
     },
     {
@@ -175,10 +256,26 @@
       "description": "Verify all milestone tasks closed, no blocking issues, tests passing",
       "config": {
         "conditions": [
-          { "type": "custom", "check": "All milestone tasks are CLOSED", "required": true },
-          { "type": "custom", "check": "No blocking issues (P0 bugs)", "required": true },
-          { "type": "tests_pass", "threshold": "100%", "required": true },
-          { "type": "custom", "check": "MILESTONES.md updated with current status", "required": true }
+          {
+            "type": "custom",
+            "check": "All milestone tasks are CLOSED",
+            "required": true
+          },
+          {
+            "type": "custom",
+            "check": "No blocking issues (P0 bugs)",
+            "required": true
+          },
+          {
+            "type": "tests_pass",
+            "threshold": "100%",
+            "required": true
+          },
+          {
+            "type": "custom",
+            "check": "MILESTONES.md updated with current status",
+            "required": true
+          }
         ],
         "on_pass": "release-verify",
         "on_fail": "terminal-reject"
@@ -192,17 +289,42 @@
       "config": {
         "role": "QA",
         "auto_dispatch": true,
-        "deliverables": ["VERIFICATION_REPORT.md"]
+        "deliverables": [
+          "VERIFICATION_REPORT.md"
+        ]
       },
       "components": {
-        "roles": [{ "ref": "qa", "source": "builtin" }, { "ref": "devops", "source": "builtin" }],
+        "roles": [
+          {
+            "ref": "qa",
+            "source": "builtin"
+          },
+          {
+            "ref": "devops",
+            "source": "builtin"
+          }
+        ],
         "rules": [
-          { "ref": "no-broken-deploy", "source": "builtin" },
-          { "ref": "output-guard", "source": "framework" }
+          {
+            "ref": "no-broken-deploy",
+            "source": "builtin"
+          },
+          {
+            "ref": "output-guard",
+            "source": "framework"
+          }
         ],
         "prompts": [
-          { "ref": "qa", "source": "file", "path": "{TEAM_PATH}/prompts/qa-engineer.md" },
-          { "ref": "devops", "source": "file", "path": "{TEAM_PATH}/prompts/devops.md" }
+          {
+            "ref": "qa",
+            "source": "file",
+            "path": "{TEAM_PATH}/prompts/qa-engineer.md"
+          },
+          {
+            "ref": "devops",
+            "source": "file",
+            "path": "{TEAM_PATH}/prompts/devops.md"
+          }
         ]
       },
       "docs": [
@@ -215,7 +337,10 @@
         }
       ],
       "on_enter": [
-        { "action": "update_task_phase", "phase": "verify" }
+        {
+          "action": "update_task_phase",
+          "phase": "verify"
+        }
       ]
     },
     {
@@ -225,10 +350,25 @@
       "description": "Verify all tests pass, no regressions, performance acceptable",
       "config": {
         "conditions": [
-          { "type": "tests_pass", "threshold": "100%", "required": true },
-          { "type": "no_regressions", "required": true },
-          { "type": "custom", "check": "Performance metrics within acceptable range", "required": false },
-          { "type": "lint_pass", "threshold": "0 errors", "required": true }
+          {
+            "type": "tests_pass",
+            "threshold": "100%",
+            "required": true
+          },
+          {
+            "type": "no_regressions",
+            "required": true
+          },
+          {
+            "type": "custom",
+            "check": "Performance metrics within acceptable range",
+            "required": false
+          },
+          {
+            "type": "lint_pass",
+            "threshold": "0 errors",
+            "required": true
+          }
         ],
         "on_pass": "release-accept",
         "on_fail": "release-verify"
@@ -242,12 +382,30 @@
       "config": {
         "role": "PM",
         "auto_dispatch": true,
-        "deliverables": ["ACCEPTANCE_RECORD.md"]
+        "deliverables": [
+          "ACCEPTANCE_RECORD.md"
+        ]
       },
       "components": {
-        "roles": [{ "ref": "pm", "source": "builtin" }],
-        "rules": [{ "ref": "output-guard", "source": "framework" }],
-        "prompts": [{ "ref": "pm", "source": "file", "path": "{TEAM_PATH}/prompts/pm.md" }]
+        "roles": [
+          {
+            "ref": "pm",
+            "source": "builtin"
+          }
+        ],
+        "rules": [
+          {
+            "ref": "output-guard",
+            "source": "framework"
+          }
+        ],
+        "prompts": [
+          {
+            "ref": "pm",
+            "source": "file",
+            "path": "{TEAM_PATH}/prompts/pm.md"
+          }
+        ]
       },
       "docs": [
         {
@@ -259,7 +417,10 @@
         }
       ],
       "on_enter": [
-        { "action": "update_task_phase", "phase": "review" }
+        {
+          "action": "update_task_phase",
+          "phase": "review"
+        }
       ]
     },
     {
@@ -268,7 +429,12 @@
       "name": "Acceptance Gate (Manual)",
       "description": "Manual approval: PM signs off, stakeholders approve",
       "config": {
-        "approvers": [{ "role": "PM", "required": true }],
+        "approvers": [
+          {
+            "role": "PM",
+            "required": true
+          }
+        ],
         "approval_strategy": "all",
         "timeout_minutes": 1440,
         "on_timeout": "terminal-timeout"
@@ -282,15 +448,35 @@
       "config": {
         "role": "DevOps",
         "auto_dispatch": true,
-        "deliverables": ["DEPLOYMENT_RECORD.md", "ROLLBACK_PLAN.md"]
+        "deliverables": [
+          "DEPLOYMENT_RECORD.md",
+          "ROLLBACK_PLAN.md"
+        ]
       },
       "components": {
-        "roles": [{ "ref": "devops", "source": "builtin" }],
-        "rules": [
-          { "ref": "no-broken-deploy", "source": "builtin" },
-          { "ref": "hard-constraints", "source": "builtin" }
+        "roles": [
+          {
+            "ref": "devops",
+            "source": "builtin"
+          }
         ],
-        "prompts": [{ "ref": "devops", "source": "file", "path": "{TEAM_PATH}/prompts/devops.md" }]
+        "rules": [
+          {
+            "ref": "no-broken-deploy",
+            "source": "builtin"
+          },
+          {
+            "ref": "hard-constraints",
+            "source": "builtin"
+          }
+        ],
+        "prompts": [
+          {
+            "ref": "devops",
+            "source": "file",
+            "path": "{TEAM_PATH}/prompts/devops.md"
+          }
+        ]
       },
       "docs": [
         {
@@ -309,7 +495,10 @@
         }
       ],
       "on_enter": [
-        { "action": "update_task_phase", "phase": "implement" }
+        {
+          "action": "update_task_phase",
+          "phase": "implement"
+        }
       ]
     },
     {
@@ -319,10 +508,26 @@
       "description": "Final gate: deployment successful, monitoring clean, user confirmation received",
       "config": {
         "conditions": [
-          { "type": "custom", "check": "Deployment successful, service healthy", "required": true },
-          { "type": "custom", "check": "No critical alerts in monitoring (first 30 min)", "required": true },
-          { "type": "custom", "check": "Output Guard Summary all passed", "required": true },
-          { "type": "custom", "check": "User confirmation received", "required": true }
+          {
+            "type": "custom",
+            "check": "Deployment successful, service healthy",
+            "required": true
+          },
+          {
+            "type": "custom",
+            "check": "No critical alerts in monitoring (first 30 min)",
+            "required": true
+          },
+          {
+            "type": "custom",
+            "check": "Output Guard Summary all passed",
+            "required": true
+          },
+          {
+            "type": "custom",
+            "check": "User confirmation received",
+            "required": true
+          }
         ],
         "on_pass": "terminal-success",
         "on_fail": "release-deploy"
@@ -338,8 +543,16 @@
         "message": "Release flow completed successfully"
       },
       "on_exit": [
-        { "action": "custom", "name": "update-milestone", "message": "Update MILESTONES.md: mark milestone as RELEASED" },
-        { "action": "custom", "name": "handoff-doc", "message": "Generate handoff document at session end" }
+        {
+          "action": "custom",
+          "name": "update-milestone",
+          "message": "Update MILESTONES.md: mark milestone as RELEASED"
+        },
+        {
+          "action": "custom",
+          "name": "handoff-doc",
+          "message": "Generate handoff document at session end"
+        }
       ]
     },
     {
@@ -364,16 +577,102 @@
     }
   ],
   "edges": [
-    { "id": "e-ready-gate", "from": "release-ready-check", "to": "gate-readiness" },
-    { "id": "e-gate-verify", "from": "gate-readiness", "to": "release-verify", "type": "conditional", "conditions": [{ "expression": "gate.passed" }] },
-    { "id": "e-gate-reject", "from": "gate-readiness", "to": "terminal-reject", "type": "conditional", "conditions": [{ "expression": "!gate.passed" }] },
-    { "id": "e-verify-gate", "from": "release-verify", "to": "gate-verification" },
-    { "id": "e-vgate-accept", "from": "gate-verification", "to": "release-accept", "type": "conditional", "conditions": [{ "expression": "gate.passed" }] },
-    { "id": "e-vgate-retry", "from": "gate-verification", "to": "release-verify", "type": "conditional", "conditions": [{ "expression": "!gate.passed" }] },
-    { "id": "e-accept-gate", "from": "release-accept", "to": "gate-acceptance" },
-    { "id": "e-gate-deploy", "from": "gate-acceptance", "to": "release-deploy", "type": "conditional", "conditions": [{ "expression": "approved" }] },
-    { "id": "e-deploy-completion", "from": "release-deploy", "to": "gate-completion" },
-    { "id": "e-completion-success", "from": "gate-completion", "to": "terminal-success", "type": "conditional", "conditions": [{ "expression": "gate.passed" }] },
-    { "id": "e-completion-retry", "from": "gate-completion", "to": "release-deploy", "type": "conditional", "conditions": [{ "expression": "!gate.passed" }] }
+    {
+      "id": "e-ready-gate",
+      "from": "release-ready-check",
+      "to": "gate-readiness"
+    },
+    {
+      "id": "e-gate-verify",
+      "from": "gate-readiness",
+      "to": "release-verify",
+      "type": "conditional",
+      "conditions": [
+        {
+          "expression": "gate.passed"
+        }
+      ]
+    },
+    {
+      "id": "e-gate-reject",
+      "from": "gate-readiness",
+      "to": "terminal-reject",
+      "type": "conditional",
+      "conditions": [
+        {
+          "expression": "!gate.passed"
+        }
+      ]
+    },
+    {
+      "id": "e-verify-gate",
+      "from": "release-verify",
+      "to": "gate-verification"
+    },
+    {
+      "id": "e-vgate-accept",
+      "from": "gate-verification",
+      "to": "release-accept",
+      "type": "conditional",
+      "conditions": [
+        {
+          "expression": "gate.passed"
+        }
+      ]
+    },
+    {
+      "id": "e-vgate-retry",
+      "from": "gate-verification",
+      "to": "release-verify",
+      "type": "conditional",
+      "conditions": [
+        {
+          "expression": "!gate.passed"
+        }
+      ]
+    },
+    {
+      "id": "e-accept-gate",
+      "from": "release-accept",
+      "to": "gate-acceptance"
+    },
+    {
+      "id": "e-gate-deploy",
+      "from": "gate-acceptance",
+      "to": "release-deploy",
+      "type": "conditional",
+      "conditions": [
+        {
+          "expression": "approved"
+        }
+      ]
+    },
+    {
+      "id": "e-deploy-completion",
+      "from": "release-deploy",
+      "to": "gate-completion"
+    },
+    {
+      "id": "e-completion-success",
+      "from": "gate-completion",
+      "to": "terminal-success",
+      "type": "conditional",
+      "conditions": [
+        {
+          "expression": "gate.passed"
+        }
+      ]
+    },
+    {
+      "id": "e-completion-retry",
+      "from": "gate-completion",
+      "to": "release-deploy",
+      "type": "conditional",
+      "conditions": [
+        {
+          "expression": "!gate.passed"
+        }
+      ]
+    }
   ]
 }

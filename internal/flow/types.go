@@ -364,12 +364,13 @@ type AutoRetryConfig struct {
 }
 
 type DocSpec struct {
-	Name        string `json:"name"`
-	Format      string `json:"format"`
-	Path        string `json:"path"`
-	Template    string `json:"template,omitempty"`
-	Required    *bool  `json:"required"`
-	Description string `json:"description,omitempty"`
+	Name         string   `json:"name"`
+	Format       string   `json:"format"`
+	Path         string   `json:"path"`
+	Template     string   `json:"template,omitempty"`
+	Required     *bool    `json:"required"`
+	Description  string   `json:"description,omitempty"`
+	ContentRules []string `json:"content_rules,omitempty"`
 }
 
 type NodeComponents struct {
@@ -445,12 +446,13 @@ type ComponentRegistry struct {
 }
 
 type RoleDefinition struct {
-	ID             string   `json:"id"`
-	Name           string   `json:"name"`
-	Description    string   `json:"description,omitempty"`
-	PromptSource   string   `json:"prompt_source,omitempty"`
-	StandardsSource string  `json:"standards_source,omitempty"`
-	Capabilities   []string `json:"capabilities,omitempty"`
+	ID               string   `json:"id"`
+	Name             string   `json:"name"`
+	Description      string   `json:"description,omitempty"`
+	PromptSource     string   `json:"prompt_source,omitempty"`
+	StandardsSource  string   `json:"standards_source,omitempty"`
+	Capabilities     []string `json:"capabilities,omitempty"`
+	PromptDirectives []string `json:"prompt_directives,omitempty"`
 }
 
 type RuleDefinition struct {
@@ -471,10 +473,12 @@ type ToolDefinition struct {
 }
 
 type SkillDefinition struct {
-	ID      string `json:"id"`
-	Name    string `json:"name"`
-	Source  string `json:"source,omitempty"`
-	Trigger string `json:"trigger,omitempty"`
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Source      string `json:"source,omitempty"`
+	Trigger     string `json:"trigger,omitempty"`
+	Path        string `json:"path,omitempty"`
+	Description string `json:"description,omitempty"`
 }
 
 type GateDefDefinition struct {

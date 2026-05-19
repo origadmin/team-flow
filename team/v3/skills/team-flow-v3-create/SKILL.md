@@ -57,23 +57,23 @@ Only work with `v3/flows/` and `team/v3/`. Never modify v1 or v2 files.
 
 **Resolution order**: `.team/flows/` → `v3/flows/` (project overrides preset)
 
-## CLI Commands (flow3.exe proc)
+## CLI Commands (flow proc)
 
 ```bash
 # List available flows
-flow3.exe proc list
+flow proc list
 
 # Show flow structure
-flow3.exe proc show {flow-name}
+flow proc show {flow-name}
 
 # Validate a flow file (MUST pass with zero errors)
-flow3.exe proc validate {path-or-name}
+flow proc validate {path-or-name}
 
 # Run a node (get AI instruction)
-flow3.exe proc run [--flow {name}] [node-id] [--task {task-id}] [--format json|text]
+flow proc run [--flow {name}] [node-id] [--task {task-id}] [--format json|text]
 
 # Create new flow from template
-flow3.exe proc create {name} --template {template-name}
+flow proc create {name} --template {template-name}
 ```
 
 ## Flow JSON Structure
