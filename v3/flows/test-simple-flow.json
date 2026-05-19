@@ -37,6 +37,7 @@
       {
         "id": "output-guard",
         "name": "Output Guard Protocol",
+        "description": "5-step self-assessment before completion: AC compliance matrix, compile check, test execution, self-critique, output summary",
         "source": "framework",
         "type": "process_constraint",
         "enforcement": "hard"

@@ -17,6 +17,21 @@
     "TEAM_PATH": "",
     "task_id": ""
   },
+  "components": {
+    "roles": [
+      { "id": "triage", "name": "Triage Agent", "description": "Classify and dispatch analysis tasks", "capabilities": ["classify", "dispatch"] },
+      { "id": "analysis", "name": "Analyst", "description": "Perform analysis and produce reports", "capabilities": ["analyze", "research", "report"] },
+      { "id": "tech-lead", "name": "Tech Lead", "description": "Review analysis findings", "capabilities": ["review", "architect"] }
+    ],
+    "rules": [
+      { "id": "dispatch-guard", "name": "Dispatch Guard", "description": "Triage must dispatch, never execute directly", "source": "builtin", "type": "process_constraint", "enforcement": "hard" },
+      { "id": "output-guard", "name": "Output Guard Protocol", "description": "5-step self-assessment before completion", "source": "framework", "type": "process_constraint", "enforcement": "hard" }
+    ],
+    "tools": [
+      { "id": "task", "name": "Task CLI", "type": "cli", "commands": ["create", "update", "show"] },
+      { "id": "search", "name": "Code Search", "type": "builtin" }
+    ]
+  },
   "nodes": [
     {
       "id": "phase-triage",

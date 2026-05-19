@@ -20,6 +20,37 @@
     "workspace": "",
     "domain": "development"
   },
+  "components": {
+    "roles": [
+      { "id": "triage", "name": "Triage Agent", "description": "Classify and dispatch tasks", "capabilities": ["classify", "dispatch"] },
+      { "id": "tech-lead", "name": "Tech Lead", "description": "Design and review", "capabilities": ["analyze", "design", "review"] },
+      { "id": "dev", "name": "Developer", "description": "Implement code", "capabilities": ["implement", "test", "debug"] },
+      { "id": "qa", "name": "QA Engineer", "description": "Verify and validate", "capabilities": ["verify", "test", "validate"] },
+      { "id": "devops", "name": "DevOps", "description": "Deploy and monitor", "capabilities": ["deploy", "monitor"] },
+      { "id": "analysis", "name": "Analyst", "description": "Analyze and research", "capabilities": ["analyze", "research"] }
+    ],
+    "rules": [
+      { "id": "dispatch-guard", "name": "Dispatch Guard", "description": "Triage must dispatch, never execute directly", "source": "builtin", "type": "process_constraint", "enforcement": "hard" },
+      { "id": "output-guard", "name": "Output Guard Protocol", "description": "5-step self-assessment before completion", "source": "framework", "type": "process_constraint", "enforcement": "hard" },
+      { "id": "regression-guard", "name": "Regression Prevention", "description": "Prevent regressions in existing functionality", "source": "builtin", "type": "quality_constraint", "enforcement": "hard" },
+      { "id": "hard-constraints", "name": "Hard Constraints", "description": "No file deletion, no PowerShell Set-Content/Out-File, no skip toolchain gate", "source": "builtin", "type": "behavioral_constraint", "enforcement": "hard" },
+      { "id": "development-standards", "name": "Development Standards", "description": "No Chinese comments/commits, TDD, no BOM-polluting tools", "source": "builtin", "type": "behavioral_constraint", "enforcement": "hard" },
+      { "id": "test-standards", "name": "Test Standards", "description": "Unit tests pass, coverage report required", "source": "builtin", "type": "quality_constraint", "enforcement": "hard" },
+      { "id": "review-standards", "name": "Review Standards", "description": "Architecture compliance, SCOPE.md generation", "source": "builtin", "type": "quality_constraint", "enforcement": "hard" },
+      { "id": "requirements-standards", "name": "Requirements Standards", "description": "SPEC must include scope, constraints, and measurable acceptance criteria", "source": "builtin", "type": "output_constraint", "enforcement": "hard" },
+      { "id": "architecture-standards", "name": "Architecture Standards", "description": "Design artifacts must follow R1-R3 format", "source": "builtin", "type": "output_constraint", "enforcement": "hard" },
+      { "id": "loop-guard", "name": "Loop Guard", "description": "Prevent infinite loops in iterative processes; max 3 iterations before escalation", "source": "builtin", "type": "process_constraint", "enforcement": "hard" }
+    ],
+    "tools": [
+      { "id": "task", "name": "Task CLI", "type": "cli", "commands": ["create", "update", "close", "show", "list", "ready", "append", "dep"] },
+      { "id": "search", "name": "Code Search", "type": "builtin" },
+      { "id": "file-ops", "name": "File Operations", "type": "builtin" }
+    ],
+    "skills": [
+      { "id": "api-design", "name": "API Design", "source": "builtin", "trigger": "manual" },
+      { "id": "protobuf", "name": "Protobuf", "source": "builtin", "trigger": "manual" }
+    ]
+  },
   "nodes": [
     {
       "id": "tri3",

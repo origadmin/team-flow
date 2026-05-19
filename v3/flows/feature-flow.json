@@ -102,6 +102,14 @@
         "enforcement": "hard"
       },
       {
+        "id": "hard-constraints",
+        "name": "Hard Constraints",
+        "description": "Never delete files (use trash), never use PowerShell Set-Content/Out-File (BOM pollution), never skip toolchain gate",
+        "source": "builtin",
+        "type": "behavioral_constraint",
+        "enforcement": "hard"
+      },
+      {
         "id": "review-standards",
         "name": "Review Standards",
         "description": "Code review must check architecture compliance, generate SCOPE.md with change summary",
@@ -289,7 +297,8 @@
         "roles": [{ "ref": "dev", "source": "builtin" }],
         "rules": [
           { "ref": "development-standards", "source": "builtin" },
-          { "ref": "regression-guard", "source": "builtin" }
+          { "ref": "regression-guard", "source": "builtin" },
+          { "ref": "hard-constraints", "source": "builtin" }
         ],
         "tools": [
           { "ref": "task" },
@@ -412,7 +421,10 @@
       "config": {
         "status": "success",
         "message": "Feature development flow completed successfully"
-      }
+      },
+      "on_exit": [
+        { "action": "custom", "name": "handoff-doc", "message": "Generate handoff document at session end" }
+      ]
     },
     {
       "id": "terminal-reject",

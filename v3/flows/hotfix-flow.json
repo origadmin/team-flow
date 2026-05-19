@@ -17,6 +17,27 @@
     "TEAM_PATH": "",
     "task_id": ""
   },
+  "components": {
+    "roles": [
+      { "id": "triage", "name": "Triage Agent", "description": "Classify and dispatch hotfix requests", "capabilities": ["classify", "dispatch"] },
+      { "id": "dev", "name": "Developer", "description": "Implement urgent fix", "capabilities": ["implement", "test", "debug"] },
+      { "id": "qa", "name": "QA Engineer", "description": "Verify hotfix", "capabilities": ["verify", "validate"] },
+      { "id": "devops", "name": "DevOps", "description": "Deploy and monitor hotfix", "capabilities": ["deploy", "monitor"] }
+    ],
+    "rules": [
+      { "id": "dispatch-guard", "name": "Dispatch Guard", "description": "Triage must dispatch, never execute directly", "source": "builtin", "type": "process_constraint", "enforcement": "hard" },
+      { "id": "output-guard", "name": "Output Guard Protocol", "description": "5-step self-assessment before completion", "source": "framework", "type": "process_constraint", "enforcement": "hard" },
+      { "id": "regression-guard", "name": "Regression Prevention", "description": "Every hotfix must include regression tests", "source": "builtin", "type": "quality_constraint", "enforcement": "hard" },
+      { "id": "hard-constraints", "name": "Hard Constraints", "description": "No file deletion, no PowerShell Set-Content/Out-File", "source": "builtin", "type": "behavioral_constraint", "enforcement": "hard" },
+      { "id": "development-standards", "name": "Development Standards", "description": "No Chinese comments/commits, TDD", "source": "builtin", "type": "behavioral_constraint", "enforcement": "hard" },
+      { "id": "test-standards", "name": "Test Standards", "description": "Unit tests pass, regression tests required, coverage report", "source": "builtin", "type": "quality_constraint", "enforcement": "hard" }
+    ],
+    "tools": [
+      { "id": "task", "name": "Task CLI", "type": "cli", "commands": ["create", "update", "close", "show"] },
+      { "id": "search", "name": "Code Search", "type": "builtin" },
+      { "id": "file-ops", "name": "File Operations", "type": "builtin" }
+    ]
+  },
   "nodes": [
     {
       "id": "phase-triage",

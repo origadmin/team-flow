@@ -2,7 +2,7 @@
   "version": "v3",
   "metadata": {
     "name": "bugfix-flow",
-    "description": "Bug fix flow: Triage → Gate → Investigate → Fix → Gate → Verify → Terminal",
+    "description": "Bug fix flow with R-iteration: Triage → Gate → Investigate → Fix(R0..Rn) → Quality Gate → Verify → Completion Gate → Terminal",
     "author": "team-flow",
     "tags": ["bug", "bugfix", "software"]
   },
@@ -15,7 +15,115 @@
   "variables": {
     "docs_path": "",
     "TEAM_PATH": "",
-    "task_id": ""
+    "task_id": "",
+    "iteration": "R0"
+  },
+  "components": {
+    "roles": [
+      {
+        "id": "triage",
+        "name": "Triage Agent",
+        "description": "Classify and dispatch bug reports",
+        "capabilities": ["classify", "dispatch", "assess"]
+      },
+      {
+        "id": "dev",
+        "name": "Developer",
+        "description": "Investigate root cause, implement bug fix, add regression tests",
+        "capabilities": ["investigate", "implement", "test", "debug"]
+      },
+      {
+        "id": "qa",
+        "name": "QA Engineer",
+        "description": "Verify bug fix, run regression tests, validate completeness",
+        "capabilities": ["verify", "test", "validate"]
+      }
+    ],
+    "rules": [
+      {
+        "id": "dispatch-guard",
+        "name": "Dispatch Guard",
+        "description": "Triage must dispatch tasks to sub-agents, never execute directly",
+        "source": "builtin",
+        "type": "process_constraint",
+        "enforcement": "hard"
+      },
+      {
+        "id": "output-guard",
+        "name": "Output Guard Protocol",
+        "description": "5-step self-assessment before completion gate: AC compliance matrix, compile check, test execution, self-critique, output summary",
+        "source": "framework",
+        "type": "process_constraint",
+        "enforcement": "hard"
+      },
+      {
+        "id": "regression-guard",
+        "name": "Regression Prevention",
+        "description": "Every bug fix must include regression tests; no fix without test",
+        "source": "builtin",
+        "type": "quality_constraint",
+        "enforcement": "hard"
+      },
+      {
+        "id": "r-iteration-rule",
+        "name": "R-Iteration Isolation",
+        "description": "Each fix iteration stores docs in R{N} subdirectory; max 3 iterations before escalation",
+        "source": "builtin",
+        "type": "process_constraint",
+        "enforcement": "hard"
+      },
+      {
+        "id": "development-standards",
+        "name": "Development Standards",
+        "description": "No Chinese comments, no Chinese commit messages, TDD approach, no PowerShell Set-Content/Out-File",
+        "source": "builtin",
+        "type": "behavioral_constraint",
+        "enforcement": "hard"
+      },
+      {
+        "id": "test-standards",
+        "name": "Test Standards",
+        "description": "Unit tests must pass, regression tests must cover the fixed behavior, coverage report required",
+        "source": "builtin",
+        "type": "quality_constraint",
+        "enforcement": "hard"
+      },
+      {
+        "id": "review-standards",
+        "name": "Review Standards",
+        "description": "Code review must verify fix correctness, check for side effects, generate SCOPE.md",
+        "source": "builtin",
+        "type": "quality_constraint",
+        "enforcement": "hard"
+      },
+      {
+        "id": "hard-constraints",
+        "name": "Hard Constraints",
+        "description": "Never delete files (use trash), never use PowerShell Set-Content/Out-File (BOM pollution), never skip toolchain gate",
+        "source": "builtin",
+        "type": "behavioral_constraint",
+        "enforcement": "hard"
+      }
+    ],
+    "tools": [
+      {
+        "id": "task",
+        "name": "Task CLI",
+        "type": "cli",
+        "commands": ["create", "update", "close", "show", "list", "ready", "append", "dep"]
+      },
+      {
+        "id": "search",
+        "name": "Code Search",
+        "type": "builtin"
+      },
+      {
+        "id": "file-ops",
+        "name": "File Operations",
+        "type": "builtin"
+      }
+    ],
+    "skills": []
   },
   "nodes": [
     {
@@ -83,7 +191,7 @@
         {
           "name": "RCA.md",
           "format": "markdown",
-          "path": "{docs_path}/{task_id}/RCA.md",
+          "path": "{docs_path}/{task_id}/R0/RCA.md",
           "required": true,
           "description": "Root cause analysis document detailing bug origin, affected components, and reproduction steps"
         }
@@ -96,7 +204,7 @@
       "id": "phase-fix",
       "type": "phase",
       "name": "Bug Fix",
-      "description": "Implement the bug fix and add regression tests",
+      "description": "Implement the bug fix and add regression tests (R-iteration, docs stored in R{N} subdirectory)",
       "config": {
         "role": "Dev",
         "auto_dispatch": true,
@@ -106,7 +214,9 @@
         "roles": [{ "ref": "dev", "source": "builtin" }],
         "rules": [
           { "ref": "development-standards", "source": "builtin" },
-          { "ref": "regression-guard", "source": "builtin" }
+          { "ref": "regression-guard", "source": "builtin" },
+          { "ref": "r-iteration-rule", "source": "builtin" },
+          { "ref": "hard-constraints", "source": "builtin" }
         ],
         "tools": [
           { "ref": "task" },
@@ -118,29 +228,62 @@
         {
           "name": "FIX.md",
           "format": "markdown",
-          "path": "{docs_path}/{task_id}/FIX.md",
+          "path": "{docs_path}/{task_id}/{iteration}/FIX.md",
           "required": true,
-          "description": "Bug fix implementation notes documenting the fix approach, code changes, and regression test additions"
+          "description": "Bug fix implementation notes: fix approach, code changes, regression test additions"
+        },
+        {
+          "name": "SCOPE.md",
+          "format": "markdown",
+          "path": "{docs_path}/{task_id}/{iteration}/SCOPE.md",
+          "required": true,
+          "description": "Change scope document: what was fixed, what changed, known side effects"
         }
       ],
       "on_enter": [
-        { "action": "update_task_phase", "phase": "implement" }
+        { "action": "update_task_phase", "phase": "implement" },
+        { "action": "set_variable", "name": "iteration", "value": "{iteration}" }
       ]
     },
     {
       "id": "gate-quality",
       "type": "gate",
       "name": "Quality Gate",
-      "description": "Verify fix passes all tests and no regressions introduced",
+      "description": "Verify fix passes all tests, no regressions introduced, and regression tests exist",
       "config": {
         "conditions": [
           { "type": "tests_pass", "threshold": "100%" },
           { "type": "lint_pass", "threshold": "0 errors" },
-          { "type": "no_regressions" }
+          { "type": "no_regressions" },
+          { "type": "custom", "check": "Regression tests added for the fix", "required": true }
         ],
-        "on_pass": "phase-verify",
+        "on_pass": "branch-r-iteration",
         "on_fail": "phase-fix",
-        "auto_retry": { "max_attempts": 2, "delay_minutes": 5 }
+        "auto_retry": { "max_attempts": 3, "delay_minutes": 5 }
+      }
+    },
+    {
+      "id": "branch-r-iteration",
+      "type": "branch",
+      "name": "R-Iteration Decision",
+      "description": "Check if QA verification passed or needs another fix iteration",
+      "config": {
+        "conditions": [
+          {
+            "when": "iteration_count < 3 && qa_result == 'failed'",
+            "goto": "phase-fix",
+            "target": "phase-fix"
+          },
+          {
+            "when": "iteration_count >= 3 && qa_result == 'failed'",
+            "goto": "terminal-failed",
+            "target": "terminal-failed"
+          },
+          {
+            "default": "phase-verify",
+            "target": "phase-verify"
+          }
+        ]
       }
     },
     {
@@ -155,20 +298,43 @@
       },
       "components": {
         "roles": [{ "ref": "qa", "source": "builtin" }],
-        "rules": [{ "ref": "test-standards", "source": "builtin" }]
+        "rules": [
+          { "ref": "test-standards", "source": "builtin" },
+          { "ref": "regression-guard", "source": "builtin" }
+        ]
       },
       "docs": [
         {
           "name": "TEST_CASE.md",
           "format": "markdown",
-          "path": "{docs_path}/{task_id}/TEST_CASE.md",
+          "path": "{docs_path}/{task_id}/{iteration}/TEST_CASE.md",
           "required": true,
           "description": "Test case document for the bug fix including reproduction steps and verification results"
         }
       ],
       "on_enter": [
         { "action": "update_task_phase", "phase": "verify" }
+      ],
+      "on_exit": [
+        { "action": "custom", "name": "output-guard-check", "message": "Verify Output Guard 5-step protocol completed" }
       ]
+    },
+    {
+      "id": "gate-completion",
+      "type": "gate",
+      "name": "Completion Gate",
+      "description": "Final gate verifying all deliverables exist, Output Guard passed, and user confirmation received",
+      "config": {
+        "conditions": [
+          { "type": "deliverables_complete", "deliverables": ["RCA.md", "FIX.md", "SCOPE.md", "TEST_CASE.md"] },
+          { "type": "tests_pass", "threshold": "100%" },
+          { "type": "no_regressions" },
+          { "type": "custom", "check": "Output Guard Summary all passed", "required": true },
+          { "type": "custom", "check": "User confirmation received", "required": true }
+        ],
+        "on_pass": "terminal-success",
+        "on_fail": "phase-verify"
+      }
     },
     {
       "id": "terminal-success",
@@ -178,7 +344,10 @@
       "config": {
         "status": "success",
         "message": "Bug fix flow completed successfully"
-      }
+      },
+      "on_exit": [
+        { "action": "custom", "name": "handoff-doc", "message": "Generate handoff document at session end" }
+      ]
     },
     {
       "id": "terminal-reject",
@@ -189,6 +358,16 @@
         "status": "rejected",
         "message": "Bug report does not meet minimum information requirements"
       }
+    },
+    {
+      "id": "terminal-failed",
+      "type": "terminal",
+      "name": "Max Iterations Reached",
+      "description": "Bug fix failed after maximum R-iterations, requires escalation",
+      "config": {
+        "status": "failed",
+        "message": "Bug fix failed after 3 R-iterations, needs human escalation"
+      }
     }
   ],
   "edges": [
@@ -197,8 +376,13 @@
     { "id": "e-gate-reject", "from": "gate-entry", "to": "terminal-reject", "type": "conditional", "conditions": [{ "expression": "!gate.passed" }] },
     { "id": "e-investigate-fix", "from": "phase-investigate", "to": "phase-fix" },
     { "id": "e-fix-gate", "from": "phase-fix", "to": "gate-quality" },
-    { "id": "e-gate-verify", "from": "gate-quality", "to": "phase-verify", "type": "conditional", "conditions": [{ "expression": "gate.passed" }] },
-    { "id": "e-gate-fix", "from": "gate-quality", "to": "phase-fix", "type": "conditional", "conditions": [{ "expression": "!gate.passed" }] },
-    { "id": "e-verify-success", "from": "phase-verify", "to": "terminal-success" }
+    { "id": "e-gate-verify", "from": "gate-quality", "to": "branch-r-iteration", "type": "conditional", "conditions": [{ "expression": "gate.passed" }] },
+    { "id": "e-gate-fix-retry", "from": "gate-quality", "to": "phase-fix", "type": "conditional", "conditions": [{ "expression": "!gate.passed" }] },
+    { "id": "e-branch-verify", "from": "branch-r-iteration", "to": "phase-verify" },
+    { "id": "e-branch-fix", "from": "branch-r-iteration", "to": "phase-fix" },
+    { "id": "e-branch-failed", "from": "branch-r-iteration", "to": "terminal-failed" },
+    { "id": "e-verify-completion", "from": "phase-verify", "to": "gate-completion" },
+    { "id": "e-completion-success", "from": "gate-completion", "to": "terminal-success", "type": "conditional", "conditions": [{ "expression": "gate.passed" }] },
+    { "id": "e-completion-verify", "from": "gate-completion", "to": "phase-verify", "type": "conditional", "conditions": [{ "expression": "!gate.passed" }] }
   ]
 }

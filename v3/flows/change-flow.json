@@ -17,6 +17,28 @@
     "TEAM_PATH": "",
     "task_id": ""
   },
+  "components": {
+    "roles": [
+      { "id": "triage", "name": "Triage Agent", "description": "Classify and dispatch change requests", "capabilities": ["classify", "dispatch"] },
+      { "id": "tech-lead", "name": "Tech Lead", "description": "Plan change scope and review impact", "capabilities": ["plan", "review", "architect"] },
+      { "id": "dev", "name": "Developer", "description": "Execute change implementation", "capabilities": ["implement", "test"] },
+      { "id": "qa", "name": "QA Engineer", "description": "Verify change completeness", "capabilities": ["verify", "validate"] }
+    ],
+    "rules": [
+      { "id": "dispatch-guard", "name": "Dispatch Guard", "description": "Triage must dispatch, never execute directly", "source": "builtin", "type": "process_constraint", "enforcement": "hard" },
+      { "id": "output-guard", "name": "Output Guard Protocol", "description": "5-step self-assessment before completion", "source": "framework", "type": "process_constraint", "enforcement": "hard" },
+      { "id": "regression-guard", "name": "Regression Prevention", "description": "Prevent regressions during change", "source": "builtin", "type": "quality_constraint", "enforcement": "hard" },
+      { "id": "hard-constraints", "name": "Hard Constraints", "description": "No file deletion, no PowerShell Set-Content/Out-File, no skip toolchain gate", "source": "builtin", "type": "behavioral_constraint", "enforcement": "hard" },
+      { "id": "development-standards", "name": "Development Standards", "description": "No Chinese comments/commits, TDD, no BOM-polluting tools", "source": "builtin", "type": "behavioral_constraint", "enforcement": "hard" },
+      { "id": "architecture-standards", "name": "Architecture Standards", "description": "Design artifacts must follow R1-R3 format", "source": "builtin", "type": "output_constraint", "enforcement": "hard" },
+      { "id": "review-standards", "name": "Review Standards", "description": "Architecture compliance, SCOPE.md generation", "source": "builtin", "type": "quality_constraint", "enforcement": "hard" }
+    ],
+    "tools": [
+      { "id": "task", "name": "Task CLI", "type": "cli", "commands": ["create", "update", "close", "show", "list"] },
+      { "id": "search", "name": "Code Search", "type": "builtin" },
+      { "id": "file-ops", "name": "File Operations", "type": "builtin" }
+    ]
+  },
   "nodes": [
     {
       "id": "phase-triage",
