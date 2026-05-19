@@ -510,7 +510,7 @@
         "role": {
           "type": "string",
           "description": "Role assigned to execute this phase",
-          "enum": ["Triage", "TechLead", "Dev", "QA", "PM", "DevOps", "Analysis", "UIDesigner"]
+          "enum": ["Triage", "TechLead", "Dev", "DevBackend", "DevFrontend", "QA", "PM", "DevOps", "Analysis", "UIDesigner", "Bugfix", "FrameworkArchitect"]
         },
         "auto_dispatch": {
           "type": "boolean",

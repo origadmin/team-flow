@@ -20,6 +20,7 @@ type ProcRunResult struct {
 	Flow        FlowMeta     `json:"flow"`
 	Current     CurrentNode  `json:"current"`
 	NextOptions []NextOption `json:"next_options"`
+	StatusLine  string       `json:"status_line"`
 }
 
 type FlowMeta struct {
@@ -133,13 +134,16 @@ func generateResult(fl *flow.Flow, node *flow.FlowNode, vars map[string]string) 
 		}
 	}
 
+	current := buildCurrentNode(node, fl, vars)
+
 	result := &ProcRunResult{
 		Flow: FlowMeta{
 			Name:    fl.Metadata.Name,
 			Version: fl.Version,
 			Domain:  domain,
 		},
-		Current: buildCurrentNode(node, fl, vars),
+		Current:    current,
+		StatusLine: buildStatusLine(fl, node, current, vars),
 	}
 
 	result.NextOptions = buildNextOptions(fl, node.ID)
@@ -386,6 +390,38 @@ func buildNextOptionsFromEdges(edges []flow.FlowEdge, nodeMap map[string]*flow.F
 	}
 
 	return options
+}
+
+// buildStatusLine generates the v2-compatible status line: [Role|TaskPool|Phase|Asset]
+// This provides a consistent, machine-readable progress indicator that AI agents
+// should include in every response during flow execution.
+func buildStatusLine(fl *flow.Flow, node *flow.FlowNode, current CurrentNode, vars map[string]string) string {
+	role := current.Role
+	if role == "" {
+		role = "System"
+	}
+
+	taskPool := string(fl.Config.TaskType)
+	if taskPool == "" {
+		taskPool = fl.Metadata.Name
+	}
+
+	phase := ""
+	for _, a := range current.OnEnter {
+		if a.Action == "update_task_phase" && a.Phase != "" {
+			phase = a.Phase
+		}
+	}
+	if phase == "" {
+		phase = node.Name
+	}
+
+	asset := ""
+	if len(current.Docs) > 0 {
+		asset = current.Docs[0].Name
+	}
+
+	return fmt.Sprintf("[%s|%s|%s|%s]", role, taskPool, phase, asset)
 }
 
 func substituteVars(path string, vars map[string]string) string {

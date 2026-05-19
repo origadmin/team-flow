@@ -17,6 +17,132 @@
     "TEAM_PATH": "",
     "task_id": ""
   },
+  "components": {
+    "roles": [
+      {
+        "id": "triage",
+        "name": "Triage Agent",
+        "description": "Classify and dispatch incoming tasks to appropriate flows",
+        "capabilities": ["classify", "dispatch", "assess"]
+      },
+      {
+        "id": "tech-lead",
+        "name": "Tech Lead",
+        "description": "Analyze requirements, design architecture, review code",
+        "capabilities": ["analyze", "design", "review", "architect"]
+      },
+      {
+        "id": "dev",
+        "name": "Developer",
+        "description": "Implement features, write code and unit tests",
+        "capabilities": ["implement", "test", "debug"]
+      },
+      {
+        "id": "qa",
+        "name": "QA Engineer",
+        "description": "Verify implementations, run integration and E2E tests",
+        "capabilities": ["verify", "test", "validate"]
+      }
+    ],
+    "rules": [
+      {
+        "id": "dispatch-guard",
+        "name": "Dispatch Guard",
+        "description": "Triage must dispatch tasks to sub-agents, never execute directly",
+        "source": "builtin",
+        "type": "process_constraint",
+        "enforcement": "hard"
+      },
+      {
+        "id": "output-guard",
+        "name": "Output Guard Protocol",
+        "description": "5-step self-assessment before completion gate: AC compliance matrix, compile check, test execution, self-critique, output summary",
+        "source": "framework",
+        "type": "process_constraint",
+        "enforcement": "hard"
+      },
+      {
+        "id": "regression-guard",
+        "name": "Regression Prevention",
+        "description": "Prevent regressions in existing functionality during implementation",
+        "source": "builtin",
+        "type": "quality_constraint",
+        "enforcement": "hard"
+      },
+      {
+        "id": "requirements-standards",
+        "name": "Requirements Standards",
+        "description": "SPEC must include scope, constraints, and measurable acceptance criteria",
+        "source": "builtin",
+        "type": "output_constraint",
+        "enforcement": "hard"
+      },
+      {
+        "id": "architecture-standards",
+        "name": "Architecture Standards",
+        "description": "Design artifacts must follow R1-R3 format: data model, state machine, API contract",
+        "source": "builtin",
+        "type": "output_constraint",
+        "enforcement": "hard"
+      },
+      {
+        "id": "development-standards",
+        "name": "Development Standards",
+        "description": "No Chinese comments, no Chinese commit messages, TDD approach, no PowerShell Set-Content/Out-File",
+        "source": "builtin",
+        "type": "behavioral_constraint",
+        "enforcement": "hard"
+      },
+      {
+        "id": "test-standards",
+        "name": "Test Standards",
+        "description": "Unit tests must pass, integration tests must cover API contracts, coverage report required",
+        "source": "builtin",
+        "type": "quality_constraint",
+        "enforcement": "hard"
+      },
+      {
+        "id": "review-standards",
+        "name": "Review Standards",
+        "description": "Code review must check architecture compliance, generate SCOPE.md with change summary",
+        "source": "builtin",
+        "type": "quality_constraint",
+        "enforcement": "hard"
+      }
+    ],
+    "tools": [
+      {
+        "id": "task",
+        "name": "Task CLI",
+        "type": "cli",
+        "commands": ["create", "update", "close", "show", "list", "ready", "append", "dep"]
+      },
+      {
+        "id": "search",
+        "name": "Code Search",
+        "type": "builtin"
+      },
+      {
+        "id": "file-ops",
+        "name": "File Operations",
+        "type": "builtin"
+      }
+    ],
+    "skills": [
+      {
+        "id": "api-design",
+        "name": "API Design",
+        "source": "builtin",
+        "trigger": "manual"
+      },
+      {
+        "id": "protobuf",
+        "name": "Protobuf",
+        "source": "builtin",
+        "trigger": "manual"
+      }
+    ]
+  },
   "nodes": [
     {
       "id": "phase-triage",
@@ -239,7 +365,10 @@
       },
       "components": {
         "roles": [{ "ref": "tech-lead", "source": "builtin" }],
-        "rules": [{ "ref": "review-standards", "source": "builtin" }]
+        "rules": [
+          { "ref": "review-standards", "source": "builtin" },
+          { "ref": "output-guard", "source": "framework" }
+        ]
       },
       "docs": [
         {
@@ -252,7 +381,28 @@
       ],
       "on_enter": [
         { "action": "update_task_phase", "phase": "review" }
+      ],
+      "on_exit": [
+        { "action": "custom", "name": "output-guard-check", "message": "Verify Output Guard 5-step protocol completed" }
       ]
+    },
+    {
+      "id": "gate-completion",
+      "type": "gate",
+      "name": "Completion Gate",
+      "description": "Final gate verifying all deliverables exist, Output Guard passed, and user confirmation received before closing",
+      "config": {
+        "conditions": [
+          { "type": "deliverables_complete", "deliverables": ["SPEC.md", "AC.md", "R1_DATA_MODEL.md", "R2_STATE_MACHINE.md", "R3_API_CONTRACT.md", "IMPL.md", "TEST_COVERAGE.md", "SCOPE.md"] },
+          { "type": "tests_pass", "threshold": "100%" },
+          { "type": "lint_pass", "threshold": "0 errors" },
+          { "type": "no_regressions" },
+          { "type": "custom", "check": "Output Guard Summary all passed", "required": true },
+          { "type": "custom", "check": "User confirmation received", "required": true }
+        ],
+        "on_pass": "terminal-success",
+        "on_fail": "phase-review"
+      }
     },
     {
       "id": "terminal-success",
@@ -285,6 +435,8 @@
     { "id": "e-gate-verify", "from": "gate-quality", "to": "phase-verify", "type": "conditional", "conditions": [{ "expression": "gate.passed" }] },
     { "id": "e-gate-implement", "from": "gate-quality", "to": "phase-implement", "type": "conditional", "conditions": [{ "expression": "!gate.passed" }] },
     { "id": "e-verify-review", "from": "phase-verify", "to": "phase-review" },
-    { "id": "e-review-success", "from": "phase-review", "to": "terminal-success" }
+    { "id": "e-review-completion", "from": "phase-review", "to": "gate-completion" },
+    { "id": "e-completion-success", "from": "gate-completion", "to": "terminal-success", "type": "conditional", "conditions": [{ "expression": "gate.passed" }] },
+    { "id": "e-completion-review", "from": "gate-completion", "to": "phase-review", "type": "conditional", "conditions": [{ "expression": "!gate.passed" }] }
   ]
 }
