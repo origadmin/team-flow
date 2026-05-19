@@ -1,0 +1,149 @@
+{
+  "version": "v3",
+  "metadata": {
+    "name": "hotfix-flow",
+    "description": "Emergency hotfix flow: Triage → Fix → Verify → Terminal",
+    "author": "team-flow",
+    "tags": ["hotfix", "emergency", "software"]
+  },
+  "config": {
+    "task_type": "hotfix",
+    "auto_dispatch": true,
+    "parallel_limit": 1,
+    "timeout_minutes": 60
+  },
+  "variables": {
+    "docs_path": "",
+    "TEAM_PATH": "",
+    "task_id": ""
+  },
+  "nodes": [
+    {
+      "id": "phase-triage",
+      "type": "phase",
+      "name": "Hotfix Triage",
+      "description": "Rapidly assess and confirm the emergency fix requirement",
+      "config": {
+        "role": "Triage",
+        "auto_dispatch": true
+      },
+      "components": {
+        "roles": [{ "ref": "triage", "source": "builtin" }],
+        "rules": [{ "ref": "dispatch-guard", "source": "builtin" }]
+      },
+      "docs": [
+        {
+          "name": "TRIAGE.md",
+          "format": "markdown",
+          "path": "{docs_path}/{task_id}/TRIAGE.md",
+          "required": true,
+          "description": "Emergency triage record with severity assessment, impact scope, and dispatch decision"
+        }
+      ],
+      "on_enter": [
+        { "action": "update_task_phase", "phase": "ready" }
+      ]
+    },
+    {
+      "id": "phase-fix",
+      "type": "phase",
+      "name": "Emergency Fix",
+      "description": "Implement the emergency fix with minimal scope, produce RCA and fix notes",
+      "config": {
+        "role": "Dev",
+        "auto_dispatch": true,
+        "deliverables": ["code", "RCA.md"]
+      },
+      "components": {
+        "roles": [{ "ref": "dev", "source": "builtin" }],
+        "rules": [
+          { "ref": "development-standards", "source": "builtin" },
+          { "ref": "regression-guard", "source": "builtin" }
+        ],
+        "tools": [
+          { "ref": "task" },
+          { "ref": "search" },
+          { "ref": "file-ops" }
+        ]
+      },
+      "docs": [
+        {
+          "name": "RCA.md",
+          "format": "markdown",
+          "path": "{docs_path}/{task_id}/RCA.md",
+          "required": true,
+          "description": "Root cause analysis for the emergency issue including incident timeline and fix description"
+        }
+      ],
+      "on_enter": [
+        { "action": "update_task_phase", "phase": "implement" }
+      ],
+      "on_error": {
+        "strategy": "fail",
+        "on_error": [
+          { "action": "notify", "message": "Hotfix implementation failed - escalation required", "channel": "emergency" }
+        ]
+      }
+    },
+    {
+      "id": "phase-verify",
+      "type": "phase",
+      "name": "Hotfix Verification",
+      "description": "Verify the hotfix resolves the emergency and produces test case",
+      "config": {
+        "role": "QA",
+        "auto_dispatch": true,
+        "deliverables": ["TEST_CASE.md"]
+      },
+      "components": {
+        "roles": [{ "ref": "qa", "source": "builtin" }],
+        "rules": [{ "ref": "test-standards", "source": "builtin" }]
+      },
+      "docs": [
+        {
+          "name": "TEST_CASE.md",
+          "format": "markdown",
+          "path": "{docs_path}/{task_id}/TEST_CASE.md",
+          "required": true,
+          "description": "Test case document verifying the hotfix resolves the emergency issue"
+        }
+      ],
+      "gates": [
+        {
+          "type": "tests_pass",
+          "threshold": "100%",
+          "on_fail": "phase-fix"
+        }
+      ],
+      "on_enter": [
+        { "action": "update_task_phase", "phase": "verify" }
+      ]
+    },
+    {
+      "id": "terminal-success",
+      "type": "terminal",
+      "name": "Hotfix Deployed",
+      "description": "Hotfix verified and ready for deployment",
+      "config": {
+        "status": "success",
+        "message": "Hotfix flow completed successfully"
+      }
+    },
+    {
+      "id": "terminal-failed",
+      "type": "terminal",
+      "name": "Hotfix Failed",
+      "description": "Hotfix could not be verified, escalation needed",
+      "config": {
+        "status": "failed",
+        "message": "Hotfix verification failed - manual escalation required"
+      }
+    }
+  ],
+  "edges": [
+    { "id": "e-triage-fix", "from": "phase-triage", "to": "phase-fix" },
+    { "id": "e-fix-verify", "from": "phase-fix", "to": "phase-verify" },
+    { "id": "e-verify-success", "from": "phase-verify", "to": "terminal-success" },
+    { "id": "e-verify-failed", "from": "phase-verify", "to": "terminal-failed", "type": "conditional", "conditions": [{ "expression": "!gate.passed" }] }
+  ]
+}

@@ -1,4 +1,4 @@
-﻿<!-- AUTO-GENERATED from _team/prompts/dev.md — DO NOT EDIT MANUALLY -->
+<!-- AUTO-GENERATED from _team/prompts/dev.md — DO NOT EDIT MANUALLY -->
 <!-- To update: modify _team/prompts/dev.md, then run DOMGEN regeneration -->
 
 # 开发指南 (Dev Guide)

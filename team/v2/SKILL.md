@@ -29,14 +29,26 @@ evolution:
 
 Every AI response MUST start with: `[Role: {role} | TaskPool: {beads-id}#{cr-index} | Phase: {phase} | Asset: {PROJECT-basename}]`
 
-| Field | Values | Description |
-|-------|--------|-------------|
-| Role | Triage / TechLead / Dev / QA / PM / DevOps / Analysis / UIDesigner | Changes when sub-agent executes, returns to Triage on completion |
-| TaskPool | {beads-id}#{cr-index} (e.g., `team-flow-6x9.15#5`) | Current task + conversation index |
-| Phase | ready / analyze / design / implement / verify / review / -(N/A) | Current phase |
-| Asset | {PROJECT} basename from `flow config paths --json` | Current project |
+**⚠️ Status Line 数据来源：`flow task` CLI 输出，AI 禁止手动填写 TaskPool 和 Phase。**
 
-**⛔ Task-first**: Session 启动时，Triage 必须先创建/查找任务。每次对话都有 TaskPool 值，N/A is forbidden。
+```bash
+# TaskPool ← flow task create/show 返回的 beads ID
+flow task create "title" -t feature -p 1 --json
+flow task show --current --json
+# → .id (beads-id), .labels (phase:xxx)
+
+# Phase ← beads issue 的 labels (phase:ready/analyze/design/implement/verify/review)
+# Asset ← flow config paths --json → project basename
+```
+
+| Field | Source | Values | Description |
+|-------|--------|--------|-------------|
+| Role | current active role | Triage / TechLead / Dev / QA / PM / DevOps / Analysis / UIDesigner | Changes when sub-agent executes, returns to Triage on completion |
+| TaskPool | `flow task show --current --json` → `.id` | {beads-id}#{cr-index} (e.g., `team-flow-6x9.15#5`) | **Must come from flow task CLI, never hardcoded** |
+| Phase | `flow task show --current --json` → `.labels` matching `phase:*` | ready / analyze / design / implement / verify / review / -(N/A) | Current phase from task labels |
+| Asset | `flow config paths --json` | {PROJECT} basename | Current project |
+
+**⛔ Task-first**: Session 启动时，Triage 必须先 `flow task create` 创建/查找任务，再从 `flow task show --current --json` 提取 TaskPool 和 Phase。禁止手动填写 TaskPool。
 
 **Phase 与 TaskPool 同步**: Phase 是 `analyze`/`design`/`implement` 等时，TaskPool 必须显示 `{beads-id}#{cr-index}`，禁止显示 N/A。
 

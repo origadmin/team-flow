@@ -1,4 +1,4 @@
-﻿# B{xxx}-R{n}: {Bug Title} — Frontend Reproduction Test Case
+# B{xxx}-R{n}: {Bug Title} — Frontend Reproduction Test Case
 
 ## beads 关联
 

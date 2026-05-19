@@ -1,0 +1,211 @@
+{
+  "version": "v3",
+  "metadata": {
+    "name": "change-flow",
+    "description": "Change management flow: Triage → Gate → Plan → Execute → Gate → Review → Terminal",
+    "author": "team-flow",
+    "tags": ["change", "software", "refactor"]
+  },
+  "config": {
+    "task_type": "change",
+    "auto_dispatch": true,
+    "parallel_limit": 3,
+    "timeout_minutes": 360
+  },
+  "variables": {
+    "docs_path": "",
+    "TEAM_PATH": "",
+    "task_id": ""
+  },
+  "nodes": [
+    {
+      "id": "phase-triage",
+      "type": "phase",
+      "name": "Change Triage",
+      "description": "Classify and validate the change request",
+      "config": {
+        "role": "Triage",
+        "auto_dispatch": true
+      },
+      "components": {
+        "roles": [{ "ref": "triage", "source": "builtin" }],
+        "rules": [{ "ref": "dispatch-guard", "source": "builtin" }]
+      },
+      "docs": [
+        {
+          "name": "TRIAGE.md",
+          "format": "markdown",
+          "path": "{docs_path}/{task_id}/TRIAGE.md",
+          "required": true,
+          "description": "Change request triage record with classification, priority, and dispatch decision"
+        }
+      ],
+      "on_enter": [
+        { "action": "update_task_phase", "phase": "ready" }
+      ]
+    },
+    {
+      "id": "gate-entry",
+      "type": "gate",
+      "name": "Entry Gate",
+      "description": "Validate change request has sufficient context and type matches",
+      "config": {
+        "conditions": [
+          { "type": "task_exists" },
+          { "type": "type_matches", "expected": "change" }
+        ],
+        "on_pass": "phase-plan",
+        "on_fail": "terminal-reject"
+      }
+    },
+    {
+      "id": "phase-plan",
+      "type": "phase",
+      "name": "Change Planning",
+      "description": "Plan the change scope, impact analysis, and migration strategy",
+      "config": {
+        "role": "TechLead",
+        "auto_dispatch": true,
+        "deliverables": ["SCOPE.md", "IMPACT.md"]
+      },
+      "components": {
+        "roles": [{ "ref": "tech-lead", "source": "builtin" }],
+        "rules": [
+          { "ref": "architecture-standards", "source": "builtin" },
+          { "ref": "output-guard", "source": "framework" }
+        ],
+        "tools": [
+          { "ref": "task", "commands": ["show", "update", "append"] },
+          { "ref": "search" }
+        ]
+      },
+      "docs": [
+        {
+          "name": "SCOPE.md",
+          "format": "markdown",
+          "path": "{docs_path}/{task_id}/SCOPE.md",
+          "required": true,
+          "description": "Change scope document detailing what will be modified, added, or removed"
+        },
+        {
+          "name": "IMPACT.md",
+          "format": "markdown",
+          "path": "{docs_path}/{task_id}/IMPACT.md",
+          "required": true,
+          "description": "Impact analysis document identifying affected components, dependencies, and migration steps"
+        }
+      ],
+      "on_enter": [
+        { "action": "update_task_phase", "phase": "analyze" }
+      ]
+    },
+    {
+      "id": "phase-execute",
+      "type": "phase",
+      "name": "Change Execution",
+      "description": "Execute the planned changes and update tests",
+      "config": {
+        "role": "Dev",
+        "auto_dispatch": true,
+        "deliverables": ["code", "updated_tests"]
+      },
+      "components": {
+        "roles": [{ "ref": "dev", "source": "builtin" }],
+        "rules": [
+          { "ref": "development-standards", "source": "builtin" },
+          { "ref": "regression-guard", "source": "builtin" }
+        ],
+        "tools": [
+          { "ref": "task" },
+          { "ref": "search" },
+          { "ref": "file-ops" }
+        ]
+      },
+      "docs": [
+        {
+          "name": "EXEC.md",
+          "format": "markdown",
+          "path": "{docs_path}/{task_id}/EXEC.md",
+          "required": true,
+          "description": "Change execution notes documenting modifications made, files affected, and test updates"
+        }
+      ],
+      "on_enter": [
+        { "action": "update_task_phase", "phase": "implement" }
+      ]
+    },
+    {
+      "id": "gate-quality",
+      "type": "gate",
+      "name": "Quality Gate",
+      "description": "Verify changes pass all tests and no regressions introduced",
+      "config": {
+        "conditions": [
+          { "type": "tests_pass", "threshold": "100%" },
+          { "type": "lint_pass", "threshold": "0 errors" },
+          { "type": "no_regressions" }
+        ],
+        "on_pass": "phase-review",
+        "on_fail": "phase-execute",
+        "auto_retry": { "max_attempts": 2, "delay_minutes": 5 }
+      }
+    },
+    {
+      "id": "phase-review",
+      "type": "phase",
+      "name": "Change Review",
+      "description": "Review the change for correctness, completeness, and produce final SCOPE.md",
+      "config": {
+        "role": "TechLead",
+        "auto_dispatch": true,
+        "deliverables": ["SCOPE.md"]
+      },
+      "components": {
+        "roles": [{ "ref": "tech-lead", "source": "builtin" }],
+        "rules": [{ "ref": "review-standards", "source": "builtin" }]
+      },
+      "docs": [
+        {
+          "name": "SCOPE.md",
+          "format": "markdown",
+          "path": "{docs_path}/{task_id}/SCOPE.md",
+          "required": true,
+          "description": "Final scope document summarizing completed changes, affected areas, and verification notes"
+        }
+      ],
+      "on_enter": [
+        { "action": "update_task_phase", "phase": "review" }
+      ]
+    },
+    {
+      "id": "terminal-success",
+      "type": "terminal",
+      "name": "Change Completed",
+      "description": "Change implemented and reviewed successfully",
+      "config": {
+        "status": "success",
+        "message": "Change flow completed successfully"
+      }
+    },
+    {
+      "id": "terminal-reject",
+      "type": "terminal",
+      "name": "Rejected",
+      "description": "Change request rejected at entry gate",
+      "config": {
+        "status": "rejected",
+        "message": "Change request does not meet requirements"
+      }
+    }
+  ],
+  "edges": [
+    { "id": "e-triage-gate", "from": "phase-triage", "to": "gate-entry" },
+    { "id": "e-gate-plan", "from": "gate-entry", "to": "phase-plan", "type": "conditional", "conditions": [{ "expression": "gate.passed" }] },
+    { "id": "e-gate-reject", "from": "gate-entry", "to": "terminal-reject", "type": "conditional", "conditions": [{ "expression": "!gate.passed" }] },
+    { "id": "e-plan-execute", "from": "phase-plan", "to": "phase-execute" },
+    { "id": "e-execute-gate", "from": "phase-execute", "to": "gate-quality" },
+    { "id": "e-gate-review", "from": "gate-quality", "to": "phase-review", "type": "conditional", "conditions": [{ "expression": "gate.passed" }] },
+    { "id": "e-gate-execute", "from": "gate-quality", "to": "phase-execute", "type": "conditional", "conditions": [{ "expression": "!gate.passed" }] },
+    { "id": "e-review-success", "from": "phase-review", "to": "terminal-success" }
+  ]
+}

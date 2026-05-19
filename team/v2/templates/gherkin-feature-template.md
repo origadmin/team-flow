@@ -1,4 +1,4 @@
-﻿---
+---
 version: "2.0"
 owner: "[PM / QA Engineer]"
 lastUpdated: "2026-05-06"

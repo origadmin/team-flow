@@ -1,4 +1,4 @@
-﻿<!-- AUTO-GENERATED from _team/workflows/shared.md — DO NOT EDIT MANUALLY -->
+<!-- AUTO-GENERATED from _team/workflows/shared.md — DO NOT EDIT MANUALLY -->
 <!-- To update: modify _team/workflows/shared.md, then run DOMGEN regeneration -->
 
 # 工作流程详解

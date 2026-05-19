@@ -212,6 +212,14 @@ QA completion check:
 Before closing a feature task:
 
 ```
+Output Guard 检查（前置 — 未通过禁止继续）:
+- [ ] Output Guard Summary 已输出（全部 ✅）
+- [ ] AC Compliance Matrix 无 ❌ 项
+- [ ] 编译/类型检查实际执行并展示输出
+- [ ] 测试实际执行并展示通过数量
+- [ ] Self-Critique 已执行
+
+文档与实现检查:
 - [ ] R0_NAVIGATION_MATRIX.md exists and non-empty
 - [ ] All entries defined in R0 are implemented in code
 - [ ] SPEC.md exists and non-empty
@@ -238,6 +246,14 @@ Before closing a feature task:
 Before closing a bugfix task:
 
 ```
+Output Guard 检查（前置 — 未通过禁止继续）:
+- [ ] Output Guard Summary 已输出（全部 ✅）
+- [ ] AC Compliance Matrix 无 ❌ 项
+- [ ] 编译/类型检查实际执行并展示输出
+- [ ] 测试实际执行并展示通过数量
+- [ ] Self-Critique 已执行（含数据流 + 真实场景验证）
+
+文档检查:
 - [ ] RCA.md exists with: phenomenon, root cause, impact, prevention
 - [ ] TEST_CASE.md exists with: reproduction steps, expected result, verification result
 - [ ] Pipeline passes (all phases)

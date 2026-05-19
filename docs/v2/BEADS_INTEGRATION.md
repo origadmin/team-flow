@@ -1,4 +1,4 @@
-﻿# beads Integration Guide — team-flow v2
+# beads Integration Guide — team-flow v2
 
 > **Version**: v2.0 | **Date**: 2026-05-02
 

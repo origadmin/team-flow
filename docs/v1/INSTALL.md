@@ -1,4 +1,4 @@
-﻿<!-- AUTO-GENERATED from _team/examples/ + _team/config/ — DO NOT EDIT MANUALLY -->
+<!-- AUTO-GENERATED from _team/examples/ + _team/config/ — DO NOT EDIT MANUALLY -->
 <!-- To update: modify source files, then run DOMGEN regeneration -->
 
 # Team Workflow 安装指南

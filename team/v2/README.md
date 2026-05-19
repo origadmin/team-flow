@@ -1,4 +1,4 @@
-﻿# team-flow v2 — Beads-Native Task Management
+# team-flow v2 — Beads-Native Task Management
 
 > **Status**: Ready for testing | **Version**: v2.0 | **Date**: 2026-05-02
 

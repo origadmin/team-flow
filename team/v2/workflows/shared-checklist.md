@@ -1,13 +1,21 @@
 # team-flow v2 完成门禁清单 - shared-checklist.md
 
-> **更新日期**: 2026-05-10
-> **用途**: Layer 3 完成门禁和详细检查清单
+> **更新日期**: 2026-05-18
+> **用途**: Layer 3 完成门禁和详细检查清单（含 Output Guard 前置检查）
 
 ---
 
 ## Feature 完成门禁
 
 ```
+Output Guard 检查（前置 — 未通过禁止继续）:
+- [ ] Output Guard Summary 已输出（全部 ✅）
+- [ ] AC Compliance Matrix 无 ❌ 项
+- [ ] 编译/类型检查实际执行并展示输出
+- [ ] 测试实际执行并展示通过数量
+- [ ] Self-Critique 已执行
+
+文档与实现检查:
 - [ ] R0_NAVIGATION_MATRIX.md 存在且非空
 - [ ] R0 中定义的所有入口已在代码中实现
 - [ ] SPEC.md 存在且非空
@@ -35,6 +43,13 @@
 ## Bugfix 完成门禁
 
 ```
+Output Guard 检查（前置 — 未通过禁止继续）:
+- [ ] Output Guard Summary 已输出（全部 ✅）
+- [ ] AC Compliance Matrix 无 ❌ 项
+- [ ] 编译/类型检查实际执行并展示输出
+- [ ] 测试实际执行并展示通过数量
+- [ ] Self-Critique 已执行（含数据流 + 真实场景验证）
+
 ⚠️ 测试验证执行（必须展示实际命令输出）:
 - [ ] 后端Bug: go build ./... 编译通过（展示输出）
 - [ ] 后端Bug: go test ./... 全部通过（展示通过数量）

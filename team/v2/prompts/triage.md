@@ -1,4 +1,4 @@
-﻿---
+---
 ai:
   id: triage
   triggers:
@@ -127,6 +127,9 @@ When acting as Triage:
 1. Load this file + `{TEAM_PATH}/workflows/shared.md` + `{TEAM_PATH}/workflows/roles/triage-standards.md`
 2. Ensure you're in the project directory: `cd {PROJECT}`
 3. Verify flow: `flow task --version`
+4. **Run `flow task show --current --json` to get current task info** (TaskPool, Phase)
+5. **Compose Status Line from CLI output** (do NOT manually fill TaskPool/Phase)
+6. **Read `.team/consensus.md` and `.team/checklist.md`** for project-level rules
 
 ---
 
@@ -429,8 +432,9 @@ About to execute an operation
     □ Task 已创建？
       └─ ⚠️ 未执行 flow task create = 违规！必须先创建 Task
 
-    □ TaskPool 显示正确 beads ID？
-      └─ 显示 "framework"/"orig-cms"/"-(N/A)" = ⚠️ 违规！TaskPool 必须显示 beads ID (如 team-flow-xxx#5)
+    □ Status Line 数据来自 flow task CLI？
+      └─ ⚠️ TaskPool 必须来自 `flow task show --current --json` → `.id`，禁止手动填写
+      └─ 显示 "framework"/"orig-cms"/"-(N/A)" = ⚠️ 违规！
 
     □ 用户已确认？
       └─ 未确认 = 等待用户确认
@@ -439,23 +443,35 @@ About to execute an operation
       └─ 检查 Agent Dispatch Mapping
 ```
 
-### Status Line 验证规则
+### Status Line 数据来源：`flow task` CLI
 
-**TaskPool 值来源**（按优先级）：
-1. `flow task create` 返回的 beads ID（正确）
-2. `flow config paths --json` 返回的 `{PROJECT}` 目录名（错误！）
-3. 硬编码 "framework"（错误！）
+**⚠️ Status Line 的 TaskPool 和 Phase 必须从 `flow task` CLI 输出提取，禁止手动填写。**
 
-**⚠️ 如果看到 Status Line 中 TaskPool 值等于目录名（如 "framework"、"orig-cms"），说明 AI 跳过了 Task 创建步骤。**
+```bash
+# Get current task info (TaskPool + Phase)
+flow task show --current --json
+# → .id → TaskPool (beads-id#cr-index)
+# → .labels matching "phase:*" → Phase
+
+# Get project name (Asset)
+flow config paths --json
+# → project basename
+```
+
+**字段映射**：
+- `Role` ← current active role
+- `TaskPool` ← `flow task show --current --json` → `.id` + `#{cr-index}`
+- `Phase` ← `.labels` matching `phase:*`
+- `Asset` ← project basename
 
 **正确示例**：
 ```
 [Role: Triage | TaskPool: team-flow-6x9.15#5 | Phase: analyze | Asset: orig-cms]
 ```
 
-**错误示例**：
+**错误示例（手动填写）**：
 ```
-[Role: Triage | TaskPool: framework | Phase: analyze | Asset: orig-cms]  ← 违规！
+[Role: Triage | TaskPool: framework | Phase: analyze | Asset: orig-cms]  ← 违规！未从 flow task CLI 获取
 [Role: Dev | TaskPool: -(N/A) | Phase: implement | Asset: orig-cms]       ← 严重违规！
 ```
 

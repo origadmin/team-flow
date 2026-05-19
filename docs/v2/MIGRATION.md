@@ -1,4 +1,4 @@
-﻿# Migration Guide: team-flow v1 → v2
+# Migration Guide: team-flow v1 → v2
 
 > **Version**: v2.0 | **Date**: 2026-05-02
 > **Scope**: Triage workflow, Task pool management, Multi-agent coordination

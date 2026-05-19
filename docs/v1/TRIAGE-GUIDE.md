@@ -1,4 +1,4 @@
-﻿<!-- AUTO-GENERATED from _team/prompts/triage.md — DO NOT EDIT MANUALLY -->
+<!-- AUTO-GENERATED from _team/prompts/triage.md — DO NOT EDIT MANUALLY -->
 <!-- To update: modify _team/prompts/triage.md, then run DOMGEN regeneration -->
 
 # 分类指南 (Triage Guide)

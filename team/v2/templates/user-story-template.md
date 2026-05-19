@@ -1,4 +1,4 @@
-﻿# 用户故事模板 — v2 beads-native
+# 用户故事模板 — v2 beads-native
 
 > **位置**: `{DOCS_INTERNAL}/requirements/F{NNN}-{name}/USER_STORY.md`
 

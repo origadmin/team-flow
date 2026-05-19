@@ -1,4 +1,4 @@
-﻿<!-- AUTO-GENERATED from _team/prompts/tech-lead.md — DO NOT EDIT MANUALLY -->
+<!-- AUTO-GENERATED from _team/prompts/tech-lead.md — DO NOT EDIT MANUALLY -->
 <!-- To update: modify _team/prompts/tech-lead.md, then run DOMGEN regeneration -->
 
 # 架构设计

@@ -1,4 +1,4 @@
-﻿<!-- SNAPSHOT - Frozen as of 2026-04-24 - DO NOT REGENERATE -->
+<!-- SNAPSHOT - Frozen as of 2026-04-24 - DO NOT REGENERATE -->
 <!-- This document records decisions made during v6.0 refactor -->
 <!-- For current architecture, see docs/design/ARCHITECTURE.md -->
 

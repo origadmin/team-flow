@@ -65,12 +65,26 @@ QA 被触发
 ## 验证流程
 
 ```
+0. 检查 Dev/Bugfix 的 Output Guard Summary
 1. 读取 AC.md 中的验收标准
 2. 逐条验证 Given/When/Then 场景
 3. 覆盖边界条件和异常分支
 4. 输出测试报告
 5. 更新 task-pool.md
 ```
+
+### Step 0: Output Guard Summary 检查（新增 — QA 第一件事）
+
+📌 **Dev/Bugfix 的 Output Guard Summary 是 QA 的输入依赖。没有它，QA 无法判断开发者的自检质量。**
+
+| # | 检查项 | 检查方式 | 缺失时 |
+|---|--------|---------|--------|
+| 1 | Output Guard Summary 存在 | 搜索子 Agent 输出中的 "Output Guard Summary" | ⛔ 退回 Dev/Bugfix 补执行 |
+| 2 | AC Compliance 无 ❌ | 解析 Output Guard Summary | ⛔ 退回 Dev 补覆盖 |
+| 3 | 测试证据是实际输出 | 检查 Output Guard Summary 中 Tests 项 | ⛔ 退回 Dev 重新跑测试 |
+| 4 | Self-Critique 已执行 | 检查 Output Guard Summary | ⚠️ 警告并记录 |
+
+⛔ 没有 Output Guard Summary → QA 拒绝验证，退回 Dev/Bugfix。
 
 ---
 

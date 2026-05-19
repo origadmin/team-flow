@@ -1,4 +1,4 @@
-﻿<!-- AUTO-GENERATED from _team/SKILL.md — DO NOT EDIT MANUALLY -->
+<!-- AUTO-GENERATED from _team/SKILL.md — DO NOT EDIT MANUALLY -->
 <!-- To update: modify _team/SKILL.md, then run DOMGEN regeneration -->
 
 # Team Workflow — AI 多角色协作系统

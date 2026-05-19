@@ -1,7 +1,7 @@
 # team-flow SKILL.md — Entry Point
 
-> **Version**: 4.3 | **Date**: 2026-05-08
-> **Core change**: TRIAGE-INBOX 统一入口 + 拆分机制
+> **Version**: 4.4 | **Date**: 2026-05-18
+> **Core change**: Output Guard self-review mechanism + Content Validity Check
 
 ## Status Line (MANDATORY — Highest Priority)
 
@@ -256,6 +256,37 @@ Development flow:
 - Backend bugs: at minimum use httptest to send real HTTP requests, not just test UseCase
 - Frontend bugs: at minimum verify page renders normally + core interactions work, not just test components
 - R-iteration > 4 must force pause, ask user to confirm fix direction
+
+### Output Guard (same priority as Regression Guard)
+
+> **AI reporting completion without actual verification is the second most common behavioral deviation. Output Guard forces self-review before completion.**
+
+#### Rule 1: Must execute Output Guard before reporting completion
+- Every Dev/Bugfix MUST execute the 5-step Output Guard protocol before reporting task complete
+- Output Guard is defined in each role's prompt file (`prompts/dev.md`, `prompts/bugfix.md`)
+- Skipping Output Guard = task failure, forbidden to report completion
+
+#### Rule 2: AC Compliance Matrix is mandatory
+- Must produce a table showing each acceptance criterion and whether it is covered
+- Any ❌ in the matrix = forbidden to report completion
+- "I think it's done" without evidence = not acceptable
+
+#### Rule 3: Test evidence must be actual output
+- Must show actual command output (test count, pass/fail numbers)
+- "Tests should pass" / "assumed to compile" = not acceptable
+- Triage verifies Output Guard Summary exists in sub-agent output
+
+#### Rule 4: Self-Critique forces honest self-review
+- 8 mandatory self-questions that force AI to challenge its own output
+- Must answer honestly and fix any issues found
+- Common catches: unread files, untested code, hardcoded values, Chinese comments
+
+#### Rule 5: Triage Content Validity Check
+- After sub-agent returns, Triage checks not just file existence but content quality
+- RCA.md must have specific file:line references (not vague descriptions)
+- TEST_CASE.md must have concrete verification steps
+- No TODO/FIXME or Chinese comments in changed files
+- Output Guard Summary must be present in sub-agent output
 
 ## v2 Task Lifecycle
 

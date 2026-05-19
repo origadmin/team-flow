@@ -1,4 +1,4 @@
-﻿# {Fxxx}: {Feature Name} — Frontend Test Coverage Declaration
+# {Fxxx}: {Feature Name} — Frontend Test Coverage Declaration
 
 ## beads 关联
 

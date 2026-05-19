@@ -1,0 +1,123 @@
+{
+  "version": "v3",
+  "metadata": {
+    "name": "analysis-flow",
+    "description": "Technical analysis flow: Triage → Analyze → Report → Terminal",
+    "author": "team-flow",
+    "tags": ["analysis", "research", "software"]
+  },
+  "config": {
+    "task_type": "analysis",
+    "auto_dispatch": true,
+    "parallel_limit": 2,
+    "timeout_minutes": 120
+  },
+  "variables": {
+    "docs_path": "",
+    "TEAM_PATH": "",
+    "task_id": ""
+  },
+  "nodes": [
+    {
+      "id": "phase-triage",
+      "type": "phase",
+      "name": "Analysis Triage",
+      "description": "Classify and scope the analysis request",
+      "config": {
+        "role": "Triage",
+        "auto_dispatch": true
+      },
+      "components": {
+        "roles": [{ "ref": "triage", "source": "builtin" }],
+        "rules": [{ "ref": "dispatch-guard", "source": "builtin" }]
+      },
+      "docs": [
+        {
+          "name": "TRIAGE.md",
+          "format": "markdown",
+          "path": "{docs_path}/{task_id}/TRIAGE.md",
+          "required": true,
+          "description": "Analysis request triage record with scope, objectives, and dispatch decision"
+        }
+      ],
+      "on_enter": [
+        { "action": "update_task_phase", "phase": "ready" }
+      ]
+    },
+    {
+      "id": "phase-analyze",
+      "type": "phase",
+      "name": "Deep Analysis",
+      "description": "Perform technical analysis, investigate codebase, and gather findings",
+      "config": {
+        "role": "Analysis",
+        "auto_dispatch": true,
+        "deliverables": ["FINDINGS.md"]
+      },
+      "components": {
+        "roles": [{ "ref": "analysis", "source": "builtin" }],
+        "rules": [
+          { "ref": "output-guard", "source": "framework" }
+        ],
+        "tools": [
+          { "ref": "task", "commands": ["show", "update", "append"] },
+          { "ref": "search" }
+        ]
+      },
+      "docs": [
+        {
+          "name": "FINDINGS.md",
+          "format": "markdown",
+          "path": "{docs_path}/{task_id}/FINDINGS.md",
+          "required": true,
+          "description": "Analysis findings document with detailed investigation results and evidence"
+        }
+      ],
+      "on_enter": [
+        { "action": "update_task_phase", "phase": "analyze" }
+      ]
+    },
+    {
+      "id": "phase-report",
+      "type": "phase",
+      "name": "Analysis Report",
+      "description": "Compile analysis results into a structured report with conclusions and recommendations",
+      "config": {
+        "role": "Analysis",
+        "auto_dispatch": true,
+        "deliverables": ["REPORT.md"]
+      },
+      "components": {
+        "roles": [{ "ref": "analysis", "source": "builtin" }],
+        "rules": [{ "ref": "output-guard", "source": "framework" }]
+      },
+      "docs": [
+        {
+          "name": "REPORT.md",
+          "format": "markdown",
+          "path": "{docs_path}/{task_id}/REPORT.md",
+          "required": true,
+          "description": "Final analysis report with conclusions, recommendations, and action items"
+        }
+      ],
+      "on_enter": [
+        { "action": "update_task_phase", "phase": "review" }
+      ]
+    },
+    {
+      "id": "terminal-success",
+      "type": "terminal",
+      "name": "Analysis Complete",
+      "description": "Analysis completed and report delivered",
+      "config": {
+        "status": "success",
+        "message": "Analysis flow completed successfully"
+      }
+    }
+  ],
+  "edges": [
+    { "id": "e-triage-analyze", "from": "phase-triage", "to": "phase-analyze" },
+    { "id": "e-analyze-report", "from": "phase-analyze", "to": "phase-report" },
+    { "id": "e-report-success", "from": "phase-report", "to": "terminal-success" }
+  ]
+}

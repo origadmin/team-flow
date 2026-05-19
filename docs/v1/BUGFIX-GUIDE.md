@@ -1,4 +1,4 @@
-﻿<!-- AUTO-GENERATED from _team/prompts/bugfix.md — DO NOT EDIT MANUALLY -->
+<!-- AUTO-GENERATED from _team/prompts/bugfix.md — DO NOT EDIT MANUALLY -->
 <!-- To update: modify _team/prompts/bugfix.md, then run DOMGEN regeneration -->
 
 # Bug 修复指南 (Bugfix Guide)

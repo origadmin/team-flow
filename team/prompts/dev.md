@@ -54,8 +54,8 @@ ai:
 
 # Dev — 共享核心 + 路由器
 
-> **版本**: v8.0
-> **更新日期**: 2026-04-30
+> **版本**: v8.1
+> **更新日期**: 2026-05-18
 > **注意**: 本文件为共享核心。subtype 专属规则在 dev-backend.md / dev-frontend.md 中。
 
 ---
@@ -368,10 +368,81 @@ docs/{doc-name}
 
 ---
 
+## Output Guard（输出前自检 — 强制，在完成门禁之前执行）
+
+📌 **AI 报告完成但实际未验证 = 最常见的质量缺口。Output Guard 强制在报告完成前执行自检，不通过禁止提交。**
+
+### Step 1: AC Compliance Matrix（验收标准逐条核对）
+
+重新读取 SPEC.md / AC.md（Feature）或 RCA.md（Bugfix），对每条验收标准逐一核对实现覆盖情况：
+
+```markdown
+| AC Item | Implementation Location | Status |
+|---------|------------------------|--------|
+| AC-1: ... | file.go:L42, file.go:L78 | ✅ Covered |
+| AC-2: ... | — | ❌ Missing |
+```
+
+⛔ 任何 ❌ → 必须修复后才能继续。无例外。
+⛔ 跳过此步骤直接进完成门禁 → 禁止报告完成。
+
+### Step 2: 编译/类型检查（必须展示实际命令输出）
+
+| subtype | 命令 | 通过标准 |
+|---------|------|----------|
+| backend-dev | `go build ./...` | 无编译错误 |
+| frontend-dev | `bun run typecheck` | 0 errors |
+
+⛔ "应能编译" / "assumed to compile" → 不可接受，必须展示实际输出。
+
+### Step 3: 测试执行（必须展示实际命令输出）
+
+| subtype | 命令 | 通过标准 |
+|---------|------|----------|
+| backend-dev | `go test ./...` | 展示通过数量，0 failures |
+| frontend-dev | `bun run test` | 展示通过数量，0 failures |
+
+⛔ "测试应通过" / "tests should pass" → 不可接受，必须展示实际输出。
+
+### Step 4: Self-Critique（红蓝对抗 — 自我质疑）
+
+在提交前，必须诚实地回答以下问题：
+
+| # | 自问 | 未通过时 |
+|---|------|----------|
+| 1 | 我完整读过要修改的文件吗？ | ⛔ 停下来，现在读 |
+| 2 | 我搜索过被修改的导出符号的所有引用吗？ | ⛔ 停下来，现在搜 |
+| 3 | 有没有我写了但没测试的代码？ | ⛔ 现在补测试 |
+| 4 | 有没有应该配置化但硬编码的值？ | 修复 |
+| 5 | 代码中有没有中文注释？ | ⛔ 立即删除 |
+| 6 | 我的修改可能破坏已有功能吗？ | 跑全量回归确认 |
+| 7 | 真实场景下能工作吗（不只是 mock 测试）？ | 验证真实场景 |
+| 8 | 有没有遗留的 TODO/FIXME？ | 解决或记录 |
+
+### Step 5: Output Guard Summary（结构化输出）
+
+```
+🔍 Output Guard Summary:
+   - AC Compliance: {N/M items covered} {❌ items → list}
+   - Compilation: ✅/❌ (evidence: {command output summary})
+   - Tests: ✅/❌ (evidence: {X passed, Y failed})
+   - Self-Critique Issues: {N issues found and fixed}
+   - Unresolved Risks: {list or "none"}
+```
+
+⛔ AC Compliance 有 ❌ → 禁止报告完成。
+⛔ Compilation 或 Tests 为 ❌ → 禁止报告完成。
+⛔ 跳过 Output Guard → 禁止报告完成。
+
+---
+
 ## 完成门禁
+
+📌 **完成门禁在 Output Guard 通过之后执行。Output Guard 未通过 = 禁止进入完成门禁。**
 
 ```
 Feature 完成检查:
+- [ ] Output Guard Summary 已输出（全部 ✅）
 - [ ] Pipeline 全部通过（Step 1-5）
 - [ ] 代码无中文注释（Step 2 lint 阶段已强制）
 - [ ] 文档与实现一致（Anti-Drift）
@@ -383,6 +454,7 @@ Feature 完成检查:
 - [ ] 建议后续角色 → QA
 
 Bugfix 完成检查:
+- [ ] Output Guard Summary 已输出（全部 ✅）
 - [ ] Pipeline 全部通过（Step 1-5）
 - [ ] 代码无中文注释（Step 2 lint 阶段已强制）
 - [ ] SCOPE.md 已生成（含 pipeline 结果 + 覆盖率）

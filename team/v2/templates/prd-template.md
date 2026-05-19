@@ -1,4 +1,4 @@
-﻿# PRD 模板 — v2 beads-native
+# PRD 模板 — v2 beads-native
 
 > **位置**: `{DOCS_INTERNAL}/requirements/F{NNN}-{name}/PRD.md`
 

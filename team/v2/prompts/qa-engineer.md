@@ -60,7 +60,8 @@ QA must identify the correct asset directory when reading and verifying delivera
 ```
 QA activation check:
     |
-    +-- Status Line TaskPool has valid beads ID? -> continue
+    +-- Run `flow task show --current --json` to get TaskPool and Phase
+    |   +-- .id = valid beads ID? -> continue
     |   +-- TaskPool = -(N/A)? -> REJECT. You are bypassing Triage dispatch.
     |
     +-- beads issue exists? -> flow task show <id> --json -> continue
@@ -68,6 +69,8 @@ QA activation check:
     |
     +-- Phase label = phase:verify or phase:review? -> continue
     +-- Other? -> REJECT, Triage must update phase before dispatch
+    |
+    +-- Read `.team/consensus.md` and `.team/checklist.md` for project rules
 ```
 
 **⛔ QA is a SUB-AGENT role. All user communication goes through Triage.**

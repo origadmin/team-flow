@@ -1,0 +1,290 @@
+{
+  "version": "v3",
+  "metadata": {
+    "name": "feature-flow",
+    "description": "Standard feature development flow: Triage → Gate → Analyze → Design → Implement → Gate → Verify → Review → Terminal",
+    "author": "team-flow",
+    "tags": ["feature", "default", "software"]
+  },
+  "config": {
+    "task_type": "feature",
+    "auto_dispatch": true,
+    "parallel_limit": 3,
+    "timeout_minutes": 480
+  },
+  "variables": {
+    "docs_path": "",
+    "TEAM_PATH": "",
+    "task_id": ""
+  },
+  "nodes": [
+    {
+      "id": "phase-triage",
+      "type": "phase",
+      "name": "Task Triage",
+      "description": "Classify and dispatch the incoming task to the appropriate flow",
+      "config": {
+        "role": "Triage",
+        "auto_dispatch": true
+      },
+      "components": {
+        "roles": [{ "ref": "triage", "source": "builtin" }],
+        "rules": [{ "ref": "dispatch-guard", "source": "builtin" }]
+      },
+      "docs": [
+        {
+          "name": "TRIAGE.md",
+          "format": "markdown",
+          "path": "{docs_path}/{task_id}/TRIAGE.md",
+          "required": true,
+          "description": "Triage classification record with task type, priority, and dispatch decision"
+        }
+      ],
+      "on_enter": [
+        { "action": "update_task_phase", "phase": "ready" }
+      ]
+    },
+    {
+      "id": "gate-entry",
+      "type": "gate",
+      "name": "Entry Gate",
+      "description": "Validate task exists and type matches feature",
+      "config": {
+        "conditions": [
+          { "type": "task_exists" },
+          { "type": "type_matches", "expected": "feature" }
+        ],
+        "on_pass": "phase-analyze",
+        "on_fail": "terminal-reject"
+      }
+    },
+    {
+      "id": "phase-analyze",
+      "type": "phase",
+      "name": "Requirements Analysis",
+      "description": "Analyze requirements and produce SPEC and acceptance criteria",
+      "config": {
+        "role": "TechLead",
+        "auto_dispatch": true,
+        "deliverables": ["SPEC.md", "AC.md"]
+      },
+      "components": {
+        "roles": [{ "ref": "tech-lead", "source": "builtin" }],
+        "rules": [
+          { "ref": "requirements-standards", "source": "builtin" },
+          { "ref": "output-guard", "source": "framework" }
+        ],
+        "tools": [
+          { "ref": "task", "commands": ["show", "update", "append"] },
+          { "ref": "search" }
+        ],
+        "skills": [{ "ref": "api-design" }]
+      },
+      "docs": [
+        {
+          "name": "SPEC.md",
+          "format": "markdown",
+          "path": "{docs_path}/{task_id}/SPEC.md",
+          "required": true,
+          "description": "Feature specification document detailing requirements, scope, and constraints"
+        },
+        {
+          "name": "AC.md",
+          "format": "markdown",
+          "path": "{docs_path}/{task_id}/AC.md",
+          "required": true,
+          "description": "Acceptance criteria with measurable conditions for feature completion"
+        }
+      ],
+      "gates": [
+        {
+          "type": "deliverable_check",
+          "required": ["SPEC.md", "AC.md"],
+          "on_fail": "phase-analyze"
+        }
+      ],
+      "on_enter": [
+        { "action": "update_task_phase", "phase": "analyze" }
+      ]
+    },
+    {
+      "id": "phase-design",
+      "type": "phase",
+      "name": "Technical Design",
+      "description": "Design data models, state machines, and API contracts",
+      "config": {
+        "role": "TechLead",
+        "auto_dispatch": true,
+        "deliverables": ["R1_DATA_MODEL.md", "R2_STATE_MACHINE.md", "R3_API_CONTRACT.md"]
+      },
+      "components": {
+        "roles": [{ "ref": "tech-lead", "source": "builtin" }],
+        "rules": [{ "ref": "architecture-standards", "source": "builtin" }],
+        "skills": [{ "ref": "protobuf" }, { "ref": "api-design" }]
+      },
+      "docs": [
+        {
+          "name": "R1_DATA_MODEL.md",
+          "format": "markdown",
+          "path": "{docs_path}/{task_id}/R1_DATA_MODEL.md",
+          "required": true,
+          "description": "Data model design including entity relationships and schema definitions"
+        },
+        {
+          "name": "R2_STATE_MACHINE.md",
+          "format": "markdown",
+          "path": "{docs_path}/{task_id}/R2_STATE_MACHINE.md",
+          "required": true,
+          "description": "State machine design defining transitions, events, and lifecycle"
+        },
+        {
+          "name": "R3_API_CONTRACT.md",
+          "format": "markdown",
+          "path": "{docs_path}/{task_id}/R3_API_CONTRACT.md",
+          "required": true,
+          "description": "API contract definitions including endpoints, request/response schemas"
+        }
+      ],
+      "on_enter": [
+        { "action": "update_task_phase", "phase": "design" }
+      ]
+    },
+    {
+      "id": "phase-implement",
+      "type": "phase",
+      "name": "Implementation",
+      "description": "Implement the feature code and unit tests",
+      "config": {
+        "role": "Dev",
+        "auto_dispatch": true,
+        "deliverables": ["code", "unit_tests"]
+      },
+      "components": {
+        "roles": [{ "ref": "dev", "source": "builtin" }],
+        "rules": [
+          { "ref": "development-standards", "source": "builtin" },
+          { "ref": "regression-guard", "source": "builtin" }
+        ],
+        "tools": [
+          { "ref": "task" },
+          { "ref": "search" },
+          { "ref": "file-ops" }
+        ]
+      },
+      "docs": [
+        {
+          "name": "IMPL.md",
+          "format": "markdown",
+          "path": "{docs_path}/{task_id}/IMPL.md",
+          "required": true,
+          "description": "Implementation notes documenting key code changes, architectural decisions, and test coverage"
+        }
+      ],
+      "on_enter": [
+        { "action": "update_task_phase", "phase": "implement" }
+      ]
+    },
+    {
+      "id": "gate-quality",
+      "type": "gate",
+      "name": "Quality Gate",
+      "description": "Verify tests pass, lint is clean, and no regressions exist",
+      "config": {
+        "conditions": [
+          { "type": "tests_pass", "threshold": "100%" },
+          { "type": "lint_pass", "threshold": "0 errors" },
+          { "type": "no_regressions" }
+        ],
+        "on_pass": "phase-verify",
+        "on_fail": "phase-implement",
+        "auto_retry": { "max_attempts": 2, "delay_minutes": 5 }
+      }
+    },
+    {
+      "id": "phase-verify",
+      "type": "phase",
+      "name": "Integration Verification",
+      "description": "Run full integration and E2E tests, verify feature completeness",
+      "config": {
+        "role": "QA",
+        "auto_dispatch": true,
+        "deliverables": ["TEST_COVERAGE.md"]
+      },
+      "components": {
+        "roles": [{ "ref": "qa", "source": "builtin" }],
+        "rules": [{ "ref": "test-standards", "source": "builtin" }]
+      },
+      "docs": [
+        {
+          "name": "TEST_COVERAGE.md",
+          "format": "markdown",
+          "path": "{docs_path}/{task_id}/TEST_COVERAGE.md",
+          "required": true,
+          "description": "Test coverage report including unit, integration, and E2E test results"
+        }
+      ],
+      "on_enter": [
+        { "action": "update_task_phase", "phase": "verify" }
+      ]
+    },
+    {
+      "id": "phase-review",
+      "type": "phase",
+      "name": "Code Review",
+      "description": "Review code quality, architecture compliance, and produce SCOPE.md",
+      "config": {
+        "role": "TechLead",
+        "auto_dispatch": true,
+        "deliverables": ["SCOPE.md"]
+      },
+      "components": {
+        "roles": [{ "ref": "tech-lead", "source": "builtin" }],
+        "rules": [{ "ref": "review-standards", "source": "builtin" }]
+      },
+      "docs": [
+        {
+          "name": "SCOPE.md",
+          "format": "markdown",
+          "path": "{docs_path}/{task_id}/SCOPE.md",
+          "required": true,
+          "description": "Completion scope document summarizing what was implemented, changed, and any known issues"
+        }
+      ],
+      "on_enter": [
+        { "action": "update_task_phase", "phase": "review" }
+      ]
+    },
+    {
+      "id": "terminal-success",
+      "type": "terminal",
+      "name": "Completed",
+      "description": "Feature development completed successfully",
+      "config": {
+        "status": "success",
+        "message": "Feature development flow completed successfully"
+      }
+    },
+    {
+      "id": "terminal-reject",
+      "type": "terminal",
+      "name": "Rejected",
+      "description": "Task rejected at entry gate",
+      "config": {
+        "status": "rejected",
+        "message": "Task does not match feature type requirements"
+      }
+    }
+  ],
+  "edges": [
+    { "id": "e-triage-gate", "from": "phase-triage", "to": "gate-entry" },
+    { "id": "e-gate-analyze", "from": "gate-entry", "to": "phase-analyze", "type": "conditional", "conditions": [{ "expression": "gate.passed" }] },
+    { "id": "e-gate-reject", "from": "gate-entry", "to": "terminal-reject", "type": "conditional", "conditions": [{ "expression": "!gate.passed" }] },
+    { "id": "e-analyze-design", "from": "phase-analyze", "to": "phase-design" },
+    { "id": "e-design-implement", "from": "phase-design", "to": "phase-implement" },
+    { "id": "e-implement-gate", "from": "phase-implement", "to": "gate-quality" },
+    { "id": "e-gate-verify", "from": "gate-quality", "to": "phase-verify", "type": "conditional", "conditions": [{ "expression": "gate.passed" }] },
+    { "id": "e-gate-implement", "from": "gate-quality", "to": "phase-implement", "type": "conditional", "conditions": [{ "expression": "!gate.passed" }] },
+    { "id": "e-verify-review", "from": "phase-verify", "to": "phase-review" },
+    { "id": "e-review-success", "from": "phase-review", "to": "terminal-success" }
+  ]
+}

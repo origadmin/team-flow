@@ -1,4 +1,4 @@
-﻿# SCOPE.md 模板
+# SCOPE.md 模板
 
 > Machine-Readable Change Report
 

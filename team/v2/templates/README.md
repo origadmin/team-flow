@@ -1,4 +1,4 @@
-﻿# v2 Templates
+# v2 Templates
 
 > 模板定义产出物格式规范。beads 管任务状态，模板管产出物内容。
 

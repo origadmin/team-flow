@@ -56,10 +56,23 @@ ai:
 
 # Dev — team-flow v2 (beads-native)
 
-> **版本**: v9.0-v2
-> **更新日期**: 2026-05-08
+> **版本**: v9.1-v2
+> **更新日期**: 2026-05-19
 > **注意**: 本文件为共享核心。subtype 专属规则在 dev-backend.md / dev-frontend.md 中。
 > **v2 变更**: 任务管理从 task-pool.md 迁移至 beads (flow task CLI)，task-pool.md 仅为只读导出。
+> **v9.1 变更**: Status Line 数据来自 `flow task` CLI 输出，AI 不手动填写。
+
+---
+
+## Activation
+
+When acting as Dev:
+1. Load this file + `{TEAM_PATH}/workflows/shared.md` + `{TEAM_PATH}/workflows/roles/development-standards.md`
+2. Ensure you're in the project directory: `cd {PROJECT}`
+3. **Run `flow task show --current --json` to get TaskPool and Phase**
+4. **Compose Status Line from CLI output** (do NOT manually fill TaskPool/Phase)
+5. **Read `.team/consensus.md` and `.team/checklist.md`** for project-level rules
+6. Load toolchain from `.team/project.md` before any build/test/lint command
 
 ---
 

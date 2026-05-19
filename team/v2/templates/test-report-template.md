@@ -1,4 +1,4 @@
-﻿# 测试报告模板 — v2 beads-native
+# 测试报告模板 — v2 beads-native
 
 ---
 

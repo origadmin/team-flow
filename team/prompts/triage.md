@@ -320,6 +320,18 @@ bun run dev
 | 13 | RCA.md 包含上一轮失败分析 | 读取 RCA.md，搜索"R{N-1}"或"上一轮" | ⛔ 标记为"缺少R迭代分析" |
 | 14 | R 迭代 >= R4 时是否已暂停请用户确认 | 检查 task-pool 备注 | ⛔ 标记为"R4+未暂停" |
 
+#### Part 5: Output Guard + Content Validity Check（NEW — 输出自检 + 内容有效性）
+
+| # | 验证项 | 检查方式 | 缺失时 |
+|---|--------|---------|--------|
+| 15 | bugfix-expert 输出中包含 Output Guard Summary | 搜索子Agent输出 "Output Guard Summary" | ⛔ 标记为"跳过自检"，退回重新执行 Output Guard |
+| 16 | AC Compliance Matrix 无 ❌ | 解析 Output Guard Summary | ⛔ 标记为"AC未全覆盖"，退回补覆盖 |
+| 17 | 测试证据是实际命令输出 | 检查 Output Guard Summary Tests 项 | ⛔ 标记为"无测试证据"，退回重新跑测试 |
+| 18 | RCA.md 根因包含 file:line 引用 | 读取 RCA.md 检查代码位置引用 | ⛔ 标记为"RCA太模糊"，退回补具体引用 |
+| 19 | TEST_CASE.md 有具体验证步骤 | 读取 TEST_CASE.md 检查 Execute/Command 行 | ⛔ 标记为"TEST_CASE缺验证步骤" |
+| 20 | 修改文件无 TODO/FIXME | grep TODO\|FIXME 修改的文件 | ⚠️ 标记为"有未解决TODO" |
+| 21 | 修改文件无中文注释 | grep 中文字符 修改的代码文件 | ⛔ 标记为"含中文注释"，退回删除 |
+
 验证结果：
 - 全部存在 + 全部测试通过 → 更新 task-pool 状态为 Review，建议后续角色=QA
 - 任何缺失或测试失败 → 更新 task-pool 状态为 Doing，备注"缺少{具体项}，需补全"，退回 bugfix-expert
@@ -748,7 +760,7 @@ Todo → Doing → Review → (用户确认) → Archived
 | v5.1 | 2026-04-24 | backlog.md 归入 .team/，文件空间定义对齐 |
 | **v7.0** | **2026-04-25** | **移除 T: 前缀强制要求，加入 Agent 分发映射，支持自动分发到子 Agent** |
 | **v7.2** | **2026-04-25** | **明确 Triage = 编排者，加入编排流程（单阶段/两阶段），加入状态流转职责** |
-| **v7.6** | **2026-05-04** | **Bug 后验证增强：v2 数据流追踪验证 + 真实场景验证检查 + R 迭代质量检查（基于 B099 六轮失败教训）** |
+| **v7.7** | **2026-05-18** | **新增 Part 5: Output Guard + Content Validity Check，确保子Agent输出经过自检且内容有效（不仅仅文件存在）** |
 
 ---
 

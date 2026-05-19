@@ -1,4 +1,4 @@
-﻿# B{NNN}-R{N}: UI Verification Report
+# B{NNN}-R{N}: UI Verification Report
 
 > **Template**: ui-verification-template.md
 > **Usage**: Frontend Bug fix MUST produce this document with screenshots as evidence.

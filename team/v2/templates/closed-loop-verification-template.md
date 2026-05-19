@@ -1,4 +1,4 @@
-﻿# 闭环验证报告模板 — v2 beads-native
+# 闭环验证报告模板 — v2 beads-native
 
 ---
 

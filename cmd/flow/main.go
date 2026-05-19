@@ -9,6 +9,7 @@ import (
 	"github.com/origadmin/team-flow/internal/doctor"
 	"github.com/origadmin/team-flow/internal/editor"
 	"github.com/origadmin/team-flow/internal/export"
+	"github.com/origadmin/team-flow/internal/proc"
 	"github.com/origadmin/team-flow/internal/graph"
 	"github.com/origadmin/team-flow/internal/logger"
 	"github.com/origadmin/team-flow/internal/migrate"
@@ -80,6 +81,7 @@ func main() {
 	rootCmd.AddCommand(editor.Cmd)
 	rootCmd.AddCommand(graph.Cmd)
 	rootCmd.AddCommand(ver.Cmd)
+	rootCmd.AddCommand(proc.Cmd)
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)

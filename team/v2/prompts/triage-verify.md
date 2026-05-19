@@ -1,4 +1,4 @@
-﻿# Triage: Post-Verification & Review (loaded on demand)
+# Triage: Post-Verification & Review (loaded on demand)
 
 > **Loading rule**: Bug返回后验证、Review确认、分发子Agent、管理状态、Session时加载此文件
 > **Source**: 来自triage.md拆分，v17.0

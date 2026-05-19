@@ -1,0 +1,204 @@
+{
+  "version": "v3",
+  "metadata": {
+    "name": "bugfix-flow",
+    "description": "Bug fix flow: Triage → Gate → Investigate → Fix → Gate → Verify → Terminal",
+    "author": "team-flow",
+    "tags": ["bug", "bugfix", "software"]
+  },
+  "config": {
+    "task_type": "bug",
+    "auto_dispatch": true,
+    "parallel_limit": 2,
+    "timeout_minutes": 240
+  },
+  "variables": {
+    "docs_path": "",
+    "TEAM_PATH": "",
+    "task_id": ""
+  },
+  "nodes": [
+    {
+      "id": "phase-triage",
+      "type": "phase",
+      "name": "Bug Triage",
+      "description": "Classify and validate the bug report",
+      "config": {
+        "role": "Triage",
+        "auto_dispatch": true
+      },
+      "components": {
+        "roles": [{ "ref": "triage", "source": "builtin" }],
+        "rules": [{ "ref": "dispatch-guard", "source": "builtin" }]
+      },
+      "docs": [
+        {
+          "name": "TRIAGE.md",
+          "format": "markdown",
+          "path": "{docs_path}/{task_id}/TRIAGE.md",
+          "required": true,
+          "description": "Bug triage record with severity assessment, priority, and dispatch decision"
+        }
+      ],
+      "on_enter": [
+        { "action": "update_task_phase", "phase": "ready" }
+      ]
+    },
+    {
+      "id": "gate-entry",
+      "type": "gate",
+      "name": "Entry Gate",
+      "description": "Validate bug report has sufficient information and type matches",
+      "config": {
+        "conditions": [
+          { "type": "task_exists" },
+          { "type": "type_matches", "expected": "bug" }
+        ],
+        "on_pass": "phase-investigate",
+        "on_fail": "terminal-reject"
+      }
+    },
+    {
+      "id": "phase-investigate",
+      "type": "phase",
+      "name": "Root Cause Investigation",
+      "description": "Investigate the bug, identify root cause, and produce RCA document",
+      "config": {
+        "role": "Dev",
+        "auto_dispatch": true,
+        "deliverables": ["RCA.md"]
+      },
+      "components": {
+        "roles": [{ "ref": "dev", "source": "builtin" }],
+        "rules": [
+          { "ref": "development-standards", "source": "builtin" },
+          { "ref": "output-guard", "source": "framework" }
+        ],
+        "tools": [
+          { "ref": "task", "commands": ["show", "update", "append"] },
+          { "ref": "search" }
+        ]
+      },
+      "docs": [
+        {
+          "name": "RCA.md",
+          "format": "markdown",
+          "path": "{docs_path}/{task_id}/RCA.md",
+          "required": true,
+          "description": "Root cause analysis document detailing bug origin, affected components, and reproduction steps"
+        }
+      ],
+      "on_enter": [
+        { "action": "update_task_phase", "phase": "analyze" }
+      ]
+    },
+    {
+      "id": "phase-fix",
+      "type": "phase",
+      "name": "Bug Fix",
+      "description": "Implement the bug fix and add regression tests",
+      "config": {
+        "role": "Dev",
+        "auto_dispatch": true,
+        "deliverables": ["code", "regression_tests"]
+      },
+      "components": {
+        "roles": [{ "ref": "dev", "source": "builtin" }],
+        "rules": [
+          { "ref": "development-standards", "source": "builtin" },
+          { "ref": "regression-guard", "source": "builtin" }
+        ],
+        "tools": [
+          { "ref": "task" },
+          { "ref": "search" },
+          { "ref": "file-ops" }
+        ]
+      },
+      "docs": [
+        {
+          "name": "FIX.md",
+          "format": "markdown",
+          "path": "{docs_path}/{task_id}/FIX.md",
+          "required": true,
+          "description": "Bug fix implementation notes documenting the fix approach, code changes, and regression test additions"
+        }
+      ],
+      "on_enter": [
+        { "action": "update_task_phase", "phase": "implement" }
+      ]
+    },
+    {
+      "id": "gate-quality",
+      "type": "gate",
+      "name": "Quality Gate",
+      "description": "Verify fix passes all tests and no regressions introduced",
+      "config": {
+        "conditions": [
+          { "type": "tests_pass", "threshold": "100%" },
+          { "type": "lint_pass", "threshold": "0 errors" },
+          { "type": "no_regressions" }
+        ],
+        "on_pass": "phase-verify",
+        "on_fail": "phase-fix",
+        "auto_retry": { "max_attempts": 2, "delay_minutes": 5 }
+      }
+    },
+    {
+      "id": "phase-verify",
+      "type": "phase",
+      "name": "Fix Verification",
+      "description": "Verify the bug is fixed and produce test case documentation",
+      "config": {
+        "role": "QA",
+        "auto_dispatch": true,
+        "deliverables": ["TEST_CASE.md"]
+      },
+      "components": {
+        "roles": [{ "ref": "qa", "source": "builtin" }],
+        "rules": [{ "ref": "test-standards", "source": "builtin" }]
+      },
+      "docs": [
+        {
+          "name": "TEST_CASE.md",
+          "format": "markdown",
+          "path": "{docs_path}/{task_id}/TEST_CASE.md",
+          "required": true,
+          "description": "Test case document for the bug fix including reproduction steps and verification results"
+        }
+      ],
+      "on_enter": [
+        { "action": "update_task_phase", "phase": "verify" }
+      ]
+    },
+    {
+      "id": "terminal-success",
+      "type": "terminal",
+      "name": "Bug Fixed",
+      "description": "Bug fix completed and verified successfully",
+      "config": {
+        "status": "success",
+        "message": "Bug fix flow completed successfully"
+      }
+    },
+    {
+      "id": "terminal-reject",
+      "type": "terminal",
+      "name": "Rejected",
+      "description": "Bug report rejected at entry gate",
+      "config": {
+        "status": "rejected",
+        "message": "Bug report does not meet minimum information requirements"
+      }
+    }
+  ],
+  "edges": [
+    { "id": "e-triage-gate", "from": "phase-triage", "to": "gate-entry" },
+    { "id": "e-gate-investigate", "from": "gate-entry", "to": "phase-investigate", "type": "conditional", "conditions": [{ "expression": "gate.passed" }] },
+    { "id": "e-gate-reject", "from": "gate-entry", "to": "terminal-reject", "type": "conditional", "conditions": [{ "expression": "!gate.passed" }] },
+    { "id": "e-investigate-fix", "from": "phase-investigate", "to": "phase-fix" },
+    { "id": "e-fix-gate", "from": "phase-fix", "to": "gate-quality" },
+    { "id": "e-gate-verify", "from": "gate-quality", "to": "phase-verify", "type": "conditional", "conditions": [{ "expression": "gate.passed" }] },
+    { "id": "e-gate-fix", "from": "gate-quality", "to": "phase-fix", "type": "conditional", "conditions": [{ "expression": "!gate.passed" }] },
+    { "id": "e-verify-success", "from": "phase-verify", "to": "terminal-success" }
+  ]
+}

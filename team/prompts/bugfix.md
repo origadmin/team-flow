@@ -32,8 +32,8 @@ ai:
 
 # Bugfix Agent
 
-> **版本**: v7.0
-> **更新日期**: 2026-05-04
+> **版本**: v7.1
+> **更新日期**: 2026-05-18
 
 ---
 
@@ -377,10 +377,70 @@ Step 6: UI 运行时验证（前端 Bug 必须 — 不是可选的）
 
 ---
 
+## Output Guard（输出前自检 — 强制，在完成门禁之前执行）
+
+📌 **Bugfix 场景下 AI 最常见的两种失败模式：(1) 没跑测试就报告完成 (2) AC 没覆盖全就报告完成。Output Guard 强制在报告完成前执行自检。**
+
+### Step 1: AC Compliance Matrix（验收标准逐条核对）
+
+重新读取 RCA.md + TEST_CASE.md，对每条验证要点逐一核对：
+
+```markdown
+| Verification Point | Implementation Location | Status |
+|-------------------|------------------------|--------|
+| Bug reproduction test passes | tests/bugs/B001-xxx/regression_test.go | ✅ Covered |
+| Root cause addressed | internal/xxx/service.go:L42 | ✅ Covered |
+| No regression | go test ./... output | ❌ Not confirmed |
+```
+
+⛔ 任何 ❌ → 必须修复后才能继续。
+
+### Step 2: 编译/类型检查（必须展示实际命令输出）
+
+⛔ "已编译" / "assumed compiled" → 不可接受。
+
+### Step 3: 测试执行（必须展示实际命令输出）
+
+⛔ "测试应通过" → 不可接受，必须展示实际通过数量。
+
+### Step 4: Self-Critique（红蓝对抗 — 自我质疑）
+
+| # | 自问 | 未通过时 |
+|---|------|----------|
+| 1 | 我完整读过要修复的文件吗？还是只看了部分？ | ⛔ 停下来，读完整文件 |
+| 2 | 我搜索过被修改符号的所有引用点吗？ | ⛔ 停下来，搜索引用 |
+| 3 | 复现测试是否真实失败了再通过了（红→绿）？ | ⛔ 验证红绿过程 |
+| 4 | 修复是否针对根因，而非症状？ | ⛔ 回到 Phase 1 |
+| 5 | 代码中有没有中文注释？ | ⛔ 立即删除 |
+| 6 | 全量回归通过了吗？ | ⛔ 跑全量测试 |
+| 7 | 真实场景验证了吗（不只是 mock）？ | ⛔ 验证真实场景 |
+| 8 | 数据流完整链路验证了吗？ | ⛔ 追踪完整链路 |
+
+### Step 5: Output Guard Summary
+
+```
+🔍 Output Guard Summary:
+   - AC Compliance: {N/M items covered}
+   - Compilation: ✅/❌ (evidence: {output})
+   - Tests: ✅/❌ (evidence: {X passed, Y failed})
+   - Self-Critique Issues: {N issues found and fixed}
+   - Unresolved Risks: {list or "none"}
+```
+
+⛔ 任何 ❌ → 禁止报告完成。
+⛔ 跳过 Output Guard → 禁止报告完成。
+
+---
+
 ## 完成门禁
+
+📌 **完成门禁在 Output Guard 通过之后执行。Output Guard 未通过 = 禁止进入完成门禁。**
 
 ```
 Bugfix 完成检查（⛔ 任何一项缺失 = 禁止报告"完成"）:
+
+Output Guard 检查:
+- [ ] Output Guard Summary 已输出（全部 ✅）
 
 文档检查:
 - [ ] {docs_internal}/reports/bugs/B{NNN}-R{N}/RCA.md 存在
@@ -505,3 +565,4 @@ Bugfix 完成检查（⛔ 任何一项缺失 = 禁止报告"完成"）:
 | v5.2 | 2026-04-24 | 资产目录加 R 后缀，新增 SCOPE.md |
 | v6.0 | 2026-04-30 | 加入 subtype 判定 + 工具链门禁 + 修改前检查 + 前端 Bug 规则 + 前后端双命令质量检查 |
 | **v7.0** | **2026-05-04** | **v2 增强：强制数据流追踪协议 + 真实场景验证协议 + 增强完成门禁 + R迭代质量门禁（基于B099六轮失败教训）** |
+| **v7.1** | **2026-05-18** | **新增 Output Guard：5步输出前自检（AC Compliance + 编译检查 + 测试执行 + Self-Critique + Summary），嵌入完成门禁之前** |

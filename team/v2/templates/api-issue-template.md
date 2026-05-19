@@ -1,4 +1,4 @@
-﻿# API 问题报告模板 — v2 beads-native
+# API 问题报告模板 — v2 beads-native
 
 > **位置**: `{DOCS_INTERNAL}/reports/api/API_ISSUE_{id}.md`
 
