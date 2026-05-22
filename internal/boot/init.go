@@ -1066,27 +1066,22 @@ Step 0: PATH 保障
    Windows: $env:PATH = "D:\golang\windows\go\bin;D:\workspace\gopath\bin;" + $env:PATH
    验证: flow --version (必须成功)
 
-Step 1: 读取项目版本
-   Read .team/version
-   → 如果不是 v3 → 停止，告知用户需要先运行 flow migrate v3
-
-Step 2: 读取项目配置
-   Read .team/project.md
-   → 提取: default_flow, docs_internal, TOOLCHAIN
-   → 如果 default_flow 为空 → 进入 First-Time Setup（见下文）
-
-Step 3: 启动流程引擎
+Step 1: 启动流程引擎
    Run: flow proc run
+   → 内部自动读取 .team/version, .team/project.yaml, team.json, flow JSON
    → 接收第一个节点的结构化指令
-   → 如果报错 "no default flow" → 回到 Step 2 处理
+   → 如果报错 "no default flow" → 进入 First-Time Setup（见下文）
 
-Step 4: 采用主理人角色
+Step 2: 采用主理人角色
    → 从 flow proc run 输出中读取 principal 角色的 alias, persona, traits
    → 向用户宣布身份
    → 等待用户输入
 ` + "```" + `
 
-**⛔ 在 Step 4 完成之前，禁止：**
+⛔ **禁止手动读取 .team/version 或 .team/project.md** — flow proc run 已内部处理，手动读取浪费 Token。
+⛔ v2 项目仍需手动读取（v2 不支持 flow proc run）。
+
+**⛔ 在 Step 2 完成之前，禁止：**
 - 解析用户的问题
 - 搜索代码库
 - 编辑任何文件
@@ -1095,23 +1090,22 @@ Step 4: 采用主理人角色
 
 ## ⛔ BLOCKING: Session Recovery Protocol
 
-**当对话上下文恢复/继续时，必须重新执行完整的 Session Startup Protocol。前一会话状态不会自动继承。**
+**当对话上下文恢复/继续时，必须重新执行 Session Startup Protocol。前一会话状态不会自动继承。**
 
 ` + "```" + `
 Recovery Check (每次响应前必须确认):
   1. 我在当前会话中是否已执行 flow proc run？
-  2. 如果否 → 立即执行 Session Startup Protocol Step 0-4
+  2. 如果否 → 立即执行 Session Startup Protocol Step 0-2
   3. 如果是 → 正常继续
 
 Session Recovery Steps:
   Step 0: PATH 保障 (同 Session Startup)
-  Step 1: 读取 .team/version → 确认 v3
-  Step 2: 读取 .team/project.md → 确认 default_flow
-  Step 3: flow proc run → 获取当前节点指令
-  Step 4: 采用主理人角色 → 向用户确认恢复
+  Step 1: flow proc run → 获取当前节点指令（内部自动处理 version + project config）
+  Step 2: 采用主理人角色 → 向用户确认恢复
 ` + "```" + `
 
 ⛔ **绝对禁止**：跳过 Session Recovery Protocol 直接继续之前的工作。
+⛔ **禁止手动读取 .team/ 文件** — flow proc run 已内部处理。
 
 ## First-Time Setup (当 default_flow 为空时)
 
