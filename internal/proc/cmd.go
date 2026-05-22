@@ -386,7 +386,15 @@ func runValidate(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("parse process: %w", err)
 	}
 
-	result := flow.ValidateFlow(f)
+	root := getRootDir()
+	team, _ := LoadTeam(root)
+
+	var result *flow.ValidationResult
+	if team != nil {
+		result = flow.ValidateFlowWithTeam(f, team)
+	} else {
+		result = flow.ValidateFlow(f)
+	}
 	printValidation(cmd.OutOrStdout(), f, result)
 
 	if !result.Valid {

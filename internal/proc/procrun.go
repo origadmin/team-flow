@@ -222,6 +222,8 @@ func (e *ProcRunEngine) Run(ctx context.Context, req ProcRunRequest) (*ProcRunRe
 
 	result := generateResult(fl, node, vars, team, req.NodeID == "", req.ProjectRoot)
 
+	_ = req.ProjectRoot
+
 	// Integrate beads task state if available
 	if taskInfo := resolveTaskInfo(req.TaskID); taskInfo != nil {
 		result.Task = taskInfo

@@ -99,6 +99,16 @@ func ValidateFlowWithTeam(fl *Flow, team *TeamDefinition) *ValidationResult {
 		teamRoles[r.ID] = true
 	}
 
+	teamRules := make(map[string]bool)
+	for _, r := range team.Rules {
+		teamRules[r.ID] = true
+	}
+	for _, role := range team.Roles {
+		for _, ruleRef := range role.Rules {
+			teamRules[ruleRef] = true
+		}
+	}
+
 	for _, node := range fl.Nodes {
 		if node.Components == nil {
 			continue
@@ -115,11 +125,40 @@ func ValidateFlowWithTeam(fl *Flow, team *TeamDefinition) *ValidationResult {
 		}
 	}
 
+	var filtered []ValidationIssue
+	for _, w := range result.Warnings {
+		if isTeamDefinedWarning(w, teamRoles, teamRules) {
+			continue
+		}
+		filtered = append(filtered, w)
+	}
+	result.Warnings = filtered
+
 	if len(result.Errors) > 0 {
 		result.Valid = false
 	}
 
 	return result
+}
+
+func isTeamDefinedWarning(w ValidationIssue, teamRoles, teamRules map[string]bool) bool {
+	if w.Field != "nodes[].components.rules" && w.Field != "nodes[].components.roles" {
+		return false
+	}
+	if !strings.Contains(w.Message, "references undefined") {
+		return false
+	}
+	for roleID := range teamRoles {
+		if strings.HasSuffix(w.Message, ": "+roleID) {
+			return true
+		}
+	}
+	for ruleID := range teamRules {
+		if strings.HasSuffix(w.Message, ": "+ruleID) {
+			return true
+		}
+	}
+	return false
 }
 
 func validateTeamRoles(team *TeamDefinition, result *ValidationResult) {
@@ -533,6 +572,9 @@ func validateComponents(flow *Flow, result *ValidationResult) {
 			continue
 		}
 		for _, ruleRef := range node.Components.Rules {
+			if ruleRef.Source == SourceTeam {
+				continue
+			}
 			if !definedRules[ruleRef.Ref] {
 				result.Warnings = append(result.Warnings, ValidationIssue{
 					Severity: SeverityWarning,
@@ -543,6 +585,9 @@ func validateComponents(flow *Flow, result *ValidationResult) {
 			}
 		}
 		for _, roleRef := range node.Components.Roles {
+			if roleRef.Source == SourceTeam {
+				continue
+			}
 			if !definedRoles[roleRef.Ref] {
 				result.Warnings = append(result.Warnings, ValidationIssue{
 					Severity: SeverityWarning,

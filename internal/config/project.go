@@ -9,12 +9,13 @@ import (
 )
 
 type ProjectConfig struct {
-	Name        string        `yaml:"name"`
-	Version     string        `yaml:"version"`
-	DefaultFlow string        `yaml:"default_flow"`
-	Paths       ProjectPaths  `yaml:"paths"`
-	Toolchain   ProjectToolchain `yaml:"toolchain"`
-	Flows       []ProjectFlow `yaml:"flows"`
+	Name         string             `yaml:"name"`
+	Version      string             `yaml:"version"`
+	DefaultFlow  string             `yaml:"default_flow"`
+	Paths        ProjectPaths       `yaml:"paths"`
+	Toolchain    ProjectToolchain   `yaml:"toolchain"`
+	Flows        []ProjectFlow      `yaml:"flows"`
+	Dependencies []ProjectDependency `yaml:"dependencies,omitempty"`
 }
 
 type ProjectPaths struct {
@@ -39,6 +40,12 @@ type ProjectTool struct {
 type ProjectFlow struct {
 	ID     string `yaml:"id"`
 	Source string `yaml:"source"`
+}
+
+type ProjectDependency struct {
+	Name string `yaml:"name"`
+	Path string `yaml:"path"`
+	Type string `yaml:"type"`
 }
 
 func LoadProjectConfig(root string) (*ProjectConfig, error) {

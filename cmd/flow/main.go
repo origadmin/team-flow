@@ -10,10 +10,11 @@ import (
 	"github.com/origadmin/team-flow/internal/doctor"
 	"github.com/origadmin/team-flow/internal/editor"
 	"github.com/origadmin/team-flow/internal/export"
-	"github.com/origadmin/team-flow/internal/proc"
 	"github.com/origadmin/team-flow/internal/graph"
 	"github.com/origadmin/team-flow/internal/logger"
 	"github.com/origadmin/team-flow/internal/migrate"
+	projectpkg "github.com/origadmin/team-flow/internal/project"
+	"github.com/origadmin/team-flow/internal/proc"
 	"github.com/origadmin/team-flow/internal/status"
 	"github.com/origadmin/team-flow/internal/task"
 	"github.com/origadmin/team-flow/internal/toolrunner"
@@ -84,6 +85,7 @@ func main() {
 	rootCmd.AddCommand(graph.Cmd)
 	rootCmd.AddCommand(ver.Cmd)
 	rootCmd.AddCommand(proc.Cmd)
+	rootCmd.AddCommand(projectpkg.Cmd)
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)

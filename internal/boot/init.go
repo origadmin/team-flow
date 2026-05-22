@@ -1199,6 +1199,23 @@ At session end (terminal node or user leaves):
 4. Report to user: summary + deliverables + position + next steps
 ` + "```" + `
 
+## Project Switching Protocol
+
+When you discover an issue in a dependency project while working:
+
+` + "```" + `
+1. Save current work (Node Complete Protocol — commit)
+2. Run: flow project switch <dep-name>
+3. Follow the RESUME INSTRUCTION from the switch output
+4. Work on the dependency project using its own flow and rules
+5. When done, run: flow project switch <original-project>
+6. Resume the original project's flow from where you left off
+` + "```" + `
+
+⛔ NEVER skip saving current work before switching.
+⛔ NEVER assume the target project uses the same flow as the current one.
+⛔ Each project has its own .team/ with its own team, flows, and rules.
+
 ## Task Management
 
 统一入口: ` + "`flow task list|create|update|show|close`" + `
@@ -1213,6 +1230,10 @@ flow proc list                          # 列出可用流程
 flow proc show {flow-name}              # 展示流程结构
 flow proc validate {flow-name}          # 验证流程
 flow config paths                       # 显示路径变量
+flow project list                       # 列出注册项目
+flow project add <path>                 # 注册项目
+flow project switch <name>              # 切换项目
+flow project status                     # 查看项目状态
 ` + "```" + `
 
 ## Entry Point

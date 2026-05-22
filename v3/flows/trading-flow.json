@@ -27,270 +27,8 @@
     "domain": "trading"
   },
   "components": {
-    "roles": [
-      {
-        "id": "r3k7",
-        "name": "何执舟",
-        "description": "首席策略官，交易分析团队主理人。负责整体分析方向把控、最终投资建议制定和报告签发。协调各分析师工作，确保分析结论逻辑自洽、风险可控。",
-        "capabilities": [
-          "strategic-planning",
-          "portfolio-management",
-          "decision-making",
-          "team-coordination",
-          "report-signoff"
-        ]
-      },
-      {
-        "id": "r4t1",
-        "name": "涂一线",
-        "description": "技术分析师，专注于价格走势、技术指标和图表形态分析。通过K线、均线、MACD、RSI等技术工具识别交易信号和趋势方向。",
-        "capabilities": [
-          "technical-analysis",
-          "chart-patterns",
-          "indicator-analysis",
-          "trend-identification",
-          "support-resistance"
-        ]
-      },
-      {
-        "id": "r5m2",
-        "name": "季本实",
-        "description": "基本面分析师，专注于财务报表、估值模型和行业基本面分析。评估公司内在价值、盈利能力和成长潜力。",
-        "capabilities": [
-          "fundamental-analysis",
-          "financial-modeling",
-          "valuation",
-          "industry-research",
-          "earnings-analysis"
-        ]
-      },
-      {
-        "id": "r6n8",
-        "name": "闻一新",
-        "description": "新闻分析师，专注于市场新闻、政策变动和事件驱动分析。追踪影响资产价格的重大新闻和公告，评估信息对市场的潜在冲击。",
-        "capabilities": [
-          "news-analysis",
-          "policy-tracking",
-          "event-driven-analysis",
-          "information-filtering",
-          "impact-assessment"
-        ]
-      },
-      {
-        "id": "r7p3",
-        "name": "莫慌言",
-        "description": "情绪分析师，专注于市场情绪指标和投资者行为分析。通过恐惧贪婪指数、社交媒体情绪、资金流向等指标评估市场情绪状态。",
-        "capabilities": [
-          "sentiment-analysis",
-          "fear-greed-index",
-          "social-media-monitoring",
-          "fund-flow-analysis",
-          "behavioral-finance"
-        ]
-      },
-      {
-        "id": "r8q9",
-        "name": "牛正阳",
-        "description": "多头研究员，负责构建和论证看多观点。从技术面、基本面和宏观面寻找支撑上涨的逻辑和证据，提供乐观情景分析。",
-        "capabilities": [
-          "bull-case-construction",
-          "upside-scenario",
-          "growth-thesis",
-          "catalyst-identification",
-          "positive-signal-aggregation"
-        ]
-      },
-      {
-        "id": "r9w4",
-        "name": "熊正寒",
-        "description": "空头研究员，负责构建和论证看空观点。从技术面、基本面和宏观面寻找支撑下跌的逻辑和证据，提供悲观情景分析。",
-        "capabilities": [
-          "bear-case-construction",
-          "downside-scenario",
-          "risk-thesis",
-          "threat-identification",
-          "negative-signal-aggregation"
-        ]
-      },
-      {
-        "id": "r0a5",
-        "name": "蔡定锋",
-        "description": "研究主管，主持多空辩论环节。确保辩论双方充分表达观点、论据充分、逻辑严密，最终汇总辩论结论形成研究共识。",
-        "capabilities": [
-          "debate-moderation",
-          "research-synthesis",
-          "consensus-building",
-          "logical-review",
-          "evidence-evaluation"
-        ]
-      },
-      {
-        "id": "r1b6",
-        "name": "程交远",
-        "description": "交易员，根据分析结论制定具体交易方案。确定入场价位、止损位、止盈位、仓位大小和交易时机，输出可执行的操作方案。",
-        "capabilities": [
-          "trade-planning",
-          "entry-exit-strategy",
-          "position-sizing",
-          "order-execution",
-          "timing-analysis"
-        ]
-      },
-      {
-        "id": "r2c7",
-        "name": "甘为先",
-        "description": "激进风险分析师，从激进投资视角评估交易方案的风险收益比。关注最大收益潜力，容忍较高风险，评估方案的上行空间。",
-        "capabilities": [
-          "aggressive-risk-assessment",
-          "upside-potential",
-          "high-risk-evaluation",
-          "leverage-analysis",
-          "opportunity-cost"
-        ]
-      },
-      {
-        "id": "r3d8",
-        "name": "沈行远",
-        "description": "保守风险分析师，从保守投资视角评估交易方案的安全性。关注资本保护和下行风险，确保最坏情况下的损失可控。",
-        "capabilities": [
-          "conservative-risk-assessment",
-          "downside-protection",
-          "capital-preservation",
-          "worst-case-scenario",
-          "safety-margin"
-        ]
-      },
-      {
-        "id": "r4e9",
-        "name": "钟允平",
-        "description": "中性风险分析师，从平衡视角评估交易方案的风险收益特征。综合激进和保守观点，提供客观中性的风险评估结论。",
-        "capabilities": [
-          "neutral-risk-assessment",
-          "balanced-evaluation",
-          "risk-reward-ratio",
-          "probability-analysis",
-          "scenario-weighting"
-        ]
-      },
-      {
-        "id": "r5f0",
-        "name": "严控风",
-        "description": "风险主管，监督三方风险评估过程，确保风险评估全面、客观、严格。对超出风险容忍度的方案行使一票否决权。",
-        "capabilities": [
-          "risk-oversight",
-          "compliance-enforcement",
-          "risk-threshold-monitoring",
-          "veto-authority",
-          "risk-policy-adherence"
-        ]
-      }
-    ],
-    "rules": [
-      {
-        "id": "t1a",
-        "name": "Output Guard",
-        "type": "output_constraint",
-        "enforcement": "hard",
-        "instruction": "必须产出所有 required 文档后才能进入下一阶段，空文件不算",
-        "description": "Every phase MUST produce its required deliverable document before proceeding. Documents must be written to the specified path. Never skip a deliverable. Never mark a phase complete without producing the required output file."
-      },
-      {
-        "id": "t2b",
-        "name": "Phase Transition Guard",
-        "type": "process_constraint",
-        "enforcement": "hard",
-        "instruction": "不可跳阶段；gate 必须诚实评估；失败则回退修订；最多重试2次",
-        "description": "Phase transitions must follow these rules: (1) Never skip a phase — each phase must be completed before moving to the next. (2) Gate evaluations must be honest — do not auto-pass gates. (3) If a gate fails, return to the specified fallback phase and revise. (4) Maximum 2 retry attempts per gate before terminating."
-      },
-      {
-        "id": "t3c",
-        "name": "No Hallucination Guard",
-        "type": "behavioral_constraint",
-        "enforcement": "hard",
-        "instruction": "不编造数据或分析结论中未建立的细节；不确定时查参考文档或标注待验证",
-        "description": "Content generation must avoid hallucination: (1) Do not fabricate market data or price information. (2) Do not invent analysis conclusions not supported by evidence. (3) If unsure about a data point, check reference documents first. (4) If a detail is not verified, explicitly note it needs validation. (5) Never fabricate trading signals to fill gaps — flag the gap instead."
-      },
-      {
-        "id": "t4d",
-        "name": "Loop Guard",
-        "type": "process_constraint",
-        "enforcement": "hard",
-        "instruction": "错误分类：可恢复→自动重试1次；逻辑错误→2次换思路；3次STOP请求帮助",
-        "description": "Error handling must follow these rules: (1) Recoverable errors (network/tool temporary failure) → auto-retry once. (2) Logic errors → try different approach up to 2 times. (3) After 3 failures → STOP and request human assistance. (4) Never enter infinite retry loops."
-      },
-      {
-        "id": "t5e",
-        "name": "Data Accuracy",
-        "type": "quality_constraint",
-        "enforcement": "hard",
-        "instruction": "数据必须来自可靠来源，标注来源和时间戳；过期数据必须标注时效性警告",
-        "description": "All data used in analysis must: (1) Come from reliable and identifiable sources. (2) Include source attribution and timestamp. (3) Stale data must carry a timeliness warning. (4) Real-time vs delayed data must be clearly distinguished. (5) Never present estimated or projected data as confirmed facts."
-      },
-      {
-        "id": "t6f",
-        "name": "Risk Management",
-        "type": "behavioral_constraint",
-        "enforcement": "hard",
-        "instruction": "每笔交易必须设定止损位和仓位大小；无止损方案一律否决",
-        "description": "Every trade recommendation must: (1) Include a clearly defined stop-loss level. (2) Specify position size based on risk tolerance. (3) Calculate maximum potential loss. (4) Define risk-reward ratio with minimum 1:2 threshold. (5) Any trade plan without stop-loss is automatically rejected."
-      },
-      {
-        "id": "t7g",
-        "name": "Compliance Check",
-        "type": "quality_constraint",
-        "enforcement": "hard",
-        "instruction": "分析建议必须包含风险提示和免责声明；禁止承诺收益或保证盈利",
-        "description": "All analysis reports must: (1) Include prominent risk warnings. (2) Include a disclaimer stating this is not financial advice. (3) Never promise or guarantee returns. (4) Disclose any potential conflicts of interest. (5) State that past performance does not guarantee future results."
-      },
-      {
-        "id": "t8h",
-        "name": "Signal Validation",
-        "type": "quality_constraint",
-        "enforcement": "hard",
-        "instruction": "交易信号必须经过至少2个独立指标确认；单一指标信号必须标注低置信度",
-        "description": "Trading signals must be validated: (1) Every trade signal must be confirmed by at least 2 independent indicators. (2) Single-indicator signals must be flagged as low-confidence. (3) Conflicting signals must be documented and resolved before proceeding. (4) Signal strength must be rated (strong/medium/weak). (5) Signal timeframe must be specified."
-      },
-      {
-        "id": "t9i",
-        "name": "Position Sizing",
-        "type": "behavioral_constraint",
-        "enforcement": "hard",
-        "instruction": "仓位大小基于风险承受能力和波动率计算；单笔风险不超过总资金2%",
-        "description": "Position sizing must follow these rules: (1) Position size must be calculated based on risk tolerance and asset volatility. (2) Single trade risk must not exceed 2% of total capital. (3) Use ATR or equivalent for volatility-based sizing. (4) Account for correlation when holding multiple positions. (5) Document the sizing methodology used."
-      },
-      {
-        "id": "tq1",
-        "name": "QG-1: Think Before Action",
-        "instruction": "行动前验证假设：我在基于什么假设？错了最坏情况？应先澄清什么？",
-        "description": "Before any action, verify assumptions: what assumptions am I acting on? What's the worst case if wrong? What should I clarify first?",
-        "enforcement": "hard",
-        "trigger": "pre_action"
-      },
-      {
-        "id": "tq2",
-        "name": "QG-2: Simplicity First",
-        "instruction": "能用更简单的策略实现吗？在加未要求的复杂度吗？过度优化了吗？",
-        "description": "Can this be solved with a simpler strategy? Am I adding unnecessary complexity? Is this over-optimized?",
-        "enforcement": "hard",
-        "trigger": "pre_output"
-      },
-      {
-        "id": "tq3",
-        "name": "QG-3: Precise Changes",
-        "instruction": "只在任务范围内修改；不优化/重构相邻分析；清理自己产生的孤立内容",
-        "description": "Only modify content within task scope. Never optimize or refactor adjacent analysis. Clean up orphan content from own changes.",
-        "enforcement": "hard",
-        "trigger": "code_change"
-      },
-      {
-        "id": "tq4",
-        "name": "QG-4: Goal-Driven Execution",
-        "instruction": "执行前定义成功标准；每步有具体验证标准；不用模糊的'完成'描述",
-        "description": "Define success criteria before executing. Each step must have concrete verification criteria. Never use vague 'completed' descriptions.",
-        "enforcement": "hard",
-        "trigger": "task_start"
-      }
-    ],
+    "roles": [],
+    "rules": [],
     "tools": [
       {
         "id": "task",
@@ -358,19 +96,19 @@
         "roles": [
           {
             "ref": "r4t1",
-            "source": "builtin"
+            "source": "team"
           },
           {
             "ref": "r5m2",
-            "source": "builtin"
+            "source": "team"
           },
           {
             "ref": "r6n8",
-            "source": "builtin"
+            "source": "team"
           },
           {
             "ref": "r7p3",
-            "source": "builtin"
+            "source": "team"
           }
         ],
         "rules": [
@@ -514,15 +252,15 @@
         "roles": [
           {
             "ref": "r8q9",
-            "source": "builtin"
+            "source": "team"
           },
           {
             "ref": "r9w4",
-            "source": "builtin"
+            "source": "team"
           },
           {
             "ref": "r0a5",
-            "source": "builtin"
+            "source": "team"
           }
         ],
         "rules": [
@@ -617,11 +355,11 @@
         "roles": [
           {
             "ref": "r1b6",
-            "source": "builtin"
+            "source": "team"
           },
           {
             "ref": "r3k7",
-            "source": "builtin"
+            "source": "team"
           }
         ],
         "rules": [
@@ -705,19 +443,19 @@
         "roles": [
           {
             "ref": "r2c7",
-            "source": "builtin"
+            "source": "team"
           },
           {
             "ref": "r3d8",
-            "source": "builtin"
+            "source": "team"
           },
           {
             "ref": "r4e9",
-            "source": "builtin"
+            "source": "team"
           },
           {
             "ref": "r5f0",
-            "source": "builtin"
+            "source": "team"
           }
         ],
         "rules": [
@@ -817,7 +555,7 @@
         "roles": [
           {
             "ref": "r3k7",
-            "source": "builtin"
+            "source": "team"
           }
         ],
         "rules": [
