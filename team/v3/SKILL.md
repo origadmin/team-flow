@@ -13,7 +13,7 @@ description: |
 
 ## ⛔ MANDATORY: Read Consensus First
 
-**Before doing ANYTHING in v3, read [CONSENSUS.md](./CONSENSUS.md).** It contains all confirmed architectural decisions. Do NOT re-ask or re-confirm anything already decided there. Violating this wastes the user's time.
+**Before doing ANYTHING in v3, read `.team/project.yaml` and `.team/constraints.md`.** These contain runtime configuration and project-specific constraints. Then run `flow proc run` — the engine provides everything else.
 
 ## Status Line (MANDATORY — Every Response)
 
@@ -126,7 +126,7 @@ flow migrate v3 [--flow {name}]
 
 A project is bound to exactly one team flow. This is non-negotiable.
 
-- The binding is stored in project configuration (`default_flow` in `.team/project.md`)
+- The binding is stored in project configuration (`default_flow` in `.team/project.yaml`)
 - All tasks within the project execute under the same flow
 - To change the flow, the user must explicitly switch (project-level decision)
 - If no flow is bound, follow the First-Time Setup (Scenario B) above
@@ -154,6 +154,60 @@ When a user asks for a task, v3:
 2. Validates flow with `flow proc validate`
 3. Executes the flow using `flow proc run`
 
+## Project Configuration
+
+v3 uses structured configuration instead of monolithic markdown:
+
+| File | Purpose | AI reads every time? | ~Tokens |
+|------|---------|---------------------|---------|
+| `.team/project.yaml` | Runtime config (name, flow, toolchain, paths) | ✅ Yes | ~100 |
+| `.team/constraints.md` | Project constraints (hard rules) | ✅ Yes | ~50 |
+| `.team/project.md` | Legacy fallback (auto-generated) | ❌ No | — |
+
+### project.yaml structure
+
+```yaml
+name: my-project
+version: v3
+default_flow: dev-flow
+
+paths:
+  docs_internal: _docs/my-project/    # Optional, fallback to .team/docs/
+  docs_external: docs/
+
+toolchain:
+  backend:
+    language: go
+    pipeline: go test ./... | go build -o bin/app
+  frontend:
+    language: typescript
+    pipeline: bun run test | bun run build
+```
+
+### Internal Document Management
+
+AI reads/writes project documents to a managed directory:
+
+| Path | When `docs_internal` is set | When not set (fallback) |
+|------|---------------------------|------------------------|
+| Lessons | `{docs_internal}/lessons/` | `.team/docs/lessons/` |
+| Sessions | `{docs_internal}/sessions/` | `.team/docs/sessions/` |
+| Conventions | `{docs_internal}/conventions/` | `.team/docs/conventions/` |
+
+Resolution: `flow config paths` shows the resolved `DOCS_INTERNAL` path.
+
+### Session Persistence
+
+Every conversation must produce a session log for traceability:
+
+```
+{internal_docs}/sessions/{date}-{flow}-{node}[-{task}].md
+```
+
+Session log contains: Context (flow, node, task), Actions, Decisions, Lessons, Files Changed.
+
+AI writes this at session close, before `git push`.
+
 ## Two Core Skills
 
 | Skill | Purpose |
@@ -180,7 +234,6 @@ See `flow task sync --help` for full options.
 ```
 .trae/skills/team-flow/
 ├── SKILL.md              ← You are here (v3 entry point)
-├── CONSENSUS.md          # v3 共识文件
 ├── BOUNDARY.md           # v3 架构边界
 ├── skills/
 │   ├── team-flow-v3-create/   # Flow creation/refinement
@@ -197,7 +250,7 @@ teams/
 │   └── flows/                 # 8 个软件开发流程
 ├── content-team/
 │   ├── team.json
-│   └── flows/                 # 3 个内容创作流程
+│   └── flows/
 ├── game-team/
 │   ├── team.json
 │   └── flows/
@@ -207,6 +260,18 @@ teams/
 └── skill-team/
     ├── team.json
     └── flows/
+
+# Project-level (installed by flow init --v3)
+.team/
+├── project.yaml           ← Runtime config (primary, ~100 tokens)
+├── constraints.md         ← Project constraints (~50 tokens)
+├── project.md             ← Legacy fallback (auto-generated)
+├── version                ← v3
+├── flows/                 ← Installed flow JSON files
+└── docs/                  ← Internal docs (fallback when docs_internal not set)
+    ├── lessons/           ← Experience records (from v2)
+    ├── sessions/          ← Session logs (traceability)
+    └── conventions/       ← Project conventions
 ```
 
 ## ⚠️ v2 Legacy Directories (DO NOT LOAD)
