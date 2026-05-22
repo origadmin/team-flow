@@ -1,174 +1,7 @@
 {
   "components": {
-    "gates": [
-      {
-        "id": "gate-readiness",
-        "name": "Readiness Gate",
-        "source": "builtin",
-        "type": "deliverable_check"
-      },
-      {
-        "id": "gate-verification",
-        "name": "Verification Gate",
-        "source": "builtin",
-        "type": "test_coverage"
-      },
-      {
-        "id": "gate-acceptance",
-        "name": "Acceptance Gate",
-        "source": "builtin",
-        "type": "custom"
-      }
-    ],
-    "roles": [
-      {
-        "capabilities": [
-          "classify",
-          "dispatch",
-          "assess",
-          "coordinate"
-        ],
-        "description": "Coordinate release readiness check, manage milestone status",
-        "id": "triage",
-        "name": "Triage Agent",
-        "prompt_directives": [
-          "Dispatch tasks to sub-agents, never execute directly",
-          "Classify all user input before action: Feature/Bug/Change/Analysis/Batch",
-          "Read .team/project.md for project constraints before dispatch",
-          "Use flow task create/show for all task state management",
-          "Report deliverables and handoff to next role on completion"
-        ]
-      },
-      {
-        "capabilities": [
-          "verify",
-          "test",
-          "validate",
-          "integration"
-        ],
-        "description": "Run integration and E2E tests, verify release readiness",
-        "id": "qa",
-        "name": "QA Engineer",
-        "prompt_directives": [
-          "Verify implementation matches SPEC.md and AC.md",
-          "Run full regression tests, not just new tests",
-          "Check front-back interface consistency (paths, params, response)",
-          "For bugfixes: data flow trace + real scenario verification required",
-          "Output Guard self-check before marking review complete"
-        ]
-      },
-      {
-        "capabilities": [
-          "deploy",
-          "monitor",
-          "rollback",
-          "pipeline"
-        ],
-        "description": "Manage deployment pipeline, monitor rollout, handle rollback",
-        "id": "devops",
-        "name": "DevOps Engineer",
-        "prompt_directives": [
-          "Verify CI pipeline passes before any deployment",
-          "Always have rollback plan before deployment",
-          "Check Docker image build success",
-          "Run smoke tests after deployment",
-          "Update CHANGELOG and version number"
-        ]
-      },
-      {
-        "capabilities": [
-          "accept",
-          "communicate",
-          "decide"
-        ],
-        "description": "Acceptance review, stakeholder communication, go/no-go decision",
-        "id": "pm",
-        "name": "Product Manager",
-        "prompt_directives": [
-          "Verify 100% acceptance criteria satisfaction",
-          "Confirm business flow end-to-end",
-          "Sign off only after QA approval"
-        ]
-      }
-    ],
-    "rules": [
-      {
-        "description": "Triage must dispatch tasks to sub-agents, never execute code modifications directly",
-        "enforcement": "hard",
-        "id": "d1a",
-        "instruction": "Triage 必须分发任务给子智能体，禁止自己执行代码修改",
-        "name": "Dispatch Guard",
-        "source": "builtin",
-        "type": "process_constraint"
-      },
-      {
-        "description": "5-step self-assessment before completion gate: deliverable exists, content non-empty, spec compliance, no placeholders, path correctness",
-        "enforcement": "hard",
-        "id": "d2b",
-        "instruction": "完成前必须执行5步自检：产出物存在→内容非空→符合规范→无占位符→路径正确",
-        "name": "Output Guard Protocol",
-        "source": "framework",
-        "type": "process_constraint"
-      },
-      {
-        "description": "Never deploy with failing tests or unverified features; always have rollback plan",
-        "enforcement": "hard",
-        "id": "no-broken-deploy",
-        "name": "No Broken Deploy",
-        "source": "builtin",
-        "type": "quality_constraint"
-      },
-      {
-        "description": "All tasks under milestone must be CLOSED before release; sync milestone status before deployment",
-        "enforcement": "hard",
-        "id": "r1m",
-        "instruction": "发布前必须同步里程碑状态；确认所有关联任务已完成",
-        "name": "Milestone Sync",
-        "source": "builtin",
-        "type": "process_constraint"
-      },
-      {
-        "description": "Never delete files; never use PowerShell Set-Content/Out-File; never skip toolchain gate",
-        "enforcement": "hard",
-        "id": "d4e",
-        "instruction": "禁止删除文件；禁止用 PowerShell Set-Content/Out-File；禁止跳过工具链门",
-        "name": "Hard Constraints",
-        "source": "builtin",
-        "type": "behavioral_constraint"
-      },
-      {
-        "description": "Before any action, verify assumptions: what assumptions am I acting on? What's the worst case if wrong? What should I clarify first?",
-        "enforcement": "hard",
-        "id": "qg1",
-        "instruction": "行动前验证假设：我在基于什么假设？错了最坏情况？应先澄清什么？",
-        "name": "QG-1: Think Before Coding",
-        "trigger": "pre_action"
-      },
-      {
-        "description": "Can this be solved with less code? Am I adding unrequested features? Is this over-engineered?",
-        "enforcement": "hard",
-        "id": "qg2",
-        "instruction": "能用更少代码解决吗？在加未要求的功能吗？过度设计了吗？",
-        "name": "QG-2: Simplicity First",
-        "trigger": "pre_output"
-      },
-      {
-        "description": "Only modify code within task scope. Never optimize or refactor adjacent code. Clean up orphan code from own changes.",
-        "enforcement": "hard",
-        "id": "qg3",
-        "instruction": "只改任务范围内的代码；不优化/重构相邻代码；清理自己产生的孤立代码",
-        "name": "QG-3: Surgical Changes",
-        "trigger": "code_change"
-      },
-      {
-        "description": "Define success criteria before executing. Each step must have concrete verification criteria. Never use vague 'completed' descriptions.",
-        "enforcement": "hard",
-        "id": "qg4",
-        "instruction": "执行前定义成功标准；每步有具体验证标准；不用模糊的'完成'描述",
-        "name": "QG-4: Goal-Driven Execution",
-        "trigger": "task_start"
-      }
-    ],
+    "roles": [],
+    "rules": [],
     "skills": [],
     "tools": [
       {
@@ -180,8 +13,7 @@
           "list",
           "ready",
           "append",
-          "dep",
-          "dolt"
+          "dep"
         ],
         "id": "task",
         "name": "Task CLI",
@@ -201,16 +33,15 @@
   },
   "config": {
     "auto_dispatch": true,
-    "domain": "release",
-    "parallel_limit": 2,
+    "parallel_limit": 1,
     "task_type": "release",
-    "timeout_minutes": 1440
+    "timeout_minutes": 120
   },
   "edges": [
     {
-      "from": "release-ready-check",
-      "id": "e-ready-gate",
-      "to": "gate-readiness"
+      "from": "phase-triage",
+      "id": "e-triage-gate",
+      "to": "gate-entry"
     },
     {
       "conditions": [
@@ -218,9 +49,9 @@
           "expression": "gate.passed"
         }
       ],
-      "from": "gate-readiness",
-      "id": "e-gate-verify",
-      "to": "release-verify",
+      "from": "gate-entry",
+      "id": "e-gate-prepare",
+      "to": "phase-prepare",
       "type": "conditional"
     },
     {
@@ -229,15 +60,15 @@
           "expression": "!gate.passed"
         }
       ],
-      "from": "gate-readiness",
+      "from": "gate-entry",
       "id": "e-gate-reject",
       "to": "terminal-reject",
       "type": "conditional"
     },
     {
-      "from": "release-verify",
-      "id": "e-verify-gate",
-      "to": "gate-verification"
+      "from": "phase-prepare",
+      "id": "e-prepare-gate",
+      "to": "gate-release-readiness"
     },
     {
       "conditions": [
@@ -245,9 +76,9 @@
           "expression": "gate.passed"
         }
       ],
-      "from": "gate-verification",
-      "id": "e-vgate-accept",
-      "to": "release-accept",
+      "from": "gate-release-readiness",
+      "id": "e-gate-deploy",
+      "to": "phase-deploy",
       "type": "conditional"
     },
     {
@@ -256,30 +87,19 @@
           "expression": "!gate.passed"
         }
       ],
-      "from": "gate-verification",
-      "id": "e-vgate-retry",
-      "to": "release-verify",
+      "from": "gate-release-readiness",
+      "id": "e-gate-prepare-retry",
+      "to": "phase-prepare",
       "type": "conditional"
     },
     {
-      "from": "release-accept",
-      "id": "e-accept-gate",
-      "to": "gate-acceptance"
+      "from": "phase-deploy",
+      "id": "e-deploy-verify",
+      "to": "phase-verify"
     },
     {
-      "conditions": [
-        {
-          "expression": "approved"
-        }
-      ],
-      "from": "gate-acceptance",
-      "id": "e-gate-deploy",
-      "to": "release-deploy",
-      "type": "conditional"
-    },
-    {
-      "from": "release-deploy",
-      "id": "e-deploy-completion",
+      "from": "phase-verify",
+      "id": "e-verify-completion",
       "to": "gate-completion"
     },
     {
@@ -300,19 +120,24 @@
         }
       ],
       "from": "gate-completion",
-      "id": "e-completion-retry",
-      "to": "release-deploy",
+      "id": "e-completion-rollback",
+      "to": "phase-rollback",
       "type": "conditional"
+    },
+    {
+      "from": "phase-rollback",
+      "id": "e-rollback-failed",
+      "to": "terminal-failed"
     }
   ],
   "metadata": {
     "author": "team-flow",
-    "description": "Release flow: readiness check → integration verification → acceptance → deploy",
+    "description": "Release flow: Triage → Gate → Prepare → Release Readiness Gate → Deploy → Verify → Completion Gate → Terminal",
     "name": "release-flow",
     "tags": [
       "release",
-      "deploy",
-      "milestone"
+      "deployment",
+      "software"
     ]
   },
   "nodes": [
@@ -328,39 +153,32 @@
         "roles": [
           {
             "ref": "triage",
-            "source": "builtin"
+            "source": "team"
           }
         ],
         "rules": [
           {
             "ref": "d1a",
             "source": "builtin"
-          },
-          {
-            "ref": "r1m",
-            "source": "builtin"
           }
         ]
       },
       "config": {
         "auto_dispatch": true,
-        "deliverables": [
-          "READINESS_REPORT.md"
-        ],
         "role": "Triage"
       },
-      "description": "Triage checks milestone completeness, all tasks CLOSED, no blocking issues",
+      "description": "Classify and validate the release request",
       "docs": [
         {
-          "description": "Release readiness: milestone status, open tasks, blocking issues, test status",
+          "description": "Release triage record with version, scope, and dispatch decision",
           "format": "markdown",
-          "name": "READINESS_REPORT.md",
-          "path": "{DOCS_INTERNAL}/reports/releases/{milestone_id}/READINESS_REPORT.md",
+          "name": "TRIAGE.md",
+          "path": "{DOCS_INTERNAL}/{task_id}/TRIAGE.md",
           "required": true
         }
       ],
-      "id": "release-ready-check",
-      "name": "Release Readiness Check",
+      "id": "phase-triage",
+      "name": "Release Triage",
       "on_enter": [
         {
           "action": "update_task_phase",
@@ -373,42 +191,24 @@
       "config": {
         "conditions": [
           {
-            "check": "All milestone tasks are CLOSED",
-            "required": true,
-            "type": "custom"
+            "type": "task_exists"
           },
           {
-            "check": "No blocking issues (P0 bugs)",
-            "required": true,
-            "type": "custom"
-          },
-          {
-            "required": true,
-            "threshold": "100%",
-            "type": "tests_pass"
-          },
-          {
-            "check": "MILESTONES.md updated with current status",
-            "required": true,
-            "type": "custom"
+            "expected": "release",
+            "type": "type_matches"
           }
         ],
         "on_fail": "terminal-reject",
-        "on_pass": "release-verify"
+        "on_pass": "phase-prepare"
       },
-      "description": "Verify all milestone tasks closed, no blocking issues, tests passing",
-      "id": "gate-readiness",
-      "name": "Readiness Gate",
+      "description": "Validate release request has version and scope information",
+      "id": "gate-entry",
+      "name": "Entry Gate",
       "type": "gate"
     },
     {
       "components": {
         "prompts": [
-          {
-            "path": "{TEAM_PATH}/prompts/qa-engineer.md",
-            "ref": "qa",
-            "source": "file"
-          },
           {
             "path": "{TEAM_PATH}/prompts/devops.md",
             "ref": "devops",
@@ -417,19 +217,181 @@
         ],
         "roles": [
           {
-            "ref": "qa",
-            "source": "builtin"
-          },
-          {
             "ref": "devops",
-            "source": "builtin"
+            "source": "team"
           }
         ],
         "rules": [
           {
-            "ref": "no-broken-deploy",
-            "source": "builtin"
+            "ref": "d2b",
+            "source": "framework"
+          }
+        ],
+        "tools": [
+          {
+            "commands": [
+              "show",
+              "update",
+              "append"
+            ],
+            "ref": "task"
           },
+          {
+            "ref": "search"
+          }
+        ]
+      },
+      "config": {
+        "auto_dispatch": true,
+        "deliverables": [
+          "RELEASE_NOTES.md",
+          "CHANGELOG.md"
+        ],
+        "role": "DevOps"
+      },
+      "description": "Prepare release artifacts: version bump, changelog, release notes",
+      "docs": [
+        {
+          "description": "Release notes documenting version, changes, and breaking changes",
+          "format": "markdown",
+          "name": "RELEASE_NOTES.md",
+          "path": "{DOCS_INTERNAL}/{task_id}/RELEASE_NOTES.md",
+          "required": true
+        },
+        {
+          "description": "Changelog entry for this release version",
+          "format": "markdown",
+          "name": "CHANGELOG.md",
+          "path": "{DOCS_INTERNAL}/{task_id}/CHANGELOG.md",
+          "required": true
+        }
+      ],
+      "id": "phase-prepare",
+      "name": "Release Preparation",
+      "on_enter": [
+        {
+          "action": "update_task_phase",
+          "phase": "prepare"
+        }
+      ],
+      "type": "phase"
+    },
+    {
+      "config": {
+        "conditions": [
+          {
+            "threshold": "100%",
+            "type": "tests_pass"
+          },
+          {
+            "threshold": "0 errors",
+            "type": "lint_pass"
+          },
+          {
+            "check": "CHANGELOG.md exists and non-empty",
+            "required": true,
+            "type": "custom"
+          },
+          {
+            "check": "RELEASE_NOTES.md exists and non-empty",
+            "required": true,
+            "type": "custom"
+          },
+          {
+            "check": "Version number updated",
+            "required": true,
+            "type": "custom"
+          },
+          {
+            "check": "CI pipeline passes",
+            "required": true,
+            "type": "custom"
+          }
+        ],
+        "on_fail": "phase-prepare",
+        "on_pass": "phase-deploy"
+      },
+      "description": "Verify release is ready: CI passes, changelog exists, version bumped",
+      "id": "gate-release-readiness",
+      "name": "Release Readiness Gate",
+      "type": "gate"
+    },
+    {
+      "components": {
+        "prompts": [
+          {
+            "path": "{TEAM_PATH}/prompts/devops.md",
+            "ref": "devops",
+            "source": "file"
+          }
+        ],
+        "roles": [
+          {
+            "ref": "devops",
+            "source": "team"
+          }
+        ],
+        "rules": [
+          {
+            "ref": "d4e",
+            "source": "builtin"
+          }
+        ],
+        "tools": [
+          {
+            "ref": "task"
+          },
+          {
+            "ref": "search"
+          },
+          {
+            "ref": "file-ops"
+          }
+        ]
+      },
+      "config": {
+        "auto_dispatch": true,
+        "deliverables": [
+          "DEPLOY.md"
+        ],
+        "role": "DevOps"
+      },
+      "description": "Deploy the release to target environment",
+      "docs": [
+        {
+          "description": "Deployment record: environment, version, timestamp, rollback plan",
+          "format": "markdown",
+          "name": "DEPLOY.md",
+          "path": "{DOCS_INTERNAL}/{task_id}/DEPLOY.md",
+          "required": true
+        }
+      ],
+      "id": "phase-deploy",
+      "name": "Deployment",
+      "on_enter": [
+        {
+          "action": "update_task_phase",
+          "phase": "deploy"
+        }
+      ],
+      "type": "phase"
+    },
+    {
+      "components": {
+        "prompts": [
+          {
+            "path": "{TEAM_PATH}/prompts/devops.md",
+            "ref": "devops",
+            "source": "file"
+          }
+        ],
+        "roles": [
+          {
+            "ref": "devops",
+            "source": "team"
+          }
+        ],
+        "rules": [
           {
             "ref": "d2b",
             "source": "framework"
@@ -439,201 +401,33 @@
       "config": {
         "auto_dispatch": true,
         "deliverables": [
-          "VERIFICATION_REPORT.md"
+          "SMOKE_TEST.md"
         ],
-        "role": "QA"
+        "role": "DevOps"
       },
-      "description": "QA + DevOps run full integration and E2E tests, verify no regressions",
+      "description": "Run smoke tests and verify deployment health",
       "docs": [
         {
-          "description": "Integration verification: test results, coverage, regressions found, performance metrics",
+          "description": "Smoke test results and deployment health check",
           "format": "markdown",
-          "name": "VERIFICATION_REPORT.md",
-          "path": "{DOCS_INTERNAL}/reports/releases/{milestone_id}/VERIFICATION_REPORT.md",
+          "name": "SMOKE_TEST.md",
+          "path": "{DOCS_INTERNAL}/{task_id}/SMOKE_TEST.md",
           "required": true
         }
       ],
-      "id": "release-verify",
-      "name": "Integration Verification",
+      "id": "phase-verify",
+      "name": "Post-Deploy Verification",
       "on_enter": [
         {
           "action": "update_task_phase",
           "phase": "verify"
         }
       ],
-      "type": "phase"
-    },
-    {
-      "config": {
-        "conditions": [
-          {
-            "required": true,
-            "threshold": "100%",
-            "type": "tests_pass"
-          },
-          {
-            "required": true,
-            "type": "no_regressions"
-          },
-          {
-            "check": "Performance metrics within acceptable range",
-            "required": false,
-            "type": "custom"
-          },
-          {
-            "required": true,
-            "threshold": "0 errors",
-            "type": "lint_pass"
-          }
-        ],
-        "on_fail": "release-verify",
-        "on_pass": "release-accept"
-      },
-      "description": "Verify all tests pass, no regressions, performance acceptable",
-      "id": "gate-verification",
-      "name": "Verification Gate",
-      "type": "gate"
-    },
-    {
-      "components": {
-        "prompts": [
-          {
-            "path": "{TEAM_PATH}/prompts/pm.md",
-            "ref": "pm",
-            "source": "file"
-          }
-        ],
-        "roles": [
-          {
-            "ref": "pm",
-            "source": "builtin"
-          }
-        ],
-        "rules": [
-          {
-            "ref": "d2b",
-            "source": "framework"
-          }
-        ]
-      },
-      "config": {
-        "auto_dispatch": true,
-        "deliverables": [
-          "ACCEPTANCE_RECORD.md"
-        ],
-        "role": "PM"
-      },
-      "description": "PM reviews release, communicates with stakeholders, makes go/no-go decision",
-      "docs": [
+      "on_exit": [
         {
-          "description": "Acceptance record: go/no-go decision, stakeholder sign-off, known issues, release notes",
-          "format": "markdown",
-          "name": "ACCEPTANCE_RECORD.md",
-          "path": "{DOCS_INTERNAL}/reports/releases/{milestone_id}/ACCEPTANCE_RECORD.md",
-          "required": true
-        }
-      ],
-      "id": "release-accept",
-      "name": "Acceptance \u0026 Sign-off",
-      "on_enter": [
-        {
-          "action": "update_task_phase",
-          "phase": "review"
-        }
-      ],
-      "type": "phase"
-    },
-    {
-      "config": {
-        "approval_strategy": "all",
-        "approvers": [
-          {
-            "required": true,
-            "role": "PM"
-          }
-        ],
-        "conditions": [
-          {
-            "check": "All acceptance criteria 100% met",
-            "required": true,
-            "type": "custom"
-          },
-          {
-            "check": "Business loop confirmed",
-            "required": true,
-            "type": "custom"
-          },
-          {
-            "check": "PM sign-off received",
-            "required": true,
-            "type": "custom"
-          }
-        ],
-        "on_timeout": "terminal-timeout",
-        "timeout_minutes": 1440
-      },
-      "description": "Manual approval: PM signs off, stakeholders approve",
-      "id": "gate-acceptance",
-      "name": "Acceptance Gate (Manual)",
-      "type": "manual"
-    },
-    {
-      "components": {
-        "prompts": [
-          {
-            "path": "{TEAM_PATH}/prompts/devops.md",
-            "ref": "devops",
-            "source": "file"
-          }
-        ],
-        "roles": [
-          {
-            "ref": "devops",
-            "source": "builtin"
-          }
-        ],
-        "rules": [
-          {
-            "ref": "no-broken-deploy",
-            "source": "builtin"
-          },
-          {
-            "ref": "d4e",
-            "source": "builtin"
-          }
-        ]
-      },
-      "config": {
-        "auto_dispatch": true,
-        "deliverables": [
-          "DEPLOYMENT_RECORD.md",
-          "ROLLBACK_PLAN.md"
-        ],
-        "role": "DevOps"
-      },
-      "description": "DevOps deploys to production, monitors rollout, prepares rollback plan",
-      "docs": [
-        {
-          "description": "Deployment record: version, timestamp, target environment, rollback plan location",
-          "format": "markdown",
-          "name": "DEPLOYMENT_RECORD.md",
-          "path": "{DOCS_INTERNAL}/reports/releases/{milestone_id}/DEPLOYMENT_RECORD.md",
-          "required": true
-        },
-        {
-          "description": "Rollback plan: steps to revert, verification after rollback, communication plan",
-          "format": "markdown",
-          "name": "ROLLBACK_PLAN.md",
-          "path": "{DOCS_INTERNAL}/reports/releases/{milestone_id}/ROLLBACK_PLAN.md",
-          "required": true
-        }
-      ],
-      "id": "release-deploy",
-      "name": "Deploy \u0026 Monitor",
-      "on_enter": [
-        {
-          "action": "update_task_phase",
-          "phase": "implement"
+          "action": "custom",
+          "message": "Verify Output Guard 5-step protocol completed",
+          "name": "output-guard-check"
         }
       ],
       "type": "phase"
@@ -642,14 +436,13 @@
       "config": {
         "conditions": [
           {
-            "check": "Deployment successful, service healthy",
-            "required": true,
-            "type": "custom"
-          },
-          {
-            "check": "No critical alerts in monitoring (first 30 min)",
-            "required": true,
-            "type": "custom"
+            "deliverables": [
+              "RELEASE_NOTES.md",
+              "CHANGELOG.md",
+              "DEPLOY.md",
+              "SMOKE_TEST.md"
+            ],
+            "type": "deliverables_complete"
           },
           {
             "check": "Output Guard Summary all passed",
@@ -660,30 +453,70 @@
             "check": "User confirmation received",
             "required": true,
             "type": "custom"
+          },
+          {
+            "check": "Smoke tests passed",
+            "required": true,
+            "type": "custom"
           }
         ],
-        "on_fail": "release-deploy",
+        "on_fail": "phase-rollback",
         "on_pass": "terminal-success"
       },
-      "description": "Final gate: deployment successful, monitoring clean, user confirmation received",
+      "description": "Final gate verifying all deliverables exist and smoke tests passed",
       "id": "gate-completion",
-      "name": "Release Completion Gate",
+      "name": "Completion Gate",
       "type": "gate"
+    },
+    {
+      "components": {
+        "prompts": [
+          {
+            "path": "{TEAM_PATH}/prompts/devops.md",
+            "ref": "devops",
+            "source": "file"
+          }
+        ],
+        "roles": [
+          {
+            "ref": "devops",
+            "source": "team"
+          }
+        ]
+      },
+      "config": {
+        "auto_dispatch": true,
+        "role": "DevOps"
+      },
+      "description": "Rollback the deployment to previous version",
+      "docs": [
+        {
+          "description": "Rollback record: reason, previous version, timestamp, verification",
+          "format": "markdown",
+          "name": "ROLLBACK.md",
+          "path": "{DOCS_INTERNAL}/{task_id}/ROLLBACK.md",
+          "required": true
+        }
+      ],
+      "id": "phase-rollback",
+      "name": "Rollback",
+      "on_enter": [
+        {
+          "action": "update_task_phase",
+          "phase": "rollback"
+        }
+      ],
+      "type": "phase"
     },
     {
       "config": {
         "message": "Release flow completed successfully",
         "status": "success"
       },
-      "description": "Release deployed and verified successfully",
+      "description": "Release completed and deployed successfully",
       "id": "terminal-success",
       "name": "Released",
       "on_exit": [
-        {
-          "action": "custom",
-          "message": "Update MILESTONES.md: mark milestone as RELEASED",
-          "name": "update-milestone"
-        },
         {
           "action": "custom",
           "message": "Generate handoff document at session end",
@@ -694,29 +527,28 @@
     },
     {
       "config": {
-        "message": "Release rejected: milestone not ready",
+        "message": "Release request does not meet requirements",
         "status": "rejected"
       },
-      "description": "Release rejected at readiness gate",
+      "description": "Release request rejected at entry gate",
       "id": "terminal-reject",
       "name": "Rejected",
       "type": "terminal"
     },
     {
       "config": {
-        "message": "Release timed out: PM sign-off not received within 24 hours",
-        "status": "timeout"
+        "message": "Release failed and was rolled back",
+        "status": "failed"
       },
-      "description": "Release timed out waiting for PM sign-off",
-      "id": "terminal-timeout",
-      "name": "Timeout",
+      "description": "Release failed and was rolled back",
+      "id": "terminal-failed",
+      "name": "Rolled Back",
       "type": "terminal"
     }
   ],
   "variables": {
     "DOCS_INTERNAL": "",
     "TEAM_PATH": "",
-    "milestone_id": "",
     "task_id": ""
   },
   "version": "v3"

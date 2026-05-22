@@ -20,7 +20,7 @@ import { GateNode } from './nodes/GateNode';
 import { TerminalNode } from './nodes/TerminalNode';
 import { StartNode } from './nodes/StartNode';
 import { ConditionalEdge } from './edges/ConditionalEdge';
-import { useFlowStore } from '../stores/flow-store';
+import { useEditorStore } from '../stores/editor-store';
 import type { FlowNode, FlowEdge, StartConfig, PhaseConfig, GateConfig, TerminalConfig, StartNodeData, PhaseNodeData, GateNodeData, TerminalNodeData, ConditionalEdgeData, NodeType } from '../types/flow';
 import { getNodeColor } from './nodes/NodeIcon';
 import { generateNodeId } from '../utils/id';
@@ -42,10 +42,11 @@ interface CanvasProps {
   onNodesChange: OnNodesChange;
   onEdgesChange: OnEdgesChange;
   onDropNode?: (node: FlowNode, position: { x: number; y: number }) => void;
+  readOnly?: boolean;
 }
 
-export function Canvas({ nodes, edges, onNodesChange, onEdgesChange, onDropNode }: CanvasProps) {
-  const { selectNode, selectEdge, addEdge } = useFlowStore();
+export function Canvas({ nodes, edges, onNodesChange, onEdgesChange, onDropNode, readOnly }: CanvasProps) {
+  const { selectNode, selectEdge, addEdge } = useEditorStore();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const { screenToFlowPosition } = useReactFlow();
 
@@ -99,7 +100,7 @@ export function Canvas({ nodes, edges, onNodesChange, onEdgesChange, onDropNode 
         y: event.clientY,
       });
 
-      const existingIds = useFlowStore.getState().nodes.map((n) => n.id);
+      const existingIds = useEditorStore.getState().nodes.map((n) => n.id);
       const id = generateNodeId(existingIds);
       const newNode: FlowNode = {
         id,
@@ -137,7 +138,10 @@ export function Canvas({ nodes, edges, onNodesChange, onEdgesChange, onDropNode 
         connectionLineStyle={{ stroke: '#3B82F6', strokeWidth: 2 }}
         snapToGrid
         snapGrid={[16, 16]}
-        deleteKeyCode="Delete"
+        deleteKeyCode={readOnly ? null : 'Delete'}
+        nodesDraggable={!readOnly}
+        nodesConnectable={!readOnly}
+        elementsSelectable={!readOnly}
       >
         <Background color="#E5E7EB" gap={20} size={1} />
         <Controls position="bottom-right" />

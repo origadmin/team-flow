@@ -4,8 +4,80 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"sort"
 	"strings"
 )
+
+func formatTeamIntro(w io.Writer, intro *TeamIntroData) {
+	teamName := intro.TeamName
+	if intro.TeamNameZh != "" {
+		teamName = intro.TeamNameZh + "(" + intro.TeamName + ")"
+	}
+
+	fmt.Fprintln(w, "╔══════════════════════════════════════════════════════════════════════╗")
+	fmt.Fprintf(w, "║  🏠 Welcome to %s\n", padLine(teamName, 62))
+	fmt.Fprintln(w, "╠══════════════════════════════════════════════════════════════════════╣")
+
+	if intro.TeamDescription != "" {
+		fmt.Fprintf(w, "║  %s\n", padLine(intro.TeamDescription, 70))
+		fmt.Fprintln(w, "║                                                                    ║")
+	}
+
+	fmt.Fprintf(w, "║  FLOW: %s ⭐ (default)%s\n", intro.FlowName, padLine("", 62-len(intro.FlowName)-14))
+	fmt.Fprintln(w, "║                                                                    ║")
+	fmt.Fprintln(w, "║  YOUR TEAM:                                                        ║")
+
+	sort.Slice(intro.Roles, func(i, j int) bool {
+		if intro.Roles[i].Principal != intro.Roles[j].Principal {
+			return intro.Roles[i].Principal
+		}
+		return intro.Roles[i].Alias < intro.Roles[j].Alias
+	})
+
+	for _, r := range intro.Roles {
+		icon := "🔧"
+		if r.Principal {
+			icon = "⭐"
+		}
+		label := r.Alias
+		if r.AliasEn != "" {
+			label = r.Alias + "(" + r.AliasEn + ")"
+		}
+		desc := fmt.Sprintf("%s · %s", label, r.RoleName)
+		fmt.Fprintf(w, "║    %s %s\n", icon, padLine(desc, 67))
+	}
+
+	fmt.Fprintln(w, "║                                                                    ║")
+	fmt.Fprintln(w, "║  HOW IT WORKS:                                                     ║")
+	for i, step := range intro.HowItWorks {
+		fmt.Fprintf(w, "║    %d. %s\n", i+1, padLine(step, 66))
+	}
+
+	fmt.Fprintln(w, "║                                                                    ║")
+	fmt.Fprintln(w, "║  AVAILABLE FLOWS:                                                  ║")
+	flowStrs := make([]string, 0, len(intro.Flows))
+	for _, f := range intro.Flows {
+		s := f.ID
+		if f.IsDefault {
+			s += " ⭐"
+		}
+		flowStrs = append(flowStrs, s)
+	}
+	flowLine := strings.Join(flowStrs, "  ")
+	fmt.Fprintf(w, "║    %s\n", padLine(flowLine, 68))
+
+	fmt.Fprintln(w, "║                                                                    ║")
+	fmt.Fprintln(w, "║  SAY: \"help\" for commands, \"status\" for current progress           ║")
+	fmt.Fprintln(w, "╚══════════════════════════════════════════════════════════════════════╝")
+	fmt.Fprintln(w)
+}
+
+func padLine(s string, width int) string {
+	if len(s) >= width {
+		return s[:width]
+	}
+	return s + strings.Repeat(" ", width-len(s))
+}
 
 func FormatJSON(w io.Writer, result *ProcRunResult) error {
 	data, err := json.MarshalIndent(result, "", "  ")
@@ -20,6 +92,10 @@ func FormatJSON(w io.Writer, result *ProcRunResult) error {
 }
 
 func FormatText(w io.Writer, result *ProcRunResult) error {
+	if result.TeamIntro != nil {
+		formatTeamIntro(w, result.TeamIntro)
+	}
+
 	current := result.Current
 
 	if current.IsTerminal {

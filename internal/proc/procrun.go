@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/origadmin/team-flow/internal/bd"
 	"github.com/origadmin/team-flow/internal/flow"
@@ -23,6 +26,31 @@ type ProcRunResult struct {
 	NextOptions []NextOption `json:"next_options"`
 	StatusLine  string       `json:"status_line"`
 	Task        *TaskInfo    `json:"task,omitempty"`
+	TeamIntro   *TeamIntroData `json:"team_intro,omitempty"`
+}
+
+type TeamIntroData struct {
+	TeamID          string              `json:"team_id"`
+	TeamName        string              `json:"team_name"`
+	TeamNameZh      string              `json:"team_name_zh,omitempty"`
+	TeamDescription string              `json:"team_description,omitempty"`
+	FlowName        string              `json:"flow_name"`
+	Roles           []TeamIntroRole     `json:"roles"`
+	Flows           []TeamIntroFlow     `json:"flows"`
+	HowItWorks      []string            `json:"how_it_works"`
+}
+
+type TeamIntroRole struct {
+	Alias    string `json:"alias"`
+	AliasEn  string `json:"alias_en"`
+	RoleName string `json:"role_name"`
+	Principal bool  `json:"principal,omitempty"`
+}
+
+type TeamIntroFlow struct {
+	ID          string `json:"id"`
+	Description string `json:"description,omitempty"`
+	IsDefault   bool   `json:"is_default,omitempty"`
 }
 
 type TaskInfo struct {
@@ -135,10 +163,21 @@ type NextOption struct {
 	IsDefault bool    `json:"is_default"`
 }
 
+type TeamLoader interface {
+	LoadTeam(root string) (*flow.TeamDefinition, error)
+}
+
+type DefaultTeamLoader struct{}
+
+func (l *DefaultTeamLoader) LoadTeam(root string) (*flow.TeamDefinition, error) {
+	return LoadTeam(root)
+}
+
 type ProcRunEngine struct {
 	FlowResolver   FlowResolver
 	NodeResolver   NodeResolver
 	VarSubstitutor VarSubstitutor
+	TeamLoader     TeamLoader
 }
 
 func NewProcRunEngine(root string) *ProcRunEngine {
@@ -146,6 +185,7 @@ func NewProcRunEngine(root string) *ProcRunEngine {
 		FlowResolver:   &DefaultFlowResolver{Root: root},
 		NodeResolver:   &DefaultNodeResolver{},
 		VarSubstitutor: &DefaultVarSubstitutor{},
+		TeamLoader:     &DefaultTeamLoader{},
 	}
 }
 
@@ -162,7 +202,25 @@ func (e *ProcRunEngine) Run(ctx context.Context, req ProcRunRequest) (*ProcRunRe
 
 	vars := e.VarSubstitutor.CollectVars(ctx, fl, req, node.ID)
 
-	result := generateResult(fl, node, vars)
+	var team *flow.TeamDefinition
+	if e.TeamLoader != nil {
+		t, tErr := e.TeamLoader.LoadTeam(req.ProjectRoot)
+		if tErr == nil && t != nil {
+			team = t
+		}
+	}
+	if team == nil && req.FlowName != "" {
+		flowPath := req.FlowName
+		if !filepath.IsAbs(flowPath) {
+			flowPath = filepath.Join(req.ProjectRoot, flowPath)
+		}
+		t, tErr := LoadTeamFromFlowPath(flowPath)
+		if tErr == nil && t != nil {
+			team = t
+		}
+	}
+
+	result := generateResult(fl, node, vars, team, req.NodeID == "", req.ProjectRoot)
 
 	// Integrate beads task state if available
 	if taskInfo := resolveTaskInfo(req.TaskID); taskInfo != nil {
@@ -248,7 +306,7 @@ func resolveTaskInfo(taskID string) *TaskInfo {
 	return info
 }
 
-func generateResult(fl *flow.Flow, node *flow.FlowNode, vars map[string]string) *ProcRunResult {
+func generateResult(fl *flow.Flow, node *flow.FlowNode, vars map[string]string, team *flow.TeamDefinition, isFirstNode bool, projectRoot string) *ProcRunResult {
 	domain := ""
 	if fl.Config != nil {
 		domain = fl.Config.Domain
@@ -257,7 +315,7 @@ func generateResult(fl *flow.Flow, node *flow.FlowNode, vars map[string]string) 
 		}
 	}
 
-	current := buildCurrentNode(node, fl, vars)
+	current := buildCurrentNode(node, fl, vars, team)
 
 	result := &ProcRunResult{
 		Flow: FlowMeta{
@@ -271,6 +329,10 @@ func generateResult(fl *flow.Flow, node *flow.FlowNode, vars map[string]string) 
 
 	result.NextOptions = buildNextOptions(fl, node.ID)
 
+	if isFirstNode {
+		result.TeamIntro = buildTeamIntro(fl, team, projectRoot)
+	}
+
 	if result.Current.IsTerminal {
 		result.NextOptions = []NextOption{}
 	}
@@ -278,7 +340,7 @@ func generateResult(fl *flow.Flow, node *flow.FlowNode, vars map[string]string) 
 	return result
 }
 
-func buildCurrentNode(node *flow.FlowNode, fl *flow.Flow, vars map[string]string) CurrentNode {
+func buildCurrentNode(node *flow.FlowNode, fl *flow.Flow, vars map[string]string, team *flow.TeamDefinition) CurrentNode {
 	current := CurrentNode{
 		NodeID:      node.ID,
 		NodeType:    string(node.Type),
@@ -289,7 +351,7 @@ func buildCurrentNode(node *flow.FlowNode, fl *flow.Flow, vars map[string]string
 
 	switch node.Type {
 	case flow.NodeTypePhase, flow.NodeTypeStart:
-		ri := resolveRoleInfo(node, fl)
+		ri := resolveRoleInfo(node, fl, team)
 		current.Role = extractRole(node)
 		current.RoleName = ri.roleName
 		current.Alias = ri.alias
@@ -301,7 +363,7 @@ func buildCurrentNode(node *flow.FlowNode, fl *flow.Flow, vars map[string]string
 		current.PromptSource = substituteVars(ri.promptSource, vars)
 		current.StandardsSource = substituteVars(ri.standardsSource, vars)
 		current.PromptDirectives = ri.directives
-		current.Rules = extractRules(node, fl)
+		current.Rules = extractRules(node, fl, team, ri.roleRules)
 		current.Tools = extractTools(node)
 		current.Skills = extractSkills(node, fl)
 		current.Prompts = extractPrompts(node, vars)
@@ -339,7 +401,7 @@ func buildCurrentNode(node *flow.FlowNode, fl *flow.Flow, vars map[string]string
 					for i := range fl.Nodes {
 					if fl.Nodes[i].ID == b.Node {
 						pbo.Name = fl.Nodes[i].Name
-						ri := resolveRoleInfo(&fl.Nodes[i], fl)
+						ri := resolveRoleInfo(&fl.Nodes[i], fl, team)
 						pbo.RoleName = ri.roleName
 						pbo.Alias = ri.alias
 						break
@@ -351,7 +413,7 @@ func buildCurrentNode(node *flow.FlowNode, fl *flow.Flow, vars map[string]string
 		}
 
 	default:
-		ri := resolveRoleInfo(node, fl)
+		ri := resolveRoleInfo(node, fl, team)
 		current.Role = extractRole(node)
 		current.RoleName = ri.roleName
 		current.Alias = ri.alias
@@ -363,7 +425,7 @@ func buildCurrentNode(node *flow.FlowNode, fl *flow.Flow, vars map[string]string
 		current.PromptSource = substituteVars(ri.promptSource, vars)
 		current.StandardsSource = substituteVars(ri.standardsSource, vars)
 		current.PromptDirectives = ri.directives
-		current.Rules = extractRules(node, fl)
+		current.Rules = extractRules(node, fl, team, ri.roleRules)
 		current.Tools = extractTools(node)
 		current.Skills = extractSkills(node, fl)
 		current.Prompts = extractPrompts(node, vars)
@@ -396,9 +458,10 @@ type roleInfo struct {
 	aliasEn         string
 	roleName        string
 	principal       bool
+	roleRules       []string
 }
 
-func resolveRoleInfo(node *flow.FlowNode, fl *flow.Flow) roleInfo {
+func resolveRoleInfo(node *flow.FlowNode, fl *flow.Flow, team *flow.TeamDefinition) roleInfo {
 	info := roleInfo{}
 	if node.Config == nil {
 		return info
@@ -411,6 +474,28 @@ func resolveRoleInfo(node *flow.FlowNode, fl *flow.Flow) roleInfo {
 		return info
 	}
 	roleRef := node.Components.Roles[0].Ref
+
+	if team != nil {
+		for _, r := range team.Roles {
+			if r.ID == roleRef {
+				info.promptSource = r.PromptSource
+				info.standardsSource = r.StandardsSource
+				info.directives = r.PromptDirectives
+				info.persona = r.Persona
+				info.traits = r.Traits
+				info.guidance = r.Guidance
+				info.alias = r.Alias
+				info.aliasEn = r.AliasEn
+				info.roleName = r.Name
+				info.roleRules = r.Rules
+				if r.Principal != nil && *r.Principal {
+					info.principal = true
+				}
+				return info
+			}
+		}
+	}
+
 	if fl.Components == nil {
 		return info
 	}
@@ -425,6 +510,7 @@ func resolveRoleInfo(node *flow.FlowNode, fl *flow.Flow) roleInfo {
 			info.alias = r.Alias
 			info.aliasEn = r.AliasEn
 			info.roleName = r.Name
+			info.roleRules = r.Rules
 			if r.Principal != nil && *r.Principal {
 				info.principal = true
 			}
@@ -450,23 +536,53 @@ func extractPrompts(node *flow.FlowNode, vars map[string]string) []PromptOutput 
 	return prompts
 }
 
-func extractRules(node *flow.FlowNode, fl *flow.Flow) []RuleOutput {
-	if node.Components == nil {
+func extractRules(node *flow.FlowNode, fl *flow.Flow, team *flow.TeamDefinition, roleRules []string) []RuleOutput {
+	if node.Components == nil && len(roleRules) == 0 {
 		return nil
 	}
 	ruleDefs := make(map[string]flow.RuleDefinition)
+	if team != nil {
+		for _, r := range team.Rules {
+			ruleDefs[r.ID] = r
+		}
+	}
 	if fl.Components != nil {
 		for _, r := range fl.Components.Rules {
 			ruleDefs[r.ID] = r
 		}
 	}
-	rules := make([]RuleOutput, 0, len(node.Components.Rules))
-	for _, r := range node.Components.Rules {
-		out := RuleOutput{
-			Ref:    r.Ref,
-			Source: string(r.Source),
+	rules := make([]RuleOutput, 0)
+	if node.Components != nil {
+		for _, r := range node.Components.Rules {
+			out := RuleOutput{
+				Ref:    r.Ref,
+				Source: string(r.Source),
+			}
+			if def, ok := ruleDefs[r.Ref]; ok {
+				out.Name = def.Name
+				out.Instruction = def.Instruction
+				out.Enforcement = string(def.Enforcement)
+				out.RuleRef = fmt.Sprintf("flow proc rule %s", def.ID)
+			}
+			rules = append(rules, out)
 		}
-		if def, ok := ruleDefs[r.Ref]; ok {
+	}
+	for _, ref := range roleRules {
+		found := false
+		for _, existing := range rules {
+			if existing.Ref == ref {
+				found = true
+				break
+			}
+		}
+		if found {
+			continue
+		}
+		out := RuleOutput{
+			Ref:    ref,
+			Source: "role",
+		}
+		if def, ok := ruleDefs[ref]; ok {
 			out.Name = def.Name
 			out.Instruction = def.Instruction
 			out.Enforcement = string(def.Enforcement)
@@ -655,6 +771,89 @@ func buildNextOptionsFromEdges(edges []flow.FlowEdge, nodeMap map[string]*flow.F
 // buildStatusLine generates the v2-compatible status line: [Role|TaskPool|Phase|Asset]
 // This provides a consistent, machine-readable progress indicator that AI agents
 // should include in every response during flow execution.
+func buildTeamIntro(fl *flow.Flow, team *flow.TeamDefinition, projectRoot string) *TeamIntroData {
+	intro := &TeamIntroData{
+		FlowName: fl.Metadata.Name,
+		HowItWorks: []string{
+			"You tell the principal what you need",
+			"Principal classifies and dispatches to the right specialist",
+			"Specialist does the work and produces deliverables",
+			"Principal verifies and reports back to you",
+		},
+	}
+
+	if team != nil {
+		intro.TeamID = team.ID
+		intro.TeamName = team.Name
+		intro.TeamNameZh = team.NameZh
+		intro.TeamDescription = team.Description
+
+		for _, r := range team.Roles {
+			intro.Roles = append(intro.Roles, TeamIntroRole{
+				Alias:     r.Alias,
+				AliasEn:   r.AliasEn,
+				RoleName:  r.Name,
+				Principal: r.Principal != nil && *r.Principal,
+			})
+		}
+
+		for _, f := range team.Flows {
+			intro.Flows = append(intro.Flows, TeamIntroFlow{
+				ID:          f.ID,
+				Description: f.Description,
+				IsDefault:   f.ID == fl.Metadata.Name,
+			})
+		}
+	}
+
+	if len(intro.Roles) == 0 {
+		seen := make(map[string]bool)
+		for i := range fl.Nodes {
+			n := &fl.Nodes[i]
+			ri := resolveRoleInfo(n, fl, team)
+			if ri.alias != "" && !seen[ri.alias] {
+				seen[ri.alias] = true
+				intro.Roles = append(intro.Roles, TeamIntroRole{
+					Alias:     ri.alias,
+					AliasEn:   ri.aliasEn,
+					RoleName:  ri.roleName,
+					Principal: ri.principal,
+				})
+			}
+		}
+	}
+
+	if len(intro.Flows) == 0 {
+		intro.Flows = loadAvailableFlows(fl.Metadata.Name, projectRoot)
+	}
+
+	return intro
+}
+
+func loadAvailableFlows(defaultFlow, projectRoot string) []TeamIntroFlow {
+	var flows []TeamIntroFlow
+	flowsDir := filepath.Join(projectRoot, ".team", "flows")
+	entries, err := os.ReadDir(flowsDir)
+	if err != nil {
+		flows = append(flows, TeamIntroFlow{ID: defaultFlow, IsDefault: true})
+		return flows
+	}
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
+			continue
+		}
+		flowID := strings.TrimSuffix(entry.Name(), ".json")
+		flows = append(flows, TeamIntroFlow{
+			ID:        flowID,
+			IsDefault: flowID == defaultFlow,
+		})
+	}
+	if len(flows) == 0 {
+		flows = append(flows, TeamIntroFlow{ID: defaultFlow, IsDefault: true})
+	}
+	return flows
+}
+
 func buildStatusLine(fl *flow.Flow, node *flow.FlowNode, current CurrentNode, vars map[string]string) string {
 	role := current.Role
 	if role == "" {

@@ -33,10 +33,10 @@ Features:
 }
 
 func init() {
-	Cmd.Flags().IntVarP(&port, "port", "p", 5173, "Port")
+	Cmd.Flags().IntVarP(&port, "port", "p", 5174, "Port for API server")
 	Cmd.Flags().StringVar(&host, "host", "localhost", "Listen address")
 	Cmd.Flags().BoolVar(&openBrowser, "open", true, "Auto-open browser")
-	Cmd.Flags().BoolVar(&dev, "dev", true, "Start in dev mode (uses rsbuild dev server)")
+	Cmd.Flags().BoolVar(&dev, "dev", true, "Start in dev mode (frontend dev server + API server)")
 }
 
 func findEditorDir() string {
@@ -98,16 +98,30 @@ func findNpx() string {
 }
 
 func runEditor(cmd *cobra.Command, args []string) error {
-	editorDir := findEditorDir()
+	rootDir, _ := os.Getwd()
+	api := newAPIServer(rootDir)
 
-	if dev && editorDir != "" {
-		return runDevServer(editorDir)
+	if dev {
+		go func() {
+			apiAddr := fmt.Sprintf("%s:%d", host, port)
+			fmt.Printf("API server: http://%s/api/\n", apiAddr)
+			if err := http.ListenAndServe(apiAddr, api); err != nil {
+				fmt.Printf("API server error: %v\n", err)
+			}
+		}()
+
+		editorDir := findEditorDir()
+		if editorDir != "" {
+			return runDevServer(editorDir, rootDir)
+		}
+		fmt.Println("Editor directory not found, API-only mode.")
+		select {}
 	}
 
-	return runFallbackServer()
+	return runProductionServer(api)
 }
 
-func runDevServer(editorDir string) error {
+func runDevServer(editorDir string, rootDir string) error {
 	bunPath := findBun()
 
 	var cmdStr string
@@ -119,8 +133,10 @@ func runDevServer(editorDir string) error {
 	} else {
 		npxPath := findNpx()
 		if npxPath == "" {
-			fmt.Println("Neither bun nor npx found. Falling back to static editor.")
-			return runFallbackServer()
+			fmt.Println("Neither bun nor npx found. Starting API-only server.")
+			addr := fmt.Sprintf("%s:%d", host, port)
+			fmt.Printf("API server: http://%s/api/\n", addr)
+			return http.ListenAndServe(addr, newAPIServer(rootDir))
 		}
 		cmdStr = npxPath
 		cmdArgs = []string{"rsbuild", "dev", "--open"}
@@ -147,8 +163,8 @@ func runDevServer(editorDir string) error {
 
 	if err := c.Run(); err != nil {
 		fmt.Printf("Dev server error: %v\n", err)
-		fmt.Println("Falling back to static editor.")
-		return runFallbackServer()
+		fmt.Println("Falling back to production server.")
+		return runProductionServer(newAPIServer(rootDir))
 	}
 
 	return nil
@@ -169,14 +185,54 @@ func openURL(url string) {
 	}
 }
 
-func runFallbackServer() error {
+func runProductionServer(api *apiServer) error {
 	addr := fmt.Sprintf("%s:%d", host, port)
 
-	fmt.Printf("Flow Editor (static fallback) starting...\n")
+	mux := http.NewServeMux()
+	mux.Handle("/api/", api)
+
+	editorDir := findEditorDir()
+	distDir := ""
+	if editorDir != "" {
+		distDir = filepath.Join(editorDir, "dist")
+		if _, err := os.Stat(distDir); err != nil {
+			distDir = ""
+		}
+	}
+
+	if distDir != "" {
+		fs := http.FileServer(http.Dir(distDir))
+		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			fsPath := filepath.Join(distDir, r.URL.Path)
+			if _, err := os.Stat(fsPath); err != nil {
+				http.ServeFile(w, r, filepath.Join(distDir, "index.html"))
+			} else {
+				fs.ServeHTTP(w, r)
+			}
+		})
+	} else {
+		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			w.Write([]byte(fallbackHTML))
+		})
+	}
+
+	fmt.Printf("Flow Editor starting...\n")
 	fmt.Printf("Address: http://%s\n", addr)
+	fmt.Printf("API: http://%s/api/\n", addr)
 	fmt.Printf("Press Ctrl+C to stop\n\n")
 
-	html := `<!DOCTYPE html>
+	if openBrowser {
+		go func() {
+			<-time.After(1 * time.Second)
+			openURL(fmt.Sprintf("http://%s", addr))
+		}()
+	}
+
+	return http.ListenAndServe(addr, mux)
+}
+
+const fallbackHTML = `<!DOCTYPE html>
 <html>
 <head>
     <title>team-flow Editor</title>
@@ -198,11 +254,3 @@ func runFallbackServer() error {
     </div>
 </body>
 </html>`
-
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.Write([]byte(html))
-	})
-
-	return http.ListenAndServe(addr, nil)
-}

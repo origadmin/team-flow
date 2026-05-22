@@ -188,3 +188,75 @@ type projectYAML struct {
 		DocsExternal string `yaml:"docs_external"`
 	} `yaml:"paths"`
 }
+
+func LoadTeam(root string) (*flow.TeamDefinition, error) {
+	teamPath := filepath.Join(root, ".team", "team.json")
+	data, err := os.ReadFile(teamPath)
+	if err == nil {
+		var team flow.TeamDefinition
+		if json.Unmarshal(data, &team) == nil && team.ID != "" {
+			return &team, nil
+		}
+	}
+
+	flowsDir := filepath.Join(root, ".team", "flows")
+	entries, err := os.ReadDir(flowsDir)
+	if err == nil {
+		for _, entry := range entries {
+			if entry.IsDir() {
+				continue
+			}
+			tp := filepath.Join(flowsDir, entry.Name())
+			d, readErr := os.ReadFile(tp)
+			if readErr != nil {
+				continue
+			}
+			var team flow.TeamDefinition
+			if json.Unmarshal(d, &team) == nil && team.ID != "" {
+				return &team, nil
+			}
+		}
+	}
+
+	teamsDir := filepath.Join(root, "teams")
+	teamEntries, err := os.ReadDir(teamsDir)
+	if err == nil {
+		for _, entry := range teamEntries {
+			if !entry.IsDir() {
+				continue
+			}
+			tp := filepath.Join(teamsDir, entry.Name(), "team.json")
+			d, readErr := os.ReadFile(tp)
+			if readErr != nil {
+				continue
+			}
+			var team flow.TeamDefinition
+			if json.Unmarshal(d, &team) == nil && team.ID != "" {
+				return &team, nil
+			}
+		}
+	}
+
+	return nil, nil
+}
+
+func LoadTeamFromFlowPath(flowPath string) (*flow.TeamDefinition, error) {
+	dir := filepath.Dir(flowPath)
+	parentDir := filepath.Dir(dir)
+
+	for _, candidate := range []string{
+		filepath.Join(dir, "team.json"),
+		filepath.Join(parentDir, "team.json"),
+	} {
+		data, err := os.ReadFile(candidate)
+		if err != nil {
+			continue
+		}
+		var team flow.TeamDefinition
+		if json.Unmarshal(data, &team) == nil && team.ID != "" {
+			return &team, nil
+		}
+	}
+
+	return nil, nil
+}

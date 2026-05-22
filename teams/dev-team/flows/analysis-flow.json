@@ -1,107 +1,19 @@
 {
   "components": {
-    "roles": [
-      {
-        "capabilities": [
-          "classify",
-          "dispatch"
-        ],
-        "description": "Classify and dispatch analysis tasks",
-        "id": "triage",
-        "name": "Triage Agent",
-        "prompt_directives": [
-          "Dispatch tasks to sub-agents, never execute directly",
-          "Classify all user input before action: Feature/Bug/Change/Analysis/Batch",
-          "Read .team/project.md for project constraints before dispatch",
-          "Use flow task create/show for all task state management",
-          "Report deliverables and handoff to next role on completion"
-        ]
-      },
-      {
-        "capabilities": [
-          "analyze",
-          "research",
-          "report"
-        ],
-        "description": "Perform analysis and produce reports",
-        "id": "analysis",
-        "name": "Analyst"
-      },
-      {
-        "capabilities": [
-          "review",
-          "architect"
-        ],
-        "description": "Review analysis findings",
-        "id": "tech-lead",
-        "name": "Tech Lead",
-        "prompt_directives": [
-          "Design before implement: SPEC.md + AC.md + Data Model mandatory",
-          "Ensure R0 Navigation Matrix covers all entry points",
-          "Review all API contracts for consistency",
-          "Verify design satisfies all acceptance criteria",
-          "Output Guard self-check before marking phase complete"
-        ]
-      }
-    ],
-    "rules": [
-      {
-        "description": "Triage must dispatch tasks to sub-agents, never execute code modifications directly",
-        "enforcement": "hard",
-        "id": "d1a",
-        "instruction": "Triage 必须分发任务给子智能体，禁止自己执行代码修改",
-        "name": "Dispatch Guard",
-        "source": "builtin",
-        "type": "process_constraint"
-      },
-      {
-        "description": "5-step self-assessment before completion gate: deliverable exists, content non-empty, spec compliance, no placeholders, path correctness",
-        "enforcement": "hard",
-        "id": "d2b",
-        "instruction": "完成前必须执行5步自检：产出物存在→内容非空→符合规范→无占位符→路径正确",
-        "name": "Output Guard Protocol",
-        "source": "framework",
-        "type": "process_constraint"
-      },
-      {
-        "description": "Before any action, verify assumptions: what assumptions am I acting on? What's the worst case if wrong? What should I clarify first?",
-        "enforcement": "hard",
-        "id": "qg1",
-        "instruction": "行动前验证假设：我在基于什么假设？错了最坏情况？应先澄清什么？",
-        "name": "QG-1: Think Before Coding",
-        "trigger": "pre_action"
-      },
-      {
-        "description": "Can this be solved with less code? Am I adding unrequested features? Is this over-engineered?",
-        "enforcement": "hard",
-        "id": "qg2",
-        "instruction": "能用更少代码解决吗？在加未要求的功能吗？过度设计了吗？",
-        "name": "QG-2: Simplicity First",
-        "trigger": "pre_output"
-      },
-      {
-        "description": "Only modify code within task scope. Never optimize or refactor adjacent code. Clean up orphan code from own changes.",
-        "enforcement": "hard",
-        "id": "qg3",
-        "instruction": "只改任务范围内的代码；不优化/重构相邻代码；清理自己产生的孤立代码",
-        "name": "QG-3: Surgical Changes",
-        "trigger": "code_change"
-      },
-      {
-        "description": "Define success criteria before executing. Each step must have concrete verification criteria. Never use vague 'completed' descriptions.",
-        "enforcement": "hard",
-        "id": "qg4",
-        "instruction": "执行前定义成功标准；每步有具体验证标准；不用模糊的'完成'描述",
-        "name": "QG-4: Goal-Driven Execution",
-        "trigger": "task_start"
-      }
-    ],
+    "roles": [],
+    "rules": [],
+    "skills": [],
     "tools": [
       {
         "commands": [
           "create",
           "update",
-          "show"
+          "close",
+          "show",
+          "list",
+          "ready",
+          "append",
+          "dep"
         ],
         "id": "task",
         "name": "Task CLI",
@@ -111,20 +23,47 @@
         "id": "search",
         "name": "Code Search",
         "type": "builtin"
+      },
+      {
+        "id": "file-ops",
+        "name": "File Operations",
+        "type": "builtin"
       }
     ]
   },
   "config": {
     "auto_dispatch": true,
-    "parallel_limit": 2,
+    "parallel_limit": 1,
     "task_type": "analysis",
-    "timeout_minutes": 120
+    "timeout_minutes": 180
   },
   "edges": [
     {
       "from": "phase-triage",
-      "id": "e-triage-analyze",
-      "to": "phase-analyze"
+      "id": "e-triage-gate",
+      "to": "gate-entry"
+    },
+    {
+      "conditions": [
+        {
+          "expression": "gate.passed"
+        }
+      ],
+      "from": "gate-entry",
+      "id": "e-gate-analyze",
+      "to": "phase-analyze",
+      "type": "conditional"
+    },
+    {
+      "conditions": [
+        {
+          "expression": "!gate.passed"
+        }
+      ],
+      "from": "gate-entry",
+      "id": "e-gate-reject",
+      "to": "terminal-reject",
+      "type": "conditional"
     },
     {
       "from": "phase-analyze",
@@ -133,18 +72,40 @@
     },
     {
       "from": "phase-report",
-      "id": "e-report-success",
-      "to": "terminal-success"
+      "id": "e-report-completion",
+      "to": "gate-completion"
+    },
+    {
+      "conditions": [
+        {
+          "expression": "gate.passed"
+        }
+      ],
+      "from": "gate-completion",
+      "id": "e-completion-success",
+      "to": "terminal-success",
+      "type": "conditional"
+    },
+    {
+      "conditions": [
+        {
+          "expression": "!gate.passed"
+        }
+      ],
+      "from": "gate-completion",
+      "id": "e-completion-report",
+      "to": "phase-report",
+      "type": "conditional"
     }
   ],
   "metadata": {
     "author": "team-flow",
-    "description": "Technical analysis flow: Triage → Analyze → Report → Terminal",
+    "description": "Analysis flow: Triage → Gate → Analyze → Report → Completion Gate → Terminal",
     "name": "analysis-flow",
     "tags": [
       "analysis",
       "research",
-      "software"
+      "investigation"
     ]
   },
   "nodes": [
@@ -160,7 +121,7 @@
         "roles": [
           {
             "ref": "triage",
-            "source": "builtin"
+            "source": "team"
           }
         ],
         "rules": [
@@ -174,10 +135,10 @@
         "auto_dispatch": true,
         "role": "Triage"
       },
-      "description": "Classify and scope the analysis request",
+      "description": "Classify and validate the analysis request",
       "docs": [
         {
-          "description": "Analysis request triage record with scope, objectives, and dispatch decision",
+          "description": "Analysis triage record with research question, scope, and dispatch decision",
           "format": "markdown",
           "name": "TRIAGE.md",
           "path": "{DOCS_INTERNAL}/{task_id}/TRIAGE.md",
@@ -195,6 +156,25 @@
       "type": "phase"
     },
     {
+      "config": {
+        "conditions": [
+          {
+            "type": "task_exists"
+          },
+          {
+            "expected": "analysis",
+            "type": "type_matches"
+          }
+        ],
+        "on_fail": "terminal-reject",
+        "on_pass": "phase-analyze"
+      },
+      "description": "Validate analysis request has clear research question",
+      "id": "gate-entry",
+      "name": "Entry Gate",
+      "type": "gate"
+    },
+    {
       "components": {
         "prompts": [
           {
@@ -206,7 +186,7 @@
         "roles": [
           {
             "ref": "analysis",
-            "source": "builtin"
+            "source": "team"
           }
         ],
         "rules": [
@@ -236,10 +216,10 @@
         ],
         "role": "Analysis"
       },
-      "description": "Perform technical analysis, investigate codebase, and gather findings",
+      "description": "Perform deep analysis and gather findings",
       "docs": [
         {
-          "description": "Analysis findings document with detailed investigation results and evidence",
+          "description": "Analysis findings: investigation results, evidence, patterns, technical insights",
           "format": "markdown",
           "name": "FINDINGS.md",
           "path": "{DOCS_INTERNAL}/{task_id}/FINDINGS.md",
@@ -268,7 +248,7 @@
         "roles": [
           {
             "ref": "analysis",
-            "source": "builtin"
+            "source": "team"
           }
         ],
         "rules": [
@@ -285,10 +265,10 @@
         ],
         "role": "Analysis"
       },
-      "description": "Compile analysis results into a structured report with conclusions and recommendations",
+      "description": "Compile analysis results into a structured report",
       "docs": [
         {
-          "description": "Final analysis report with conclusions, recommendations, and action items",
+          "description": "Final analysis report: conclusions, recommendations, action items, risk assessment",
           "format": "markdown",
           "name": "REPORT.md",
           "path": "{DOCS_INTERNAL}/{task_id}/REPORT.md",
@@ -303,7 +283,43 @@
           "phase": "review"
         }
       ],
+      "on_exit": [
+        {
+          "action": "custom",
+          "message": "Verify Output Guard 5-step protocol completed",
+          "name": "output-guard-check"
+        }
+      ],
       "type": "phase"
+    },
+    {
+      "config": {
+        "conditions": [
+          {
+            "deliverables": [
+              "FINDINGS.md",
+              "REPORT.md"
+            ],
+            "type": "deliverables_complete"
+          },
+          {
+            "check": "Output Guard Summary all passed",
+            "required": true,
+            "type": "custom"
+          },
+          {
+            "check": "User confirmation received",
+            "required": true,
+            "type": "custom"
+          }
+        ],
+        "on_fail": "phase-report",
+        "on_pass": "terminal-success"
+      },
+      "description": "Final gate verifying all deliverables exist and user confirmation received",
+      "id": "gate-completion",
+      "name": "Completion Gate",
+      "type": "gate"
     },
     {
       "config": {
@@ -313,6 +329,23 @@
       "description": "Analysis completed and report delivered",
       "id": "terminal-success",
       "name": "Analysis Complete",
+      "on_exit": [
+        {
+          "action": "custom",
+          "message": "Generate handoff document at session end",
+          "name": "handoff-doc"
+        }
+      ],
+      "type": "terminal"
+    },
+    {
+      "config": {
+        "message": "Analysis request does not meet requirements",
+        "status": "rejected"
+      },
+      "description": "Analysis request rejected at entry gate",
+      "id": "terminal-reject",
+      "name": "Rejected",
       "type": "terminal"
     }
   ],

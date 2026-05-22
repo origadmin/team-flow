@@ -22,51 +22,8 @@
     "PROJECT_PATH": ""
   },
   "components": {
-    "roles": [
-      {
-        "id": "triage",
-        "name": "Triage Agent",
-        "source": "builtin",
-        "capabilities": [
-          "classify",
-          "dispatch"
-        ],
-        "prompt_directives": [
-          "Dispatch tasks to sub-agents, never execute directly",
-          "Classify all user input before action: Feature/Bug/Change/Analysis/Batch",
-          "Read .team/project.md for project constraints before dispatch",
-          "Use flow task create/show for all task state management",
-          "Report deliverables and handoff to next role on completion"
-        ]
-      },
-      {
-        "id": "dev",
-        "name": "Developer",
-        "source": "builtin",
-        "capabilities": [
-          "implement",
-          "debug"
-        ],
-        "prompt_directives": [
-          "Read SCOPE.md before starting implementation",
-          "Surgical changes only: never modify files outside task scope",
-          "Run tests before marking phase complete",
-          "No Chinese comments or commit messages",
-          "Never delete files unless explicitly asked",
-          "Output Guard 5-step self-check mandatory before completion gate"
-        ]
-      }
-    ],
-    "rules": [
-      {
-        "id": "output-guard",
-        "name": "Output Guard Protocol",
-        "description": "5-step self-assessment before completion: AC compliance matrix, compile check, test execution, self-critique, output summary",
-        "source": "framework",
-        "type": "process_constraint",
-        "enforcement": "hard"
-      }
-    ],
+    "roles": [],
+    "rules": [],
     "tools": [],
     "skills": [],
     "gates": []
@@ -86,7 +43,7 @@
         "roles": [
           {
             "ref": "triage",
-            "source": "builtin"
+            "source": "team"
           }
         ],
         "rules": [
@@ -117,7 +74,7 @@
         "roles": [
           {
             "ref": "dev",
-            "source": "builtin"
+            "source": "team"
           }
         ],
         "rules": [

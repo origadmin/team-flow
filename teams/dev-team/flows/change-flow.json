@@ -1,170 +1,8 @@
 {
   "components": {
-    "roles": [
-      {
-        "capabilities": [
-          "classify",
-          "dispatch"
-        ],
-        "description": "Classify and dispatch change requests",
-        "id": "triage",
-        "name": "Triage Agent",
-        "prompt_directives": [
-          "Dispatch tasks to sub-agents, never execute directly",
-          "Classify all user input before action: Feature/Bug/Change/Analysis/Batch",
-          "Read .team/project.md for project constraints before dispatch",
-          "Use flow task create/show for all task state management",
-          "Report deliverables and handoff to next role on completion"
-        ]
-      },
-      {
-        "capabilities": [
-          "plan",
-          "review",
-          "architect"
-        ],
-        "description": "Plan change scope and review impact",
-        "id": "tech-lead",
-        "name": "Tech Lead",
-        "prompt_directives": [
-          "Design before implement: SPEC.md + AC.md + Data Model mandatory",
-          "Ensure R0 Navigation Matrix covers all entry points",
-          "Review all API contracts for consistency",
-          "Verify design satisfies all acceptance criteria",
-          "Output Guard self-check before marking phase complete"
-        ]
-      },
-      {
-        "capabilities": [
-          "implement",
-          "test"
-        ],
-        "description": "Execute change implementation",
-        "id": "dev",
-        "name": "Developer",
-        "prompt_directives": [
-          "Read SCOPE.md before starting implementation",
-          "Surgical changes only: never modify files outside task scope",
-          "Run tests before marking phase complete",
-          "No Chinese comments or commit messages",
-          "Never delete files unless explicitly asked",
-          "Output Guard 5-step self-check mandatory before completion gate"
-        ]
-      },
-      {
-        "capabilities": [
-          "verify",
-          "validate"
-        ],
-        "description": "Verify change completeness",
-        "id": "qa",
-        "name": "QA Engineer",
-        "prompt_directives": [
-          "Verify implementation matches SPEC.md and AC.md",
-          "Run full regression tests, not just new tests",
-          "Check front-back interface consistency (paths, params, response)",
-          "For bugfixes: data flow trace + real scenario verification required",
-          "Output Guard self-check before marking review complete"
-        ]
-      }
-    ],
-    "rules": [
-      {
-        "description": "Triage must dispatch tasks to sub-agents, never execute code modifications directly",
-        "enforcement": "hard",
-        "id": "d1a",
-        "instruction": "Triage 必须分发任务给子智能体，禁止自己执行代码修改",
-        "name": "Dispatch Guard",
-        "source": "builtin",
-        "type": "process_constraint"
-      },
-      {
-        "description": "5-step self-assessment before completion gate: deliverable exists, content non-empty, spec compliance, no placeholders, path correctness",
-        "enforcement": "hard",
-        "id": "d2b",
-        "instruction": "完成前必须执行5步自检：产出物存在→内容非空→符合规范→无占位符→路径正确",
-        "name": "Output Guard Protocol",
-        "source": "framework",
-        "type": "process_constraint"
-      },
-      {
-        "description": "Change impact analysis required before code modification; any regression test failure must halt immediately",
-        "enforcement": "hard",
-        "id": "d3c",
-        "instruction": "修改代码前必须执行变更影响分析；任何回归测试失败必须立即停止",
-        "name": "Regression Prevention",
-        "source": "builtin",
-        "type": "quality_constraint"
-      },
-      {
-        "description": "Never delete files; never use PowerShell Set-Content/Out-File; never skip toolchain gate",
-        "enforcement": "hard",
-        "id": "d4e",
-        "instruction": "禁止删除文件；禁止用 PowerShell Set-Content/Out-File；禁止跳过工具链门",
-        "name": "Hard Constraints",
-        "source": "builtin",
-        "type": "behavioral_constraint"
-      },
-      {
-        "description": "No Chinese comments or commit messages; TDD approach (test first); code must compile",
-        "enforcement": "hard",
-        "id": "d5f",
-        "instruction": "禁止中文注释和提交信息；先写测试再实现；代码必须可编译",
-        "name": "Development Standards",
-        "source": "builtin",
-        "type": "behavioral_constraint"
-      },
-      {
-        "description": "Design artifacts must follow R1-R3 format; R0 navigation matrix must cover all entry points",
-        "enforcement": "hard",
-        "id": "d9k",
-        "instruction": "设计产出物必须遵循 R1-R3 格式；R0 导航矩阵覆盖所有入口",
-        "name": "Architecture Standards",
-        "source": "builtin",
-        "type": "output_constraint"
-      },
-      {
-        "description": "Review must check architecture compliance; SCOPE.md must be generated on completion",
-        "enforcement": "hard",
-        "id": "d7h",
-        "instruction": "Review 必须检查架构合规性；完成时必须生成 SCOPE.md",
-        "name": "Review Standards",
-        "source": "builtin",
-        "type": "quality_constraint"
-      },
-      {
-        "description": "Before any action, verify assumptions: what assumptions am I acting on? What's the worst case if wrong? What should I clarify first?",
-        "enforcement": "hard",
-        "id": "qg1",
-        "instruction": "行动前验证假设：我在基于什么假设？错了最坏情况？应先澄清什么？",
-        "name": "QG-1: Think Before Coding",
-        "trigger": "pre_action"
-      },
-      {
-        "description": "Can this be solved with less code? Am I adding unrequested features? Is this over-engineered?",
-        "enforcement": "hard",
-        "id": "qg2",
-        "instruction": "能用更少代码解决吗？在加未要求的功能吗？过度设计了吗？",
-        "name": "QG-2: Simplicity First",
-        "trigger": "pre_output"
-      },
-      {
-        "description": "Only modify code within task scope. Never optimize or refactor adjacent code. Clean up orphan code from own changes.",
-        "enforcement": "hard",
-        "id": "qg3",
-        "instruction": "只改任务范围内的代码；不优化/重构相邻代码；清理自己产生的孤立代码",
-        "name": "QG-3: Surgical Changes",
-        "trigger": "code_change"
-      },
-      {
-        "description": "Define success criteria before executing. Each step must have concrete verification criteria. Never use vague 'completed' descriptions.",
-        "enforcement": "hard",
-        "id": "qg4",
-        "instruction": "执行前定义成功标准；每步有具体验证标准；不用模糊的'完成'描述",
-        "name": "QG-4: Goal-Driven Execution",
-        "trigger": "task_start"
-      }
-    ],
+    "roles": [],
+    "rules": [],
+    "skills": [],
     "tools": [
       {
         "commands": [
@@ -172,7 +10,10 @@
           "update",
           "close",
           "show",
-          "list"
+          "list",
+          "ready",
+          "append",
+          "dep"
         ],
         "id": "task",
         "name": "Task CLI",
@@ -192,7 +33,7 @@
   },
   "config": {
     "auto_dispatch": true,
-    "parallel_limit": 3,
+    "parallel_limit": 2,
     "task_type": "change",
     "timeout_minutes": 360
   },
@@ -241,8 +82,8 @@
         }
       ],
       "from": "gate-quality",
-      "id": "e-gate-review",
-      "to": "phase-review",
+      "id": "e-gate-verify",
+      "to": "phase-verify",
       "type": "conditional"
     },
     {
@@ -252,24 +93,46 @@
         }
       ],
       "from": "gate-quality",
-      "id": "e-gate-execute",
+      "id": "e-gate-execute-retry",
       "to": "phase-execute",
       "type": "conditional"
     },
     {
-      "from": "phase-review",
-      "id": "e-review-success",
-      "to": "terminal-success"
+      "from": "phase-verify",
+      "id": "e-verify-completion",
+      "to": "gate-completion"
+    },
+    {
+      "conditions": [
+        {
+          "expression": "gate.passed"
+        }
+      ],
+      "from": "gate-completion",
+      "id": "e-completion-success",
+      "to": "terminal-success",
+      "type": "conditional"
+    },
+    {
+      "conditions": [
+        {
+          "expression": "!gate.passed"
+        }
+      ],
+      "from": "gate-completion",
+      "id": "e-completion-verify",
+      "to": "phase-verify",
+      "type": "conditional"
     }
   ],
   "metadata": {
     "author": "team-flow",
-    "description": "Change management flow: Triage → Gate → Plan → Execute → Gate → Review → Terminal",
+    "description": "Change flow: Triage → Gate → Plan → Execute → Quality Gate → Verify → Completion Gate → Terminal",
     "name": "change-flow",
     "tags": [
       "change",
-      "software",
-      "refactor"
+      "refactor",
+      "software"
     ]
   },
   "nodes": [
@@ -285,7 +148,7 @@
         "roles": [
           {
             "ref": "triage",
-            "source": "builtin"
+            "source": "team"
           }
         ],
         "rules": [
@@ -302,7 +165,7 @@
       "description": "Classify and validate the change request",
       "docs": [
         {
-          "description": "Change request triage record with classification, priority, and dispatch decision",
+          "description": "Change triage record with change type, scope assessment, and dispatch decision",
           "format": "markdown",
           "name": "TRIAGE.md",
           "path": "{DOCS_INTERNAL}/{task_id}/TRIAGE.md",
@@ -333,7 +196,7 @@
         "on_fail": "terminal-reject",
         "on_pass": "phase-plan"
       },
-      "description": "Validate change request has sufficient context and type matches",
+      "description": "Validate change request has sufficient context",
       "id": "gate-entry",
       "name": "Entry Gate",
       "type": "gate"
@@ -350,7 +213,7 @@
         "roles": [
           {
             "ref": "tech-lead",
-            "source": "builtin"
+            "source": "team"
           }
         ],
         "rules": [
@@ -391,7 +254,7 @@
           "content_rules": [
             "Must contain: changed files, added files, deleted files, risk assessment"
           ],
-          "description": "Change scope document detailing what will be modified, added, or removed",
+          "description": "Change scope: what will be modified, added, or removed, with dependency map",
           "format": "markdown",
           "name": "SCOPE.md",
           "path": "{DOCS_INTERNAL}/{task_id}/SCOPE.md",
@@ -399,7 +262,7 @@
           "template": "{TEAM_PATH}/templates/scope-template.md"
         },
         {
-          "description": "Impact analysis document identifying affected components, dependencies, and migration steps",
+          "description": "Impact analysis: affected components, dependencies, migration steps, rollback plan",
           "format": "markdown",
           "name": "IMPACT.md",
           "path": "{DOCS_INTERNAL}/{task_id}/IMPACT.md",
@@ -428,7 +291,7 @@
         "roles": [
           {
             "ref": "dev",
-            "source": "builtin"
+            "source": "team"
           }
         ],
         "rules": [
@@ -438,6 +301,10 @@
           },
           {
             "ref": "d3c",
+            "source": "builtin"
+          },
+          {
+            "ref": "d4e",
             "source": "builtin"
           }
         ],
@@ -464,7 +331,7 @@
       "description": "Execute the planned changes and update tests",
       "docs": [
         {
-          "description": "Change execution notes documenting modifications made, files affected, and test updates",
+          "description": "Change execution notes: modifications made, files affected, test updates",
           "format": "markdown",
           "name": "EXEC.md",
           "path": "{DOCS_INTERNAL}/{task_id}/EXEC.md",
@@ -498,12 +365,22 @@
           },
           {
             "type": "no_regressions"
+          },
+          {
+            "check": "No Chinese comments in code",
+            "required": true,
+            "type": "custom"
+          },
+          {
+            "check": "SCOPE.md and IMPACT.md exist and non-empty",
+            "required": true,
+            "type": "custom"
           }
         ],
         "on_fail": "phase-execute",
-        "on_pass": "phase-review"
+        "on_pass": "phase-verify"
       },
-      "description": "Verify changes pass all tests and no regressions introduced",
+      "description": "Verify changes pass all tests and no regressions",
       "id": "gate-quality",
       "name": "Quality Gate",
       "type": "gate"
@@ -512,18 +389,22 @@
       "components": {
         "prompts": [
           {
-            "path": "{TEAM_PATH}/prompts/tech-lead.md",
-            "ref": "tech-lead",
+            "path": "{TEAM_PATH}/prompts/qa-engineer.md",
+            "ref": "qa",
             "source": "file"
           }
         ],
         "roles": [
           {
-            "ref": "tech-lead",
-            "source": "builtin"
+            "ref": "qa",
+            "source": "team"
           }
         ],
         "rules": [
+          {
+            "ref": "d6g",
+            "source": "builtin"
+          },
           {
             "ref": "d7h",
             "source": "builtin"
@@ -533,42 +414,96 @@
       "config": {
         "auto_dispatch": true,
         "deliverables": [
-          "SCOPE.md"
+          "TEST_COVERAGE.md"
         ],
-        "role": "TechLead"
+        "role": "QA"
       },
-      "description": "Review the change for correctness, completeness, and produce final SCOPE.md",
+      "description": "Verify the changes and produce test coverage report",
       "docs": [
         {
-          "content_rules": [
-            "Must contain: changed files, added files, deleted files, risk assessment"
-          ],
-          "description": "Final scope document summarizing completed changes, affected areas, and verification notes",
+          "description": "Test coverage report for the change including regression test results",
           "format": "markdown",
-          "name": "SCOPE.md",
-          "path": "{DOCS_INTERNAL}/{task_id}/SCOPE.md",
+          "name": "TEST_COVERAGE.md",
+          "path": "{DOCS_INTERNAL}/{task_id}/TEST_COVERAGE.md",
           "required": true,
-          "template": "{TEAM_PATH}/templates/scope-template.md"
+          "template": "{TEAM_PATH}/templates/feature-test-template.md"
         }
       ],
-      "id": "phase-review",
-      "name": "Change Review",
+      "id": "phase-verify",
+      "name": "Change Verification",
       "on_enter": [
         {
           "action": "update_task_phase",
-          "phase": "review"
+          "phase": "verify"
+        }
+      ],
+      "on_exit": [
+        {
+          "action": "custom",
+          "message": "Verify Output Guard 5-step protocol completed",
+          "name": "output-guard-check"
         }
       ],
       "type": "phase"
     },
     {
       "config": {
+        "conditions": [
+          {
+            "deliverables": [
+              "SCOPE.md",
+              "IMPACT.md",
+              "EXEC.md",
+              "TEST_COVERAGE.md"
+            ],
+            "type": "deliverables_complete"
+          },
+          {
+            "threshold": "100%",
+            "type": "tests_pass"
+          },
+          {
+            "type": "no_regressions"
+          },
+          {
+            "check": "Output Guard Summary all passed",
+            "required": true,
+            "type": "custom"
+          },
+          {
+            "check": "User confirmation received",
+            "required": true,
+            "type": "custom"
+          },
+          {
+            "check": "SCOPE.md generated",
+            "required": true,
+            "type": "custom"
+          }
+        ],
+        "on_fail": "phase-verify",
+        "on_pass": "terminal-success"
+      },
+      "description": "Final gate verifying all deliverables exist and user confirmation received",
+      "id": "gate-completion",
+      "name": "Completion Gate",
+      "type": "gate"
+    },
+    {
+      "config": {
         "message": "Change flow completed successfully",
         "status": "success"
       },
-      "description": "Change implemented and reviewed successfully",
+      "description": "Change completed and verified successfully",
       "id": "terminal-success",
-      "name": "Change Completed",
+      "name": "Changed",
+      "on_exit": [
+        {
+          "action": "custom",
+          "message": "Generate handoff document at session end",
+          "name": "handoff-doc"
+        }
+      ],
       "type": "terminal"
     },
     {

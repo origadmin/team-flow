@@ -18,6 +18,8 @@ import (
 	skillfs "github.com/origadmin/team-flow"
 	"github.com/origadmin/team-flow/internal/bd"
 	"github.com/origadmin/team-flow/internal/config"
+	"github.com/origadmin/team-flow/internal/flow"
+	"github.com/origadmin/team-flow/internal/skill"
 	"github.com/origadmin/team-flow/internal/toolchain"
 	"github.com/spf13/cobra"
 )
@@ -188,6 +190,10 @@ toolchain:
   frontend:
     language: typescript
     pipeline: bun run test | bun run build
+    framework: react
+    ui_library: shadcn
+    css_framework: tailwind
+    package_manager: bun
 `, projectName, version, defaultFlowValue(version), projectName)
 
 	projectYamlPath := filepath.Join(teamDir, "project.yaml")
@@ -267,7 +273,7 @@ pipeline: bun run test | bun run build
 	installSkill(projectPath, skillfs.FS, version, force)
 
 	skillPath := detectSkillPath(projectPath)
-	generateDevMD(projectPath, skillPath)
+	generateDevMD(projectPath, skillPath, version)
 
 	if version == "v2" {
 		fmt.Println("\n━━━ Step 3: v2 Tools Init ━━━")
@@ -341,6 +347,11 @@ pipeline: bun run test | bun run build
 		if teamInfo != nil {
 			fmt.Printf("  Selected team: %s (%s)\n", teamInfo.Name, teamInfo.ID)
 
+			fmt.Println("\n  Installing team definition...")
+			if err := installTeamDefinition(skillfs.FS, teamInfo.ID, teamDir, force); err != nil {
+				fmt.Printf("  ⚠ Failed to install team definition: %v\n", err)
+			}
+
 			flowName := initFlow
 			if flowName == "" {
 				flowName = teamInfo.DefaultFlow
@@ -398,6 +409,25 @@ pipeline: bun run test | bun run build
 			copied := installTeamFlows(skillfs.FS, teamInfo.ID, projectFlowsDir, force)
 			if copied > 0 {
 				fmt.Printf("  ✓ Copied %d flows from team '%s' to .team/flows/\n", copied, teamInfo.ID)
+			}
+
+			fmt.Println("\n  Resolving skills...")
+			teamDef := loadTeamDefinition(skillfs.FS, teamInfo.ID)
+			if teamDef != nil && len(teamDef.SkillTags) > 0 {
+				resolved := skill.ResolveSkills(teamDef.SkillTags)
+				sf := skill.NewSkillsFile(teamInfo.ID, teamDef.SkillTags, resolved)
+				skillsYamlPath := filepath.Join(teamDir, "skills.yaml")
+				if _, err := os.Stat(skillsYamlPath); err != nil || force {
+					if err := skill.SaveSkillsFile(skillsYamlPath, sf); err != nil {
+						fmt.Printf("  ⚠ Failed to write .team/skills.yaml: %v\n", err)
+					} else {
+						fmt.Printf("  ✓ .team/skills.yaml created (%d skills from %d tags)\n", len(resolved), len(teamDef.SkillTags))
+					}
+				} else {
+					fmt.Println("  .team/skills.yaml already exists (use --force to overwrite)")
+				}
+			} else {
+				fmt.Println("  No skill_tags found in team definition, skipping skill resolution")
 			}
 		} else {
 			fmt.Println("  No team selected. Set one later with:")
@@ -745,6 +775,18 @@ func loadTeamFromFS(fsys embed.FS, teamID string) *teamMeta {
 	return &team
 }
 
+func loadTeamDefinition(fsys embed.FS, teamID string) *flow.TeamDefinition {
+	data, err := fsys.ReadFile("teams/" + teamID + "/team.json")
+	if err != nil {
+		return nil
+	}
+	var team flow.TeamDefinition
+	if json.Unmarshal(data, &team) != nil {
+		return nil
+	}
+	return &team
+}
+
 func findTeamByFlow(fsys embed.FS, flowID string) *teamMeta {
 	entries, err := fs.ReadDir(fsys, "teams")
 	if err != nil {
@@ -871,6 +913,28 @@ func installTeamFlows(fsys embed.FS, teamID, destDir string, overwrite bool) int
 	return copied
 }
 
+func installTeamDefinition(fsys embed.FS, teamID, teamDir string, overwrite bool) error {
+	data, err := fsys.ReadFile("teams/" + teamID + "/team.json")
+	if err != nil {
+		return fmt.Errorf("team '%s' definition not found: %w", teamID, err)
+	}
+
+	dst := filepath.Join(teamDir, "team.json")
+	if !overwrite {
+		if _, err := os.Stat(dst); err == nil {
+			fmt.Println("  .team/team.json already exists (use --force to overwrite)")
+			return nil
+		}
+	}
+
+	if err := os.WriteFile(dst, data, 0644); err != nil {
+		return fmt.Errorf("write .team/team.json: %w", err)
+	}
+
+	fmt.Println("  ✓ .team/team.json created")
+	return nil
+}
+
 func copyFromFS(fsys embed.FS, srcDir, dst string, overwrite bool, excludeDirs []string) (copied, skipped int, err error) {
 	err = fs.WalkDir(fsys, srcDir, func(path string, d fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
@@ -946,7 +1010,7 @@ func detectSkillPath(projectPath string) string {
 	return ".team-flow/skill"
 }
 
-func generateDevMD(projectPath, skillPath string) {
+func generateDevMD(projectPath, skillPath, version string) {
 	fmt.Println("  Generating IDE bridge files...")
 
 	ides := detectIDEs(projectPath)
@@ -965,7 +1029,7 @@ func generateDevMD(projectPath, skillPath string) {
 			continue
 		}
 
-		content := generateBridgeFileContent(ide.BridgeFmt, skillPath)
+		content := generateBridgeFileContent(ide.BridgeFmt, skillPath, version)
 		if content == "" {
 			continue
 		}
@@ -986,7 +1050,193 @@ func generateDevMD(projectPath, skillPath string) {
 	}
 }
 
-func generateBridgeFileContent(format, skillPath string) string {
+func generateBridgeFileContent(format, skillPath, version string) string {
+	if version == "v3" {
+		v3Content := `# team-flow v3 — BLOCKING RULES
+
+> ⛔ 这些规则是硬门控。在完成 Session Startup Protocol 之前，禁止响应任何用户请求。
+> 违反这些规则 = 绕过流程 = 产出不可验证 = 项目失控。
+
+## ⛔ BLOCKING: Session Startup Protocol (EVERY SESSION)
+
+**在回复用户任何请求之前，必须按顺序完成以下步骤。跳过任何一步 = 违规。**
+
+` + "```" + `
+Step 0: PATH 保障
+   Windows: $env:PATH = "D:\golang\windows\go\bin;D:\workspace\gopath\bin;" + $env:PATH
+   验证: flow --version (必须成功)
+
+Step 1: 读取项目版本
+   Read .team/version
+   → 如果不是 v3 → 停止，告知用户需要先运行 flow migrate v3
+
+Step 2: 读取项目配置
+   Read .team/project.md
+   → 提取: default_flow, docs_internal, TOOLCHAIN
+   → 如果 default_flow 为空 → 进入 First-Time Setup（见下文）
+
+Step 3: 启动流程引擎
+   Run: flow proc run
+   → 接收第一个节点的结构化指令
+   → 如果报错 "no default flow" → 回到 Step 2 处理
+
+Step 4: 采用主理人角色
+   → 从 flow proc run 输出中读取 principal 角色的 alias, persona, traits
+   → 向用户宣布身份
+   → 等待用户输入
+` + "```" + `
+
+**⛔ 在 Step 4 完成之前，禁止：**
+- 解析用户的问题
+- 搜索代码库
+- 编辑任何文件
+- 运行任何命令（除了上述步骤中的命令）
+- 使用 TodoWrite 或任何任务管理工具
+
+## ⛔ BLOCKING: Session Recovery Protocol
+
+**当对话上下文恢复/继续时，必须重新执行完整的 Session Startup Protocol。前一会话状态不会自动继承。**
+
+` + "```" + `
+Recovery Check (每次响应前必须确认):
+  1. 我在当前会话中是否已执行 flow proc run？
+  2. 如果否 → 立即执行 Session Startup Protocol Step 0-4
+  3. 如果是 → 正常继续
+
+Session Recovery Steps:
+  Step 0: PATH 保障 (同 Session Startup)
+  Step 1: 读取 .team/version → 确认 v3
+  Step 2: 读取 .team/project.md → 确认 default_flow
+  Step 3: flow proc run → 获取当前节点指令
+  Step 4: 采用主理人角色 → 向用户确认恢复
+` + "```" + `
+
+⛔ **绝对禁止**：跳过 Session Recovery Protocol 直接继续之前的工作。
+
+## First-Time Setup (当 default_flow 为空时)
+
+` + "```" + `
+Step A: Run flow proc list → 查看可用流程
+Step B: 向用户展示选项:
+   "这个项目还没有绑定团队流程。可用选项：
+    1. [列出的流程名] — [描述]
+    2. 创建新团队流程
+    请选择最接近你需求的。"
+Step C: 用户选择后:
+   → 编辑 .team/project.md，设置 default_flow: {chosen-flow}
+   → 重新执行 Session Startup Protocol Step 3
+` + "```" + `
+
+## Status Line (MANDATORY — Every Response)
+
+**每次回复必须以状态行开头。没有例外。**
+
+格式: ` + "`[Role: {alias} | Flow: {flow-name}#{beads-id} | Node: {node-id} | Phase: {phase}]`" + `
+
+- 数据来源: ` + "`flow proc run`" + ` 输出，禁止硬编码
+- 如果还没有运行 flow proc run → 状态行为: ` + "`[Role: unassigned | Flow: none | Node: - | Phase: startup]`" + `
+
+## Core Constraints
+
+| Constraint | Rule | Enforcement |
+|------------|------|-------------|
+| One Project = One Flow | default_flow in project.md, 不需要 --flow 参数 | hard |
+| Principal = Sole UI | 只有 principal 角色和用户交流，其他角色静默执行 | hard |
+| Engine = Truth | 运行 ` + "`flow proc run`" + `，跟随结构化输出，不直接解读 flow JSON | hard |
+| No Ad-Hoc Work | 只做引擎指定的事：工具、文档、规则 | hard |
+| Required Docs Must Exist | 每个节点执行后，required: true 的文档必须存在且非空 | hard |
+| Gates Block Progress | Gate 未通过 → 禁止继续 | hard |
+
+## Execution Loop
+
+` + "```" + `
+1. flow proc run [{node-id}] → 接收当前节点指令
+2. 执行节点 (采用角色、遵循规则、产出文档)
+3. 从 next_options 选择下一节点
+4. flow proc run {next-node-id} → 回到步骤 2
+5. 到达 terminal → 执行 Node Complete Protocol (push) → Session Close
+` + "```" + `
+
+## Node Execution Checklist
+
+每个节点执行前确认：
+- [ ] on_enter actions 已执行
+- [ ] 角色已采用 (persona, traits, guidance)
+- [ ] 所有 hard-enforcement 规则已遵循
+- [ ] 所有 required docs 已在正确路径产出
+- [ ] 只使用了指定的工具
+- [ ] 下一节点从 next_options 正确选择
+
+## Node Complete Protocol
+
+**每个节点完成后执行 commit，session 结束时执行 push。**
+
+` + "```" + `
+After each node execution completes:
+1. Verify deliverables (required docs exist and non-empty)
+2. Git commit (if code/docs changed):
+   git add -A
+   git commit -m "node: {flow-name} {node-id} {date}"
+3. Update task status (if beads task):
+   flow task update {beads-id} --notes "Node {node-id} completed"
+
+At session end (terminal node or user leaves):
+4. Git push:
+   git pull --rebase
+   git push
+5. Report to user: summary + deliverables + position + next steps
+` + "```" + `
+
+## Session Close Protocol
+
+` + "```" + `
+1. Verify all node deliverables are committed
+2. Git push:
+   git pull --rebase
+   git push
+3. Update task status (if beads task):
+   flow task update {beads-id} --notes "Session closed at node {node-id}"
+4. Report to user: summary + deliverables + position + next steps
+` + "```" + `
+
+## Task Management
+
+统一入口: ` + "`flow task list|create|update|show|close`" + `
+
+## Key Commands
+
+` + "```bash" + `
+flow proc run                           # 启动/恢复流程
+flow proc run {node-id}                 # 运行指定节点
+flow proc rule {rule-id}                # 获取规则完整描述
+flow proc list                          # 列出可用流程
+flow proc show {flow-name}              # 展示流程结构
+flow proc validate {flow-name}          # 验证流程
+flow config paths                       # 显示路径变量
+` + "```" + `
+
+## Entry Point
+
+此文件是 v3 规则的入口。加载此文件后：
+1. 立即执行 Session Startup Protocol
+2. 加载 SKILL.md 获取详细执行协议: ` + "`" + skillPath + "/SKILL.md" + "`" + `
+3. 加载 exec skill 获取节点执行细节: ` + "`" + skillPath + "/skills/team-flow-v3-exec/SKILL.md" + "`" + `
+`
+		switch format {
+		case "cursor":
+			return "---\n" +
+				"description: team-flow v3 blocking rules — must complete startup before any work\n" +
+				"globs:\n" +
+				"  - \"**/*\"\n" +
+				"---\n\n" +
+				v3Content
+		case "trae", "claude", "openclaw":
+			return v3Content
+		default:
+			return ""
+		}
+	}
+
 	skillRef := "# team-flow\n\n" +
 		"Read `.team/version` for active version.\n" +
 		"Follow ALL rules in `" + skillPath + "/SKILL.md` as the entry point.\n" +
@@ -1267,10 +1517,23 @@ func installSkillFromFS(projectPath string, fsys embed.FS, version string, overw
 		{"OpenClaw", ".openclaw"},
 	}
 
+	alwaysInstallIDEs := []string{".trae", ".claude"}
+
 	installed := false
 	for _, tmpl := range ideTemplates {
 		configDir := filepath.Join(projectPath, tmpl.Subdir)
+		shouldInstall := false
 		if _, err := os.Stat(configDir); err == nil {
+			shouldInstall = true
+		} else if version == "v3" {
+			for _, a := range alwaysInstallIDEs {
+				if tmpl.Subdir == a {
+					shouldInstall = true
+					break
+				}
+			}
+		}
+		if shouldInstall {
 			installIDESkills(IDEInfo{Name: tmpl.Name, Subdir: tmpl.Subdir})
 			installed = true
 		}

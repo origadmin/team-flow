@@ -116,7 +116,7 @@ func TestProcRunContentRules(t *testing.T) {
 	}
 
 	node := &f.Nodes[0]
-	result := generateResult(f, node, vars)
+	result := generateResult(f, node, vars, nil, false, "")
 
 	if len(result.Current.Docs) != 1 {
 		t.Fatalf("expected 1 doc, got %d", len(result.Current.Docs))
@@ -179,7 +179,7 @@ func TestProcRunEngineContentRules(t *testing.T) {
 	}
 
 	node := &f.Nodes[0]
-	result := generateResult(f, node, vars)
+	result := generateResult(f, node, vars, nil, false, "")
 
 	_ = engine
 	_ = context.Background()

@@ -49,6 +49,215 @@ func ValidateFlow(flow *Flow) *ValidationResult {
 	return result
 }
 
+func ValidateTeam(team *TeamDefinition) *ValidationResult {
+	result := &ValidationResult{Valid: true}
+
+	if team == nil {
+		result.Valid = false
+		result.Errors = append(result.Errors, ValidationIssue{
+			Severity: SeverityError,
+			Message:  "team is nil",
+		})
+		return result
+	}
+
+	if team.ID == "" {
+		result.Errors = append(result.Errors, ValidationIssue{
+			Severity: SeverityError,
+			Message:  "team id is required",
+			Field:    "id",
+		})
+	}
+
+	if team.Name == "" {
+		result.Errors = append(result.Errors, ValidationIssue{
+			Severity: SeverityError,
+			Message:  "team name is required",
+			Field:    "name",
+		})
+	}
+
+	validateTeamRoles(team, result)
+	validateTeamRules(team, result)
+
+	if len(result.Errors) > 0 {
+		result.Valid = false
+	}
+
+	return result
+}
+
+func ValidateFlowWithTeam(fl *Flow, team *TeamDefinition) *ValidationResult {
+	result := ValidateFlow(fl)
+
+	if team == nil || fl == nil {
+		return result
+	}
+
+	teamRoles := make(map[string]bool)
+	for _, r := range team.Roles {
+		teamRoles[r.ID] = true
+	}
+
+	for _, node := range fl.Nodes {
+		if node.Components == nil {
+			continue
+		}
+		for _, roleRef := range node.Components.Roles {
+			if roleRef.Source == SourceTeam && !teamRoles[roleRef.Ref] {
+				result.Warnings = append(result.Warnings, ValidationIssue{
+					Severity: SeverityWarning,
+					NodeID:   node.ID,
+					Message:  fmt.Sprintf("node %s references team role not found in team.json: %s", node.ID, roleRef.Ref),
+					Field:    "nodes[].components.roles",
+				})
+			}
+		}
+	}
+
+	if len(result.Errors) > 0 {
+		result.Valid = false
+	}
+
+	return result
+}
+
+func validateTeamRoles(team *TeamDefinition, result *ValidationResult) {
+	if len(team.Roles) == 0 {
+		result.Warnings = append(result.Warnings, ValidationIssue{
+			Severity: SeverityWarning,
+			Message:  "team has no roles defined",
+			Field:    "roles",
+		})
+		return
+	}
+
+	roleIDs := make(map[string]bool)
+	principalCount := 0
+	for _, role := range team.Roles {
+		if role.ID == "" {
+			result.Errors = append(result.Errors, ValidationIssue{
+				Severity: SeverityError,
+				Message:  "role definition missing id",
+				Field:    "roles",
+			})
+			continue
+		}
+
+		if roleIDs[role.ID] {
+			result.Errors = append(result.Errors, ValidationIssue{
+				Severity: SeverityError,
+				Message:  fmt.Sprintf("duplicate role id: %s", role.ID),
+				Field:    "roles",
+			})
+		}
+		roleIDs[role.ID] = true
+
+		if role.Principal != nil && *role.Principal {
+			principalCount++
+		}
+
+		if len(role.Persona) < 50 {
+			result.Warnings = append(result.Warnings, ValidationIssue{
+				Severity: SeverityWarning,
+				Message:  fmt.Sprintf("role %s persona too short (minimum 50 chars, got %d)", role.ID, len(role.Persona)),
+				Field:    "roles",
+			})
+		}
+
+		if len(role.Traits) < 2 {
+			result.Warnings = append(result.Warnings, ValidationIssue{
+				Severity: SeverityWarning,
+				Message:  fmt.Sprintf("role %s needs at least 2 traits (got %d)", role.ID, len(role.Traits)),
+				Field:    "roles",
+			})
+		}
+
+		if len(role.Guidance) < 30 {
+			result.Warnings = append(result.Warnings, ValidationIssue{
+				Severity: SeverityWarning,
+				Message:  fmt.Sprintf("role %s guidance too short (minimum 30 chars, got %d)", role.ID, len(role.Guidance)),
+				Field:    "roles",
+			})
+		}
+
+		if len(role.Capabilities) < 1 {
+			result.Warnings = append(result.Warnings, ValidationIssue{
+				Severity: SeverityWarning,
+				Message:  fmt.Sprintf("role %s needs at least 1 capability", role.ID),
+				Field:    "roles",
+			})
+		}
+	}
+
+	if principalCount == 0 {
+		result.Warnings = append(result.Warnings, ValidationIssue{
+			Severity: SeverityWarning,
+			Message:  "team has no principal role defined",
+			Field:    "roles",
+		})
+	}
+
+	if principalCount > 1 {
+		result.Errors = append(result.Errors, ValidationIssue{
+			Severity: SeverityError,
+			Message:  fmt.Sprintf("team has %d principal roles (maximum 1)", principalCount),
+			Field:    "roles",
+		})
+	}
+}
+
+func validateTeamRules(team *TeamDefinition, result *ValidationResult) {
+	ruleIDs := make(map[string]bool)
+	for _, rule := range team.Rules {
+		if rule.ID == "" {
+			result.Errors = append(result.Errors, ValidationIssue{
+				Severity: SeverityError,
+				Message:  "rule definition missing id",
+				Field:    "rules",
+			})
+			continue
+		}
+
+		if ruleIDs[rule.ID] {
+			result.Errors = append(result.Errors, ValidationIssue{
+				Severity: SeverityError,
+				Message:  fmt.Sprintf("duplicate rule id: %s", rule.ID),
+				Field:    "rules",
+			})
+		}
+		ruleIDs[rule.ID] = true
+
+		if rule.Name == "" {
+			result.Warnings = append(result.Warnings, ValidationIssue{
+				Severity: SeverityWarning,
+				Message:  fmt.Sprintf("rule %s missing name", rule.ID),
+				Field:    "rules",
+			})
+		}
+
+		if rule.Instruction == "" {
+			result.Warnings = append(result.Warnings, ValidationIssue{
+				Severity: SeverityWarning,
+				Message:  fmt.Sprintf("rule %s has no instruction — AI cannot follow a rule without content", rule.ID),
+				Field:    "rules",
+			})
+		}
+	}
+
+	for _, role := range team.Roles {
+		for _, ruleRef := range role.Rules {
+			if !ruleIDs[ruleRef] {
+				result.Warnings = append(result.Warnings, ValidationIssue{
+					Severity: SeverityWarning,
+					Message:  fmt.Sprintf("role %s references undefined rule: %s", role.ID, ruleRef),
+					Field:    "roles[].rules",
+				})
+			}
+		}
+	}
+}
+
 func validateSyntax(flow *Flow, result *ValidationResult) {
 	if flow.Version == "" {
 		result.Errors = append(result.Errors, ValidationIssue{

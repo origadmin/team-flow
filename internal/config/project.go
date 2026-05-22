@@ -28,8 +28,12 @@ type ProjectToolchain struct {
 }
 
 type ProjectTool struct {
-	Language string `yaml:"language"`
-	Pipeline string `yaml:"pipeline"`
+	Language       string `yaml:"language"`
+	Pipeline       string `yaml:"pipeline"`
+	Framework      string `yaml:"framework,omitempty"`
+	UILibrary      string `yaml:"ui_library,omitempty"`
+	CSSFramework   string `yaml:"css_framework,omitempty"`
+	PackageManager string `yaml:"package_manager,omitempty"`
 }
 
 type ProjectFlow struct {

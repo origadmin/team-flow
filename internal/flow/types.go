@@ -46,6 +46,7 @@ const (
 	SourceTrae       ComponentSource = "trae"
 	SourceFile       ComponentSource = "file"
 	SourceFramework  ComponentSource = "framework"
+	SourceTeam       ComponentSource = "team"
 )
 
 type ConstraintType string
@@ -459,6 +460,7 @@ type RoleDefinition struct {
 	StandardsSource  string   `json:"standards_source,omitempty"`
 	Capabilities     []string `json:"capabilities,omitempty"`
 	PromptDirectives []string `json:"prompt_directives,omitempty"`
+	Rules            []string `json:"rules,omitempty"`
 }
 
 type RuleDefinition struct {
@@ -501,4 +503,35 @@ type FlowOverrides struct {
 	Edges      []FlowEdge         `json:"edges,omitempty"`
 	Variables  map[string]interface{} `json:"variables,omitempty"`
 	Components *ComponentRegistry `json:"components,omitempty"`
+}
+
+type TeamDefinition struct {
+	ID               string            `json:"id"`
+	Name             string            `json:"name"`
+	NameZh           string            `json:"name_zh,omitempty"`
+	Description      string            `json:"description,omitempty"`
+	DescriptionZh    string            `json:"description_zh,omitempty"`
+	Version          string            `json:"version,omitempty"`
+	Author           string            `json:"author,omitempty"`
+	Tags             []string          `json:"tags,omitempty"`
+	Roles            []RoleDefinition  `json:"roles,omitempty"`
+	Rules            []RuleDefinition  `json:"rules,omitempty"`
+	Flows            []TeamFlowRef     `json:"flows,omitempty"`
+	DefaultFlow      string            `json:"default_flow,omitempty"`
+	SkillTags        []string          `json:"skill_tags,omitempty"`
+	SkillRequirements []SkillRequirement `json:"skill_requirements,omitempty"`
+}
+
+type SkillRequirement struct {
+	Tag         string   `json:"tag"`
+	Description string   `json:"description,omitempty"`
+	Required    bool     `json:"required,omitempty"`
+	Skills      []string `json:"skills,omitempty"`
+}
+
+type TeamFlowRef struct {
+	ID          string `json:"id"`
+	File        string `json:"file"`
+	Description string `json:"description,omitempty"`
+	Default     bool   `json:"default,omitempty"`
 }

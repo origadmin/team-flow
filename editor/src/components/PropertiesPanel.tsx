@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { t } from '../i18n';
-import { useFlowStore } from '../stores/flow-store';
+import { useEditorStore } from '../stores/editor-store';
 import type { EdgeCondition, EdgeType, GateConfig, PhaseConfig, StartConfig, TerminalConfig, TerminalStatus, ComponentRef, ToolRef, DocSpec } from '../types/flow';
 import { BUILTIN_ROLES, BUILTIN_RULES, BUILTIN_TOOLS, BUILTIN_SKILLS, DOMAIN_OPTIONS, getRolesByDomain, getRulesByDomain, getSkillsByDomain } from '../data/builtin-components';
 import { ProcRunPreview } from './ProcRunPreview';
@@ -113,7 +113,7 @@ function StartEditor() {
 }
 
 function PhaseEditor({ nodeId }: { nodeId: string }) {
-  const { nodes, updateNode, currentFlow } = useFlowStore();
+  const { nodes, updateNode, currentFlow } = useEditorStore();
   const node = nodes.find((n) => n.id === nodeId)!;
   const config = (node.config ?? {}) as PhaseConfig;
   const domain = currentFlow?.metadata.domain ?? '';
@@ -302,7 +302,7 @@ function PhaseEditor({ nodeId }: { nodeId: string }) {
 }
 
 function GateEditor({ nodeId }: { nodeId: string }) {
-  const { nodes, updateNode } = useFlowStore();
+  const { nodes, updateNode } = useEditorStore();
   const node = nodes.find((n) => n.id === nodeId)!;
   const config = (node.config ?? {}) as GateConfig;
   const [retryExpanded, setRetryExpanded] = useState(false);
@@ -363,7 +363,7 @@ function GateEditor({ nodeId }: { nodeId: string }) {
 }
 
 function TerminalEditor({ nodeId }: { nodeId: string }) {
-  const { nodes, updateNode } = useFlowStore();
+  const { nodes, updateNode } = useEditorStore();
   const node = nodes.find((n) => n.id === nodeId)!;
   const config = (node.config ?? {}) as TerminalConfig;
   const p = t().properties;
@@ -411,7 +411,7 @@ function TerminalEditor({ nodeId }: { nodeId: string }) {
 }
 
 function EdgeEditor({ edgeId }: { edgeId: string }) {
-  const { edges, updateEdge } = useFlowStore();
+  const { edges, updateEdge } = useEditorStore();
   const edge = edges.find((e) => e.id === edgeId)!;
   const p = t().properties;
 
@@ -449,7 +449,7 @@ function EdgeEditor({ edgeId }: { edgeId: string }) {
 }
 
 function FlowEditor() {
-  const { currentFlow, updateFlowMetadata, updateFlowConfig, updateFlowVariables } = useFlowStore();
+  const { currentFlow, updateFlowMetadata, updateFlowConfig, updateFlowVariables } = useEditorStore();
   const p = t().properties;
 
   if (!currentFlow) {
@@ -532,7 +532,7 @@ function FlowEditor() {
 }
 
 export function PropertiesPanel() {
-  const { selectedNodeId, nodes, selectedEdgeId, edges } = useFlowStore();
+  const { selectedNodeId, nodes, selectedEdgeId, edges } = useEditorStore();
   const selectedNode = selectedNodeId ? nodes.find((n) => n.id === selectedNodeId) : null;
   const selectedEdge = selectedEdgeId ? edges.find((e) => e.id === selectedEdgeId) : null;
   const p = t().properties;

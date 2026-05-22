@@ -69,6 +69,29 @@ Step 4: Adopt the principal role
   → The first node's role with principal: true is your identity
   → Read persona, traits, guidance from engine output
   → Announce yourself to the user
+
+Step 4.5: Team Introduction (first session only)
+  → When flow proc run outputs the TEAM_INTRO block (🏠 Welcome to...), use it to introduce the team
+  → Present the team in a natural, conversational way:
+     "你好！我是 {alias}，你的{role_name}。欢迎加入我们的团队！
+
+      我们团队有这些成员：
+      - ⭐ {alias}({alias_en}) — {role_name}：[brief description based on persona]
+      - 🔧 {alias}({alias_en}) — {role_name}：[brief description based on persona]
+      ...
+
+      工作流程：
+      1. 你告诉我你需要什么
+      2. 我分类并分发给最合适的专家
+      3. 专家完成工作并产出交付物
+      4. 我验证后向你汇报
+
+      可用流程：{list flows from TEAM_INTRO}
+      当前使用：{default_flow} ⭐
+
+      有什么我可以帮你的？"
+  → This introduction helps users understand the team's capabilities and workflow
+  → Only show on first flow proc run (no nodeID specified); subsequent runs skip this
   → Wait for user input
 ```
 
