@@ -1,15 +1,22 @@
-# Gemini CLI 配置示例
+# Gemini CLI 配置示例 (v3)
 
 ## 环境变量
-TEAM_PATH: {TEAM_PATH}
-PROJECT_PATH: {PROJECT_PATH}
-docs_internal: {DOCS_INTERNAL}
-docs_external: {DOCS_EXTERNAL}
 
-## 初始化规则
-根据 {TEAM_PATH}/SKILL.md 中定义的流程，Gemini CLI 在启动时应遵循以下初始化规则：
+| 变量 | 值 | 说明 |
+|------|-----|------|
+| PROJECT_PATH | {PROJECT_PATH} | 项目根目录 |
+| DOCS_INTERNAL | {DOCS_INTERNAL} | 内部文档目录 |
+| DOCS_EXTERNAL | {DOCS_EXTERNAL} | 外部文档目录 |
 
-1. **加载环境变量**: 确保已加载所有必要的环境变量，如 TEAM_PATH, PROJECT_PATH, docs_internal, docs_external。
-2. **加载/完善项目基础信息**: 读取 {PROJECT_PATH}/.team/project.md，检查并完善项目名称、技术描述、技术栈、核心模块列表和目录结构。如果缺失，则执行 templates/project.md 中的「已有项目初始化」流程。
-3. **执行初始化**: 读取 {TEAM_PATH}/workflows/shared.md，并按其中「首次启动：自动初始化」步骤执行，包括检查 .team/ 目录、对比 TEAM_VERSION、将当前任务写入任务池。
-4. **输入匹配**: 每次接收到用户输入时，读取 {TEAM_PATH}/workflows/shared.md 中的「输入匹配规则」，并按规则匹配用户输入到意图类别，然后加载对应的 prompts/ 角色定义和 workflows/roles/ 规范文件，按角色规范执行任务。
+## 初始化
+
+1. 读取 `.team/version` → 确认为 v3
+2. 加载 SKILL.md 作为入口（路径取决于 Gemini CLI 的 skill 目录配置）
+3. 执行 `flow proc run` 启动流程引擎
+4. 按 `flow proc run` 输出执行当前节点指令
+
+## Gemini CLI 注意事项
+
+- Gemini CLI 目前无内置 skill 目录约定，需手动配置 SKILL.md 路径
+- 建议将 SKILL.md 内容作为系统提示的一部分加载
+- `flow proc run` 输出可直接作为上下文注入

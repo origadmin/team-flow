@@ -1,6 +1,8 @@
 # team-flow Framework v6.0 → Trae Agent Prompt 生成总结
 
-> 生成日期: 2026-04-25 | 版本: v6.1 | 状态: ✅ 已完成
+> ⚠️ **归档文档** — 本文档记录 v6.0 时代的 Trae Agent Prompt 生成过程。v3 已采用流程驱动架构，角色定义内嵌在 Flow JSON 中，不再使用独立的 Agent Prompt 文件。保留仅供参考。
+
+> 生成日期: 2026-04-25 | 版本: v6.1 | 状态: ✅ 已完成 (v2 legacy)
 
 ---
 

@@ -448,7 +448,13 @@ type ComponentRegistry struct {
 type RoleDefinition struct {
 	ID               string   `json:"id"`
 	Name             string   `json:"name"`
+	Alias            string   `json:"alias,omitempty"`
+	AliasEn          string   `json:"alias_en,omitempty"`
+	Principal        *bool    `json:"principal,omitempty"`
+	Persona          string   `json:"persona,omitempty"`
 	Description      string   `json:"description,omitempty"`
+	Traits           []string `json:"traits,omitempty"`
+	Guidance         string   `json:"guidance,omitempty"`
 	PromptSource     string   `json:"prompt_source,omitempty"`
 	StandardsSource  string   `json:"standards_source,omitempty"`
 	Capabilities     []string `json:"capabilities,omitempty"`
@@ -458,6 +464,7 @@ type RoleDefinition struct {
 type RuleDefinition struct {
 	ID          string      `json:"id"`
 	Name        string      `json:"name"`
+	Instruction string      `json:"instruction,omitempty"`
 	Description string      `json:"description,omitempty"`
 	Source      string      `json:"source,omitempty"`
 	Type        RuleType    `json:"type,omitempty"`

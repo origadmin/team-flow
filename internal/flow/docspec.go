@@ -8,7 +8,8 @@ import (
 )
 
 var supportedVariables = []string{
-	"docs_path",
+	"DOCS_INTERNAL",
+	"DOCS_EXTERNAL",
 	"TEAM_PATH",
 	"task_id",
 	"SKILL_PATH",

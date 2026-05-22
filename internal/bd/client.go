@@ -123,9 +123,9 @@ func Run(args ...string) (string, error) {
 
 	if err != nil {
 		if len(output) > 0 {
-			return string(output), fmt.Errorf("bd %s failed: %w", strings.Join(args, " "), err)
+			return string(output), fmt.Errorf("task-db %s failed: %w", strings.Join(args, " "), err)
 		}
-		return "", fmt.Errorf("bd %s failed: %w", strings.Join(args, " "), err)
+		return "", fmt.Errorf("task-db %s failed: %w", strings.Join(args, " "), err)
 	}
 
 	return string(output), nil
@@ -139,9 +139,9 @@ func RunQuiet(args ...string) (string, error) {
 
 	if err != nil {
 		if exitErr, ok := err.(*exec.ExitError); ok {
-			return string(exitErr.Stderr), fmt.Errorf("bd %s failed: %w", strings.Join(args, " "), err)
+			return string(exitErr.Stderr), fmt.Errorf("task-db %s failed: %w", strings.Join(args, " "), err)
 		}
-		return "", fmt.Errorf("bd %s failed: %w", strings.Join(args, " "), err)
+		return "", fmt.Errorf("task-db %s failed: %w", strings.Join(args, " "), err)
 	}
 
 	return string(output), nil

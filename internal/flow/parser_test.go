@@ -103,7 +103,7 @@ func TestParseFlowWithVars(t *testing.T) {
 					{
 						"name": "SPEC.md",
 						"format": "markdown",
-						"path": "{docs_path}/requirements/{task_id}/SPEC.md",
+						"path": "{DOCS_INTERNAL}/requirements/{task_id}/SPEC.md",
 						"required": true
 					}
 				]
@@ -119,8 +119,8 @@ func TestParseFlowWithVars(t *testing.T) {
 	}`)
 
 	vars := map[string]string{
-		"docs_path": "/project/docs",
-		"task_id":   "framework-34p",
+		"DOCS_INTERNAL": "/project/docs",
+		"task_id":       "framework-34p",
 	}
 
 	flow, err := ParseFlowWithVars(data, vars)
@@ -282,13 +282,13 @@ func TestApplyOverrides_Variables(t *testing.T) {
 		Metadata:   FlowMetadata{Name: "base"},
 		Nodes:      []FlowNode{{ID: "start", Type: NodeTypePhase, Name: "Start"}},
 		Edges:      []FlowEdge{},
-		Variables:  map[string]interface{}{"docs_path": "/old"},
+		Variables:  map[string]interface{}{"DOCS_INTERNAL": "/old"},
 	}
 
-	overrideVars := map[string]interface{}{"docs_path": "/new", "extra": "value"}
+	overrideVars := map[string]interface{}{"DOCS_INTERNAL": "/new", "extra": "value"}
 	result := ApplyOverrides(base, FlowOverrides{Variables: overrideVars})
-	if result.Variables["docs_path"] != "/new" {
-		t.Errorf("expected overridden docs_path /new, got %v", result.Variables["docs_path"])
+	if result.Variables["DOCS_INTERNAL"] != "/new" {
+		t.Errorf("expected overridden DOCS_INTERNAL /new, got %v", result.Variables["DOCS_INTERNAL"])
 	}
 	if result.Variables["extra"] != "value" {
 		t.Errorf("expected extra variable value, got %v", result.Variables["extra"])

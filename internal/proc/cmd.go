@@ -2,6 +2,7 @@ package proc
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -67,17 +68,28 @@ var createCmd = &cobra.Command{
 	RunE:  runCreate,
 }
 
+var ruleCmd = &cobra.Command{
+	Use:   "rule <rule-id>",
+	Short: "Show full rule definition",
+	Long:  `Show the full definition of a rule by its ID, including description and enforcement details.`,
+	Args:  cobra.ExactArgs(1),
+	RunE:  runRule,
+}
+
 func init() {
 	Cmd.AddCommand(runCmd)
 	Cmd.AddCommand(listCmd)
 	Cmd.AddCommand(showCmd)
 	Cmd.AddCommand(validateCmd)
 	Cmd.AddCommand(createCmd)
+	Cmd.AddCommand(ruleCmd)
 
 	Cmd.PersistentFlags().StringVar(&procRootDir, "root", "", "Root directory for preset processes (default: current directory)")
 	runCmd.Flags().StringVar(&procFlowName, "flow", "", "Flow name (default: project's configured flow from .team/project.md)")
 	runCmd.Flags().StringVar(&procFormat, "format", "json", "Output format: json or text")
 	runCmd.Flags().StringVar(&procTaskID, "task", "", "Task ID for variable substitution")
+	ruleCmd.Flags().StringVar(&procFlowName, "flow", "", "Flow name to look up the rule definition")
+	ruleCmd.Flags().StringVar(&procFormat, "format", "text", "Output format: json or text")
 	createCmd.Flags().StringVar(&procTemplate, "template", "", "Template process name from v3/flows/ to base the new process on")
 }
 
@@ -120,22 +132,35 @@ func runRun(cmd *cobra.Command, args []string) error {
 }
 
 type ProcEntry struct {
-	Name   string
-	Path   string
-	Source string
+	Name        string
+	Path        string
+	Source      string
+	Description string
+	IsDefault   bool
+	Registered  bool
 }
 
 func listProcs(root string) []ProcEntry {
 	var entries []ProcEntry
 
+	regMap := readFlowRegistry(root)
+	defaultFlow := readDefaultFlow(root)
+
 	presetDir := filepath.Join(root, "v3", "flows")
 	if files, err := filepath.Glob(filepath.Join(presetDir, "*.json")); err == nil {
 		for _, f := range files {
 			name := strings.TrimSuffix(filepath.Base(f), ".json")
+			desc := ""
+			if reg, ok := regMap[name]; ok {
+				desc = reg
+			}
 			entries = append(entries, ProcEntry{
-				Name:   name,
-				Path:   f,
-				Source: "preset",
+				Name:        name,
+				Path:        f,
+				Source:      "preset",
+				Description: desc,
+				IsDefault:   name == defaultFlow,
+				Registered:  ok(regMap, name),
 			})
 		}
 	}
@@ -144,15 +169,75 @@ func listProcs(root string) []ProcEntry {
 	if files, err := filepath.Glob(filepath.Join(projectDir, "*.json")); err == nil {
 		for _, f := range files {
 			name := strings.TrimSuffix(filepath.Base(f), ".json")
+			desc := ""
+			if reg, ok := regMap[name]; ok {
+				desc = reg
+			}
 			entries = append(entries, ProcEntry{
-				Name:   name,
-				Path:   f,
-				Source: "project",
+				Name:        name,
+				Path:        f,
+				Source:      "project",
+				Description: desc,
+				IsDefault:   name == defaultFlow,
+				Registered:  ok(regMap, name),
 			})
 		}
 	}
 
 	return entries
+}
+
+func ok(m map[string]string, key string) bool {
+	_, exists := m[key]
+	return exists
+}
+
+func readFlowRegistry(root string) map[string]string {
+	result := make(map[string]string)
+	projectMd := filepath.Join(root, ".team", "project.md")
+	data, err := os.ReadFile(projectMd)
+	if err != nil {
+		return result
+	}
+
+	inFlowsSection := false
+	for _, line := range strings.Split(string(data), "\n") {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "## Flows" {
+			inFlowsSection = true
+			continue
+		}
+		if inFlowsSection && strings.HasPrefix(trimmed, "## ") {
+			break
+		}
+		if inFlowsSection && strings.HasPrefix(trimmed, "|") {
+			fields := strings.Split(trimmed, "|")
+			if len(fields) >= 5 {
+				name := strings.TrimSpace(fields[1])
+				desc := strings.TrimSpace(fields[3])
+				if name != "" && name != "Flow" && !strings.HasPrefix(name, "-") {
+					result[name] = desc
+				}
+			}
+		}
+	}
+
+	return result
+}
+
+func readDefaultFlow(root string) string {
+	projectMd := filepath.Join(root, ".team", "project.md")
+	data, err := os.ReadFile(projectMd)
+	if err != nil {
+		return ""
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "default_flow:") {
+			return strings.TrimSpace(strings.TrimPrefix(trimmed, "default_flow:"))
+		}
+	}
+	return ""
 }
 
 func printProcs(w io.Writer, entries []ProcEntry) {
@@ -161,12 +246,32 @@ func printProcs(w io.Writer, entries []ProcEntry) {
 		return
 	}
 
-	fmt.Fprintf(w, "%-30s %-10s %s\n", "NAME", "SOURCE", "PATH")
-	fmt.Fprintf(w, "%-30s %-10s %s\n", strings.Repeat("-", 30), strings.Repeat("-", 10), strings.Repeat("-", 40))
+	fmt.Fprintf(w, "%-25s %-10s %-6s %-10s %s\n", "NAME", "SOURCE", "REG", "DEFAULT", "DESCRIPTION")
+	fmt.Fprintf(w, "%-25s %-10s %-6s %-10s %s\n", strings.Repeat("-", 25), strings.Repeat("-", 10), strings.Repeat("-", 6), strings.Repeat("-", 10), strings.Repeat("-", 30))
 	for _, e := range entries {
-		fmt.Fprintf(w, "%-30s %-10s %s\n", e.Name, e.Source, e.Path)
+		regMark := "  "
+		if e.Registered {
+			regMark = "✓ "
+		}
+		defaultMark := ""
+		if e.IsDefault {
+			defaultMark = "⭐"
+		}
+		desc := e.Description
+		if len(desc) > 30 {
+			desc = desc[:27] + "..."
+		}
+		fmt.Fprintf(w, "%-25s %-10s %-6s %-10s %s\n", e.Name, e.Source, regMark, defaultMark, desc)
 	}
-	fmt.Fprintf(w, "\nTotal: %d process(es)\n", len(entries))
+	fmt.Fprintf(w, "\nTotal: %d flow(s)", len(entries))
+
+	registered := 0
+	for _, e := range entries {
+		if e.Registered {
+			registered++
+		}
+	}
+	fmt.Fprintf(w, " (%d registered)\n", registered)
 }
 
 func runList(cmd *cobra.Command, args []string) error {
@@ -367,6 +472,76 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+func runRule(cmd *cobra.Command, args []string) error {
+	ruleID := args[0]
+	root := getRootDir()
+
+	flowName := procFlowName
+	if flowName == "" {
+		var err error
+		flowName, err = ResolveDefaultFlowName(root)
+		if err != nil {
+			return fmt.Errorf("--flow is required when no default flow is configured: %w", err)
+		}
+	}
+
+	procPath := resolveProcPath(root, flowName)
+	if procPath == "" {
+		return fmt.Errorf("flow not found: %s", flowName)
+	}
+
+	f, err := flow.ParseFlowFile(procPath)
+	if err != nil {
+		return fmt.Errorf("parse flow: %w", err)
+	}
+
+	if f.Components == nil {
+		return fmt.Errorf("rule %s not found: flow %s has no components", ruleID, flowName)
+	}
+
+	for _, r := range f.Components.Rules {
+		if r.ID == ruleID {
+			return printRule(cmd.OutOrStdout(), r, procFormat)
+		}
+	}
+
+	return fmt.Errorf("rule %s not found in flow %s", ruleID, flowName)
+}
+
+func printRule(w io.Writer, r flow.RuleDefinition, format string) error {
+	switch format {
+	case "json":
+		data, err := json.MarshalIndent(r, "", "  ")
+		if err != nil {
+			return fmt.Errorf("marshal rule: %w", err)
+		}
+		w.Write(data)
+		w.Write([]byte("\n"))
+		return nil
+	default:
+		fmt.Fprintf(w, "\n")
+		fmt.Fprintf(w, "Rule: %s\n", r.Name)
+		fmt.Fprintf(w, "ID:   %s\n", r.ID)
+		if r.Type != "" {
+			fmt.Fprintf(w, "Type: %s\n", r.Type)
+		}
+		if r.Enforcement != "" {
+			fmt.Fprintf(w, "Enforcement: %s\n", strings.ToUpper(string(r.Enforcement)))
+		}
+		if r.Instruction != "" {
+			fmt.Fprintf(w, "\nInstruction:\n  %s\n", r.Instruction)
+		}
+		if r.Description != "" {
+			fmt.Fprintf(w, "\nFull Description:\n  %s\n", r.Description)
+		}
+		if r.Source != "" {
+			fmt.Fprintf(w, "\nSource: %s\n", r.Source)
+		}
+		fmt.Fprintf(w, "\n")
+		return nil
+	}
+}
+
 func resolveProcPath(root, id string) string {
 	if filepath.IsAbs(id) {
 		if _, err := os.Stat(id); err == nil {
@@ -381,8 +556,8 @@ func resolveProcPath(root, id string) string {
 	}
 
 	candidates := []string{
-		filepath.Join(root, ".team", "flows", id+".json"),
 		filepath.Join(root, "v3", "flows", id+".json"),
+		filepath.Join(root, ".team", "flows", id+".json"),
 	}
 
 	for _, c := range candidates {

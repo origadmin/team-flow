@@ -1,0 +1,22 @@
+{
+  "id": "dev-team",
+  "name": "Software Development Team",
+  "name_zh": "软件开发团队",
+  "description": "Full-cycle software development team with triage, architecture, implementation, testing, and deployment capabilities",
+  "description_zh": "全流程软件开发团队，包含需求分诊、架构设计、编码实现、测试验证和部署运维能力",
+  "version": "1.0.0",
+  "author": "team-flow",
+  "tags": ["software", "development", "default", "engineering"],
+  "flows": [
+    {"id": "dev-flow", "file": "dev-flow.json", "description": "Standard development flow (default)", "default": true},
+    {"id": "feature-flow", "file": "feature-flow.json", "description": "Feature development flow"},
+    {"id": "bugfix-flow", "file": "bugfix-flow.json", "description": "Bug fix flow"},
+    {"id": "hotfix-flow", "file": "hotfix-flow.json", "description": "Emergency hotfix flow"},
+    {"id": "change-flow", "file": "change-flow.json", "description": "Change/refactor flow"},
+    {"id": "release-flow", "file": "release-flow.json", "description": "Release management flow"},
+    {"id": "analysis-flow", "file": "analysis-flow.json", "description": "Analysis and investigation flow"},
+    {"id": "batch-flow", "file": "batch-flow.json", "description": "Batch task processing flow"}
+  ],
+  "roles": ["triage", "tech-lead", "dev", "qa", "devops", "analysis"],
+  "default_flow": "dev-flow"
+}

@@ -8,28 +8,133 @@ import (
 )
 
 var defaultVariables = map[string]string{
-	"docs_path":    "",
-	"TEAM_PATH":    "",
-	"task_id":      "",
-	"SKILL_PATH":   "",
-	"PROJECT_PATH": "",
+	"DOCS_INTERNAL": "",
+	"DOCS_EXTERNAL": "",
+	"TEAM_PATH":     "",
+	"task_id":       "",
+	"SKILL_PATH":    "",
+	"PROJECT_PATH":  "",
+}
+
+type flowNodeRaw struct {
+	ID          string          `json:"id"`
+	Type        NodeType        `json:"type"`
+	Name        string          `json:"name"`
+	Description string          `json:"description,omitempty"`
+	Config      json.RawMessage `json:"config,omitempty"`
+	Components  *NodeComponents `json:"components,omitempty"`
+	Docs        []DocSpec       `json:"docs,omitempty"`
+	Gates       []GateConfig    `json:"gates,omitempty"`
+	OnEnter     []Action        `json:"on_enter,omitempty"`
+	OnExit      []Action        `json:"on_exit,omitempty"`
+	OnError     *ErrorHandler   `json:"on_error,omitempty"`
+	Role        string          `json:"role,omitempty"`
+	Rules       []string        `json:"rules,omitempty"`
+	Tools       []ToolRef       `json:"tools,omitempty"`
+	Skills      []ComponentRef  `json:"skills,omitempty"`
+}
+
+type flowRaw struct {
+	Version    string                 `json:"version"`
+	Metadata   FlowMetadata           `json:"metadata"`
+	Config     *FlowConfig            `json:"config,omitempty"`
+	Extends    string                 `json:"extends,omitempty"`
+	Overrides  []FlowNodeOverride     `json:"overrides,omitempty"`
+	Components *ComponentRegistry     `json:"components,omitempty"`
+	Nodes      []flowNodeRaw          `json:"nodes"`
+	Edges      []FlowEdge             `json:"edges"`
+	Variables  map[string]interface{} `json:"variables,omitempty"`
 }
 
 func ParseFlow(data []byte) (*Flow, error) {
-	var flow Flow
-	if err := json.Unmarshal(data, &flow); err != nil {
+	var raw flowRaw
+	if err := json.Unmarshal(data, &raw); err != nil {
 		return nil, fmt.Errorf("parse flow: %w", err)
 	}
-	return &flow, nil
+
+	nodes := make([]FlowNode, len(raw.Nodes))
+	for i, rn := range raw.Nodes {
+		nodes[i] = normalizeNode(rn)
+	}
+
+	return &Flow{
+		Version:    raw.Version,
+		Metadata:   raw.Metadata,
+		Config:     raw.Config,
+		Extends:    raw.Extends,
+		Overrides:  raw.Overrides,
+		Components: raw.Components,
+		Nodes:      nodes,
+		Edges:      raw.Edges,
+		Variables:  raw.Variables,
+	}, nil
+}
+
+func normalizeNode(rn flowNodeRaw) FlowNode {
+	node := FlowNode{
+		ID:          rn.ID,
+		Type:        rn.Type,
+		Name:        rn.Name,
+		Description: rn.Description,
+		Docs:        rn.Docs,
+		Gates:       rn.Gates,
+		OnEnter:     rn.OnEnter,
+		OnExit:      rn.OnExit,
+		OnError:     rn.OnError,
+	}
+
+	if len(rn.Config) > 0 {
+		node.Config = rn.Config
+	}
+
+	if rn.Components != nil {
+		node.Components = rn.Components
+		return node
+	}
+
+	if rn.Role != "" && len(rn.Config) == 0 {
+		phaseCfg := PhaseConfig{Role: rn.Role}
+		if cfgData, err := json.Marshal(phaseCfg); err == nil {
+			node.Config = cfgData
+		}
+	}
+
+	comps := &NodeComponents{}
+	hasComps := false
+
+	if rn.Role != "" {
+		comps.Roles = []ComponentRef{{Ref: rn.Role, Source: SourceBuiltin}}
+		hasComps = true
+	}
+
+	if len(rn.Rules) > 0 {
+		comps.Rules = make([]ComponentRef, len(rn.Rules))
+		for i, r := range rn.Rules {
+			comps.Rules[i] = ComponentRef{Ref: r, Source: SourceBuiltin}
+		}
+		hasComps = true
+	}
+
+	if len(rn.Tools) > 0 {
+		comps.Tools = rn.Tools
+		hasComps = true
+	}
+
+	if len(rn.Skills) > 0 {
+		comps.Skills = rn.Skills
+		hasComps = true
+	}
+
+	if hasComps {
+		node.Components = comps
+	}
+
+	return node
 }
 
 func ParseFlowWithVars(data []byte, vars map[string]string) (*Flow, error) {
 	resolved := resolveVariablesInJSON(data, vars)
-	var flow Flow
-	if err := json.Unmarshal(resolved, &flow); err != nil {
-		return nil, fmt.Errorf("parse flow: %w", err)
-	}
-	return &flow, nil
+	return ParseFlow(resolved)
 }
 
 func ParseFlowFile(path string) (*Flow, error) {

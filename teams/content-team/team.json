@@ -1,0 +1,17 @@
+{
+  "id": "content-team",
+  "name": "Content Creation Team",
+  "name_zh": "内容创作团队",
+  "description": "Content creation and distribution team for articles, videos, and novels",
+  "description_zh": "内容创作与分发团队，适用于文章、视频和小说创作",
+  "version": "1.0.0",
+  "author": "team-flow",
+  "tags": ["content", "creative", "writing", "media"],
+  "flows": [
+    {"id": "content-distribution-flow", "file": "content-distribution-flow.json", "description": "Content distribution and optimization flow", "default": true},
+    {"id": "promo-video-flow", "file": "promo-video-flow.json", "description": "Promotional video production flow"},
+    {"id": "novel-flow", "file": "novel-flow.json", "description": "Novel writing flow"}
+  ],
+  "roles": ["triage", "content-strategist", "writer", "editor", "distributor"],
+  "default_flow": "content-distribution-flow"
+}

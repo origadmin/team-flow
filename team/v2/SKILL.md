@@ -225,7 +225,8 @@ After completion: flow task update <id> --notes "COMPLETED: ..." --add-label pha
 ├── references/           # Detailed references (loaded on demand)
 │   ├── commands.md       # Full command reference + routing
 │   ├── path-resolution.md # Path variables and anchor rules
-│   └── agent-mapping.md  # Agent mapping + role config + MILESTONES
+│   ├── agent-mapping.md  # Agent mapping + role config + MILESTONES
+│   └── go-package-naming.md # Go package naming consensus (pkg vs /pkg)
 ├── skills/               # Specialized domain skills (loaded via Skill tool)
 │   ├── team-flow-design/     # TechLead: Spec-driven design, spec review
 │   ├── team-flow-build/      # Dev: Implementation, bugfix, testing

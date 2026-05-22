@@ -1,0 +1,451 @@
+{
+  "version": "v3",
+  "metadata": {
+    "name": "hotfix-flow",
+    "description": "Emergency hotfix flow: Triage → Fix → Verify → Terminal",
+    "author": "team-flow",
+    "tags": [
+      "hotfix",
+      "emergency",
+      "software"
+    ]
+  },
+  "config": {
+    "task_type": "hotfix",
+    "auto_dispatch": true,
+    "parallel_limit": 1,
+    "timeout_minutes": 60
+  },
+  "variables": {
+    "docs_path": "",
+    "TEAM_PATH": "",
+    "task_id": ""
+  },
+  "components": {
+    "roles": [
+      {
+        "id": "triage",
+        "name": "Triage Agent",
+        "description": "Classify and dispatch hotfix requests",
+        "capabilities": [
+          "classify",
+          "dispatch"
+        ],
+        "prompt_source": "{TEAM_PATH}/prompts/triage.md",
+        "standards_source": "{TEAM_PATH}/workflows/roles/triage-standards.md",
+        "prompt_directives": [
+          "Dispatch tasks to sub-agents, never execute directly",
+          "Classify all user input before action: Feature/Bug/Change/Analysis/Batch",
+          "Read .team/project.md for project constraints before dispatch",
+          "Use flow task create/show for all task state management",
+          "Report deliverables and handoff to next role on completion"
+        ]
+      },
+      {
+        "id": "dev",
+        "name": "Developer",
+        "description": "Implement urgent fix",
+        "capabilities": [
+          "implement",
+          "test",
+          "debug"
+        ],
+        "prompt_source": "{TEAM_PATH}/prompts/dev.md",
+        "standards_source": "{TEAM_PATH}/workflows/roles/development-standards.md",
+        "prompt_directives": [
+          "Read SCOPE.md before starting implementation",
+          "Surgical changes only: never modify files outside task scope",
+          "Run tests before marking phase complete",
+          "No Chinese comments or commit messages",
+          "Never delete files unless explicitly asked",
+          "Output Guard 5-step self-check mandatory before completion gate"
+        ]
+      },
+      {
+        "id": "qa",
+        "name": "QA Engineer",
+        "description": "Verify hotfix",
+        "capabilities": [
+          "verify",
+          "validate"
+        ],
+        "prompt_source": "{TEAM_PATH}/prompts/qa-engineer.md",
+        "standards_source": "{TEAM_PATH}/workflows/roles/test-standards.md",
+        "prompt_directives": [
+          "Verify implementation matches SPEC.md and AC.md",
+          "Run full regression tests, not just new tests",
+          "Check front-back interface consistency (paths, params, response)",
+          "For bugfixes: data flow trace + real scenario verification required",
+          "Output Guard self-check before marking review complete"
+        ]
+      },
+      {
+        "id": "devops",
+        "name": "DevOps",
+        "description": "Deploy and monitor hotfix",
+        "capabilities": [
+          "deploy",
+          "monitor"
+        ],
+        "prompt_source": "{TEAM_PATH}/prompts/devops.md",
+        "standards_source": "{TEAM_PATH}/workflows/roles/devops-standards.md",
+        "prompt_directives": [
+          "Verify CI pipeline passes before any deployment",
+          "Always have rollback plan before deployment",
+          "Check Docker image build success",
+          "Run smoke tests after deployment",
+          "Update CHANGELOG and version number"
+        ]
+      }
+    ],
+    "rules": [
+      {
+        "id": "d1a",
+        "name": "Dispatch Guard",
+        "description": "Triage must dispatch tasks to sub-agents, never execute code modifications directly",
+        "instruction": "Triage 必须分发任务给子智能体，禁止自己执行代码修改",
+        "source": "builtin",
+        "type": "process_constraint",
+        "enforcement": "hard"
+      },
+      {
+        "id": "d2b",
+        "name": "Output Guard Protocol",
+        "description": "5-step self-assessment before completion gate: deliverable exists, content non-empty, spec compliance, no placeholders, path correctness",
+        "instruction": "完成前必须执行5步自检：产出物存在→内容非空→符合规范→无占位符→路径正确",
+        "source": "framework",
+        "type": "process_constraint",
+        "enforcement": "hard"
+      },
+      {
+        "id": "d3c",
+        "name": "Regression Prevention",
+        "description": "Every hotfix must include regression tests; change impact analysis required before code modification",
+        "instruction": "修改代码前必须执行变更影响分析；任何回归测试失败必须立即停止",
+        "source": "builtin",
+        "type": "quality_constraint",
+        "enforcement": "hard"
+      },
+      {
+        "id": "d4e",
+        "name": "Hard Constraints",
+        "description": "Never delete files; never use PowerShell Set-Content/Out-File; never skip toolchain gate",
+        "instruction": "禁止删除文件；禁止用 PowerShell Set-Content/Out-File；禁止跳过工具链门",
+        "source": "builtin",
+        "type": "behavioral_constraint",
+        "enforcement": "hard"
+      },
+      {
+        "id": "d5f",
+        "name": "Development Standards",
+        "description": "No Chinese comments or commit messages; TDD approach (test first); code must compile",
+        "instruction": "禁止中文注释和提交信息；先写测试再实现；代码必须可编译",
+        "source": "builtin",
+        "type": "behavioral_constraint",
+        "enforcement": "hard"
+      },
+      {
+        "id": "d6g",
+        "name": "Test Standards",
+        "description": "All unit tests must pass; test coverage report required; bug fixes must include regression tests",
+        "instruction": "所有单元测试必须通过；必须有测试覆盖率报告；Bug 修复必须加回归测试",
+        "source": "builtin",
+        "type": "quality_constraint",
+        "enforcement": "hard"
+      },
+      {
+        "id": "qg1",
+        "name": "QG-1: Think Before Coding",
+        "description": "Before any action, verify assumptions: what assumptions am I acting on? What's the worst case if wrong? What should I clarify first?",
+        "instruction": "行动前验证假设：我在基于什么假设？错了最坏情况？应先澄清什么？",
+        "enforcement": "hard",
+        "trigger": "pre_action"
+      },
+      {
+        "id": "qg2",
+        "name": "QG-2: Simplicity First",
+        "description": "Can this be solved with less code? Am I adding unrequested features? Is this over-engineered?",
+        "instruction": "能用更少代码解决吗？在加未要求的功能吗？过度设计了吗？",
+        "enforcement": "hard",
+        "trigger": "pre_output"
+      },
+      {
+        "id": "qg3",
+        "name": "QG-3: Surgical Changes",
+        "description": "Only modify code within task scope. Never optimize or refactor adjacent code. Clean up orphan code from own changes.",
+        "instruction": "只改任务范围内的代码；不优化/重构相邻代码；清理自己产生的孤立代码",
+        "enforcement": "hard",
+        "trigger": "code_change"
+      },
+      {
+        "id": "qg4",
+        "name": "QG-4: Goal-Driven Execution",
+        "description": "Define success criteria before executing. Each step must have concrete verification criteria. Never use vague 'completed' descriptions.",
+        "instruction": "执行前定义成功标准；每步有具体验证标准；不用模糊的'完成'描述",
+        "enforcement": "hard",
+        "trigger": "task_start"
+      }
+    ],
+    "tools": [
+      {
+        "id": "task",
+        "name": "Task CLI",
+        "type": "cli",
+        "commands": [
+          "create",
+          "update",
+          "close",
+          "show"
+        ]
+      },
+      {
+        "id": "search",
+        "name": "Code Search",
+        "type": "builtin"
+      },
+      {
+        "id": "file-ops",
+        "name": "File Operations",
+        "type": "builtin"
+      }
+    ]
+  },
+  "nodes": [
+    {
+      "id": "phase-triage",
+      "type": "phase",
+      "name": "Hotfix Triage",
+      "description": "Rapidly assess and confirm the emergency fix requirement",
+      "config": {
+        "role": "Triage",
+        "auto_dispatch": true
+      },
+      "components": {
+        "roles": [
+          {
+            "ref": "triage",
+            "source": "builtin"
+          }
+        ],
+        "rules": [
+          {
+            "ref": "d1a",
+            "source": "builtin"
+          }
+        ],
+        "prompts": [
+          {
+            "ref": "triage",
+            "source": "file",
+            "path": "{TEAM_PATH}/prompts/triage.md"
+          }
+        ]
+      },
+      "docs": [
+        {
+          "name": "TRIAGE.md",
+          "format": "markdown",
+          "path": "{docs_path}/{task_id}/TRIAGE.md",
+          "required": true,
+          "description": "Emergency triage record with severity assessment, impact scope, and dispatch decision"
+        }
+      ],
+      "on_enter": [
+        {
+          "action": "update_task_phase",
+          "phase": "ready"
+        }
+      ]
+    },
+    {
+      "id": "phase-fix",
+      "type": "phase",
+      "name": "Emergency Fix",
+      "description": "Implement the emergency fix with minimal scope, produce RCA and fix notes",
+      "config": {
+        "role": "Dev",
+        "auto_dispatch": true,
+        "deliverables": [
+          "code",
+          "RCA.md"
+        ]
+      },
+      "components": {
+        "roles": [
+          {
+            "ref": "dev",
+            "source": "builtin"
+          }
+        ],
+        "rules": [
+          {
+            "ref": "d5f",
+            "source": "builtin"
+          },
+          {
+            "ref": "d3c",
+            "source": "builtin"
+          }
+        ],
+        "tools": [
+          {
+            "ref": "task"
+          },
+          {
+            "ref": "search"
+          },
+          {
+            "ref": "file-ops"
+          }
+        ],
+        "prompts": [
+          {
+            "ref": "dev",
+            "source": "file",
+            "path": "{TEAM_PATH}/prompts/dev.md"
+          }
+        ]
+      },
+      "docs": [
+        {
+          "name": "RCA.md",
+          "format": "markdown",
+          "path": "{docs_path}/{task_id}/RCA.md",
+          "required": true,
+          "description": "Root cause analysis for the emergency issue including incident timeline and fix description",
+          "content_rules": [
+            "Must contain: phenomenon, root_cause, impact, prevention",
+            "Data flow trace required for API/permission/state bugs",
+            "Real scenario verification required (not mock-only)"
+          ],
+          "template": "{TEAM_PATH}/templates/bug-test-template.md"
+        }
+      ],
+      "on_enter": [
+        {
+          "action": "update_task_phase",
+          "phase": "implement"
+        }
+      ],
+      "on_error": {
+        "strategy": "fail",
+        "on_error": [
+          {
+            "action": "notify",
+            "message": "Hotfix implementation failed - escalation required",
+            "channel": "emergency"
+          }
+        ]
+      }
+    },
+    {
+      "id": "phase-verify",
+      "type": "phase",
+      "name": "Hotfix Verification",
+      "description": "Verify the hotfix resolves the emergency and produces test case",
+      "config": {
+        "role": "QA",
+        "auto_dispatch": true,
+        "deliverables": [
+          "TEST_CASE.md"
+        ]
+      },
+      "components": {
+        "roles": [
+          {
+            "ref": "qa",
+            "source": "builtin"
+          }
+        ],
+        "rules": [
+          {
+            "ref": "d6g",
+            "source": "builtin"
+          }
+        ],
+        "prompts": [
+          {
+            "ref": "qa",
+            "source": "file",
+            "path": "{TEAM_PATH}/prompts/qa-engineer.md"
+          }
+        ]
+      },
+      "docs": [
+        {
+          "name": "TEST_CASE.md",
+          "format": "markdown",
+          "path": "{docs_path}/{task_id}/TEST_CASE.md",
+          "required": true,
+          "description": "Test case document verifying the hotfix resolves the emergency issue",
+          "content_rules": [
+            "Must contain: reproduction steps, expected result, actual result",
+            "Regression test cases required for bugfixes"
+          ],
+          "template": "{TEAM_PATH}/templates/bug-test-template.md"
+        }
+      ],
+      "gates": [
+        {
+          "type": "tests_pass",
+          "threshold": "100%",
+          "on_fail": "phase-fix"
+        }
+      ],
+      "on_enter": [
+        {
+          "action": "update_task_phase",
+          "phase": "verify"
+        }
+      ]
+    },
+    {
+      "id": "terminal-success",
+      "type": "terminal",
+      "name": "Hotfix Deployed",
+      "description": "Hotfix verified and ready for deployment",
+      "config": {
+        "status": "success",
+        "message": "Hotfix flow completed successfully"
+      }
+    },
+    {
+      "id": "terminal-failed",
+      "type": "terminal",
+      "name": "Hotfix Failed",
+      "description": "Hotfix could not be verified, escalation needed",
+      "config": {
+        "status": "failed",
+        "message": "Hotfix verification failed - manual escalation required"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-triage-fix",
+      "from": "phase-triage",
+      "to": "phase-fix"
+    },
+    {
+      "id": "e-fix-verify",
+      "from": "phase-fix",
+      "to": "phase-verify"
+    },
+    {
+      "id": "e-verify-success",
+      "from": "phase-verify",
+      "to": "terminal-success"
+    },
+    {
+      "id": "e-verify-failed",
+      "from": "phase-verify",
+      "to": "terminal-failed",
+      "type": "conditional",
+      "conditions": [
+        {
+          "expression": "!gate.passed"
+        }
+      ]
+    }
+  ]
+}

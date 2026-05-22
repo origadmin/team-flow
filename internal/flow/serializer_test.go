@@ -82,7 +82,7 @@ func TestRoundTrip(t *testing.T) {
 			{"from": "triage", "to": "done", "type": "sequential"}
 		],
 		"variables": {
-			"docs_path": "/project/docs"
+			"DOCS_INTERNAL": "/project/docs"
 		}
 	}`)
 
@@ -159,7 +159,7 @@ func TestRoundTrip_ComplexFlow(t *testing.T) {
 			{ID: "e1", From: "triage", To: "done", Type: EdgeTypeSequential},
 		},
 		Variables: map[string]interface{}{
-			"docs_path": "/project/docs",
+			"DOCS_INTERNAL": "/project/docs",
 		},
 	}
 

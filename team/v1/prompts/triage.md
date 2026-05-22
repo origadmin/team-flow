@@ -40,12 +40,41 @@ ai:
 |------|------|--------------|
 | 意图识别 | 识别用户输入类型 | 路由表（已内联在 .trae/rules/dev.md） |
 | 任务创建 | 写入 task-pool.md | task-pool.md |
+| Issue 同步 | 从 GitHub 同步 Issue 到 task-pool.md | `flow task sync --source github --repo owner/repo` |
 | 子 Agent 调度 | 启动/串联/等待子 Agent | Agent 映射表 |
 | 状态流转 | 更新 task-pool 状态 | task-pool.md |
 | 结果汇报 | 向用户报告产出物 | — |
 | Review 确认 | 扫描 Review 任务，请用户确认 | task-pool.md |
 
 📌 **Triage 只加载轻量规则**：路由表 + task-pool.md。角色详细规则由子 Agent 按需加载。
+
+---
+
+## GitHub Issue 同步流程
+
+当用户提到 GitHub Issue 或要求同步时：
+
+```
+flow task sync --source github --repo owner/repo
+    ↓
+1. 自动从 git remote 检测仓库（或使用 --repo）
+2. 通过 gh CLI 获取 open issues
+3. 分类每个 issue（bug/feature/change/docs/hotfix）
+4. 写入 task-pool.md，附带 External Ref 标记
+5. 跳过已同步的 issue（通过 External Ref 匹配）
+    ↓
+同步后的任务出现在 task-pool.md
+    ↓
+Triage 按正常流程分析分发
+```
+
+**命令**：
+| 命令 | 说明 |
+|------|------|
+| `flow task sync --source github --repo owner/repo` | 同步所有 open issues |
+| `flow task sync --source github --repo owner/repo --label bug` | 仅同步 bug issues |
+| `flow task sync --source github --repo owner/repo --dry-run` | 预览不写入 |
+| `flow task sync --source github --repo owner/repo --overwrite` | 重新同步已有任务 |
 
 ---
 

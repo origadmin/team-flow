@@ -10,15 +10,10 @@
   "files": [
     "SKILL.md",
     "bin/",
-    "prompts/",
-    "workflows/",
-    "templates/",
-    "config/",
-    "references/",
-    "docs/",
-    "lessons/",
-    "v2/skills/",
-    "BOUNDARY.md",
+    "team/",
+    "v3/flows/",
+    "v3/schema/",
+    "scripts/",
     "INSTALL.md",
     "README.md"
   ],
@@ -55,9 +50,9 @@
   },
   "skill": {
     "name": "team-flow",
-    "version": "3.0.0",
+    "version": "3.1.0",
     "entry": "SKILL.md",
-    "description": "Multi-agent AI collaboration framework with flow-driven task management",
+    "description": "Multi-agent AI collaboration framework with flow-driven task management. v3 features verification chain architecture, parallel execution, and skill-creator evaluation.",
     "compatible_with": [
       "claude-code",
       "cursor",

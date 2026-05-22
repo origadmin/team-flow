@@ -61,11 +61,18 @@ func TestGenerateBridgeFileContent_Trae(t *testing.T) {
 	if !strings.Contains(content, ".trae/skills/team-flow/SKILL.md") {
 		t.Error("Trae bridge should point to SKILL.md")
 	}
+	if !strings.Contains(content, "flow proc run") {
+		t.Error("Trae bridge should mention flow proc run")
+	}
 	if strings.Contains(content, "### Rule") {
 		t.Error("Bridge file should NOT contain full rule definitions (### Rule headings)")
 	}
-	if strings.Count(content, "\n") > 30 {
-		t.Errorf("Bridge file should be minimal (5-15 lines), got %d lines", strings.Count(content, "\n"))
+	if strings.Contains(content, "TaskPool") {
+		t.Error("Bridge file should NOT contain v2-specific concepts like TaskPool")
+	}
+	lineCount := strings.Count(content, "\n") + 1
+	if lineCount > 10 {
+		t.Errorf("Bridge file should be minimal (<=10 lines), got %d lines", lineCount)
 	}
 }
 
@@ -165,7 +172,7 @@ func TestBridgeFilesAreMinimal(t *testing.T) {
 	for _, tc := range formats {
 		content := generateBridgeFileContent(tc.fmt, tc.skillPath)
 		lineCount := strings.Count(content, "\n") + 1
-		if lineCount > 25 {
+		if lineCount > 15 {
 			t.Errorf("Bridge file for %s has %d lines, should be <= 15", tc.fmt, lineCount)
 		}
 	}
@@ -205,7 +212,7 @@ func TestCopyFromFS_V2(t *testing.T) {
 func TestCopyFromFS_V1(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	copied, _, err := copyFromFS(skillfs.FS, "team", tmpDir, true, []string{"v2"})
+	copied, _, err := copyFromFS(skillfs.FS, "team/v1", tmpDir, true, nil)
 	if err != nil {
 		t.Fatalf("copyFromFS v1 failed: %v", err)
 	}
@@ -219,11 +226,6 @@ func TestCopyFromFS_V1(t *testing.T) {
 	}
 	if len(skillData) == 0 {
 		t.Error("SKILL.md should not be empty")
-	}
-
-	v2Dir := filepath.Join(tmpDir, "v2")
-	if _, err := os.Stat(v2Dir); err == nil {
-		t.Error("v1 copy should exclude v2 directory")
 	}
 }
 
@@ -276,12 +278,12 @@ func TestSkillfsHasTeamContent(t *testing.T) {
 		t.Error("skillfs.FS should contain entries under team/")
 	}
 
-	skillData, err := skillfs.FS.ReadFile("team/SKILL.md")
+	skillData, err := skillfs.FS.ReadFile("team/v1/SKILL.md")
 	if err != nil {
-		t.Fatalf("skillfs.FS.ReadFile team/SKILL.md failed: %v", err)
+		t.Fatalf("skillfs.FS.ReadFile team/v1/SKILL.md failed: %v", err)
 	}
 	if len(skillData) == 0 {
-		t.Error("team/SKILL.md should not be empty")
+		t.Error("team/v1/SKILL.md should not be empty")
 	}
 
 	v2Data, err := skillfs.FS.ReadFile("team/v2/SKILL.md")
@@ -290,5 +292,97 @@ func TestSkillfsHasTeamContent(t *testing.T) {
 	}
 	if len(v2Data) == 0 {
 		t.Error("team/v2/SKILL.md should not be empty")
+	}
+
+	v3Data, err := skillfs.FS.ReadFile("team/v3/SKILL.md")
+	if err != nil {
+		t.Fatalf("skillfs.FS.ReadFile team/v3/SKILL.md failed: %v", err)
+	}
+	if len(v3Data) == 0 {
+		t.Error("team/v3/SKILL.md should not be empty")
+	}
+}
+
+func TestSkillfsHasTeamsTemplates(t *testing.T) {
+	entries, err := skillfs.FS.ReadDir("teams")
+	if err != nil {
+		t.Fatalf("skillfs.FS.ReadDir teams/ failed: %v", err)
+	}
+	if len(entries) == 0 {
+		t.Error("skillfs.FS should contain team templates under teams/")
+	}
+
+	found := false
+	for _, entry := range entries {
+		if entry.IsDir() && entry.Name() == "dev-team" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("skillfs.FS should contain dev-team template")
+	}
+}
+
+func TestLoadTeamFromFS(t *testing.T) {
+	team := loadTeamFromFS(skillfs.FS, "dev-team")
+	if team == nil {
+		t.Fatal("loadTeamFromFS dev-team should not return nil")
+	}
+	if team.ID != "dev-team" {
+		t.Errorf("team.ID = %q, want %q", team.ID, "dev-team")
+	}
+	if team.DefaultFlow != "dev-flow" {
+		t.Errorf("team.DefaultFlow = %q, want %q", team.DefaultFlow, "dev-flow")
+	}
+	if len(team.Flows) == 0 {
+		t.Error("dev-team should have at least 1 flow")
+	}
+}
+
+func TestLoadTeamFromFS_NotFound(t *testing.T) {
+	team := loadTeamFromFS(skillfs.FS, "nonexistent-team")
+	if team != nil {
+		t.Error("loadTeamFromFS for nonexistent team should return nil")
+	}
+}
+
+func TestFindTeamByFlow(t *testing.T) {
+	team := findTeamByFlow(skillfs.FS, "dev-flow")
+	if team == nil {
+		t.Fatal("findTeamByFlow dev-flow should not return nil")
+	}
+	if team.ID != "dev-team" {
+		t.Errorf("team.ID = %q, want %q", team.ID, "dev-team")
+	}
+}
+
+func TestFindTeamByFlow_NotFound(t *testing.T) {
+	team := findTeamByFlow(skillfs.FS, "nonexistent-flow")
+	if team != nil {
+		t.Error("findTeamByFlow for nonexistent flow should return nil")
+	}
+}
+
+func TestInstallTeamFlows(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	copied := installTeamFlows(skillfs.FS, "dev-team", tmpDir, false)
+	if copied == 0 {
+		t.Error("installTeamFlows dev-team should copy at least 1 flow")
+	}
+
+	entries, err := os.ReadDir(tmpDir)
+	if err != nil {
+		t.Fatalf("ReadDir failed: %v", err)
+	}
+	jsonCount := 0
+	for _, e := range entries {
+		if !e.IsDir() && strings.HasSuffix(e.Name(), ".json") {
+			jsonCount++
+		}
+	}
+	if jsonCount == 0 {
+		t.Error("dev-team should install at least 1 .json flow file")
 	}
 }

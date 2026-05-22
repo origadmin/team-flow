@@ -22,11 +22,11 @@ var Cmd = &cobra.Command{
 	Short: "Export beads data to human-readable markdown",
 	Long: `Export beads task data to human-readable markdown format.
 
-Reads docs_path from .team/project.md for output location.
+Reads docs_internal from .team/project.md for output location.
 Falls back to .team/docs/ if not configured.
 
 Usage:
-  flow export                  Export to configured docs_path
+  flow export                  Export to configured docs_internal
   flow export --format json    Export as JSON
   flow export --output PATH    Override output path`,
 	RunE: runExport,
@@ -93,7 +93,7 @@ func resolveDocsPath(projectPath string) string {
 	if data, err := os.ReadFile(projectMd); err == nil {
 		for _, line := range strings.Split(string(data), "\n") {
 			line = strings.TrimSpace(line)
-			if strings.HasPrefix(line, "docs_path:") || strings.HasPrefix(line, "docs_path ") {
+			if strings.HasPrefix(line, "docs_internal:") || strings.HasPrefix(line, "docs_internal ") {
 				parts := strings.SplitN(line, ":", 2)
 				if len(parts) == 2 {
 					path := strings.TrimSpace(parts[1])

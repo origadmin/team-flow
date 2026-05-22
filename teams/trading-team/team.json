@@ -1,0 +1,15 @@
+{
+  "id": "trading-team",
+  "name": "Trading Analysis Team",
+  "name_zh": "交易分析团队",
+  "description": "Trading strategy analysis and execution team",
+  "description_zh": "交易策略分析与执行团队",
+  "version": "1.0.0",
+  "author": "team-flow",
+  "tags": ["trading", "finance", "analysis"],
+  "flows": [
+    {"id": "trading-flow", "file": "trading-flow.json", "description": "Trading analysis and strategy flow", "default": true}
+  ],
+  "roles": ["triage", "analyst", "strategist", "risk-manager"],
+  "default_flow": "trading-flow"
+}

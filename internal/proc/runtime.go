@@ -107,7 +107,29 @@ func ResolveDocsPath(root string) string {
 	lines := strings.Split(string(data), "\n")
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
-		if strings.Contains(trimmed, "docs_path:") {
+		if strings.Contains(trimmed, "docs_internal:") {
+			parts := strings.SplitN(trimmed, ":", 2)
+			if len(parts) == 2 {
+				val := strings.TrimSpace(parts[1])
+				val = strings.Trim(val, "\"' ")
+				return val
+			}
+		}
+	}
+	return ""
+}
+
+func ResolveDocsExternalPath(root string) string {
+	projectMD := filepath.Join(root, ".team", "project.md")
+	data, err := os.ReadFile(projectMD)
+	if err != nil {
+		return ""
+	}
+
+	lines := strings.Split(string(data), "\n")
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.Contains(trimmed, "docs_external:") {
 			parts := strings.SplitN(trimmed, ":", 2)
 			if len(parts) == 2 {
 				val := strings.TrimSpace(parts[1])

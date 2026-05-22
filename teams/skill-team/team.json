@@ -1,0 +1,16 @@
+{
+  "id": "skill-team",
+  "name": "Skill Development Team",
+  "name_zh": "技能开发团队",
+  "description": "AI skill development and testing team for creating new team-flow skills",
+  "description_zh": "AI 技能开发与测试团队，用于创建新的 team-flow 技能",
+  "version": "1.0.0",
+  "author": "team-flow",
+  "tags": ["skill", "meta", "development"],
+  "flows": [
+    {"id": "skill-dev-flow", "file": "skill-dev-flow.json", "description": "Skill development flow", "default": true},
+    {"id": "test-simple-flow", "file": "test-simple-flow.json", "description": "Simple test flow for validation"}
+  ],
+  "roles": ["triage", "skill-designer", "skill-implementer", "skill-tester"],
+  "default_flow": "skill-dev-flow"
+}

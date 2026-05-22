@@ -70,6 +70,30 @@ func showStatus(projectPath, currentVersion string) error {
 		} else {
 			fmt.Println("  ⚠ .beads/ not found (run: bd init)")
 		}
+		fmt.Println()
+		fmt.Println("  ⬆ Upgrade available: v2 → v3")
+		fmt.Println("    Run: flow migrate v3")
+	case "v3":
+		fmt.Println("  Execution engine: flow-engine (v3)")
+		flowsDir := filepath.Join(projectPath, "v3", "flows")
+		if dirExists(flowsDir) {
+			fmt.Println("  ✓ v3/flows/ exists")
+		} else {
+			altFlowsDir := filepath.Join(projectPath, ".team", "flows")
+			if dirExists(altFlowsDir) {
+				fmt.Println("  ✓ .team/flows/ exists")
+			} else {
+				fmt.Println("  ⚠ No flows directory found")
+			}
+		}
+		beadsDir := filepath.Join(projectPath, ".beads")
+		if dirExists(beadsDir) {
+			fmt.Println("  ✓ .beads/ exists (beads is version-agnostic)")
+		}
+		fmt.Println()
+		fmt.Println("  Commands:")
+		fmt.Println("    flow proc run       Start/resume flow execution")
+		fmt.Println("    flow proc list      List available flows")
 	default:
 		fmt.Printf("  ⚠ Unknown version: %s\n", currentVersion)
 		fmt.Println("    Run: flow init --v2")
@@ -86,7 +110,7 @@ func showStatus(projectPath, currentVersion string) error {
 	fmt.Println()
 	fmt.Println("  Commands:")
 	fmt.Println("    flow ver        Show this status")
-	fmt.Println("    flow migrate    Upgrade v1 → v2")
+	fmt.Println("    flow migrate    Upgrade version (v1→v2, v2→v3)")
 
 	return nil
 }

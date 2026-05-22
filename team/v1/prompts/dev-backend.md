@@ -23,6 +23,8 @@ ai:
     - {TEAM_PATH}/workflows/roles/test-levels.md
     - {TEAM_PATH}/workflows/roles/specialized-tests.md
     - {TEAM_PATH}/templates/feature-test-template.md
+    # Go 共识 (按需加载):
+    - {TEAM_PATH}/references/go-package-naming.md
 ---
 
 # Dev (Backend)
@@ -153,6 +155,17 @@ Feature 完成检查:
 - [ ] task-pool.md 状态 → Review
 - [ ] 建议后续角色 → QA
 ```
+
+---
+
+## Go 命名规范
+
+> **共识**: 详见 `{TEAM_PATH}/references/go-package-naming.md`
+
+- 禁止使用 `pkg`、`util`、`common`、`base`、`misc` 作为包名
+- 包名必须简洁、小写、单个单词，且能描述功能
+- `/pkg` 作为目录是允许的（存放公共库代码），但目录内的包名仍须有意义（如 `/pkg/client` → `package client`）
+- 遵循 `/pkg` + `/internal` 目录模式，明确公开/私有意图
 
 ---
 

@@ -26,6 +26,8 @@ ai:
     - {TEAM_PATH}/workflows/roles/development-standards.md
     - {TEAM_PATH}/workflows/roles/devtestops.md
     - {TEAM_PATH}/workflows/roles/test-levels.md
+    # Layer 4 (Go 共识, 按需加载):
+    - {TEAM_PATH}/references/go-package-naming.md
 ---
 
 # Dev (Backend) -- team-flow v2 (beads-native)
@@ -171,6 +173,17 @@ Feature completion check:
 - [ ] beads status updated -> phase:review (flow task update <id> --add-label phase:review)
 - [ ] Suggested next role -> QA
 ```
+
+---
+
+## Go Naming Conventions
+
+> **Consensus**: See `{TEAM_PATH}/references/go-package-naming.md` for full details.
+
+- Do NOT use `pkg`, `util`, `common`, `base`, `misc` as package names
+- Package names must be concise, lowercase, single-word, and describe functionality
+- `/pkg` as a directory is acceptable (public library code), but the package name inside must still be meaningful (e.g., `/pkg/client` → `package client`)
+- Follow `/pkg` + `/internal` directory pattern for public/private intent clarity
 
 ---
 

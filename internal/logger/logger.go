@@ -233,8 +233,8 @@ func (e *LogEntry) entry(level Level, format string) {
 	}
 
 	fieldsJSON, _ := json.Marshal(e.fields)
-	message := fmt.Sprintf("%s | %s", format, string(fieldsJSON))
-	e.logger.log(level, message)
+	message := format + " | " + string(fieldsJSON)
+	e.logger.log(level, "%s", message)
 }
 
 type CommandLog struct {

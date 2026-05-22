@@ -1,0 +1,15 @@
+{
+  "id": "game-team",
+  "name": "Game Design Team",
+  "name_zh": "游戏设计团队",
+  "description": "Game design and development team for game mechanics, levels, and systems",
+  "description_zh": "游戏设计与开发团队，适用于游戏机制、关卡和系统设计",
+  "version": "1.0.0",
+  "author": "team-flow",
+  "tags": ["game", "design", "gamedev"],
+  "flows": [
+    {"id": "game-design-flow", "file": "game-design-flow.json", "description": "Game design and iteration flow", "default": true}
+  ],
+  "roles": ["triage", "game-designer", "narrative-designer", "systems-designer"],
+  "default_flow": "game-design-flow"
+}

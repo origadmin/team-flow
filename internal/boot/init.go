@@ -4,11 +4,13 @@ import (
 	"bufio"
 	"context"
 	"embed"
+	"encoding/json"
 	"fmt"
 	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"time"
@@ -20,10 +22,13 @@ import (
 )
 
 var (
-	useV1   bool
-	useV2   bool
-	force   bool
-	autoYes bool
+	useV1     bool
+	useV2     bool
+	useV3     bool
+	force     bool
+	autoYes   bool
+	initFlow  string
+	initTeam  string
 )
 
 var Cmd = &cobra.Command{
@@ -31,15 +36,15 @@ var Cmd = &cobra.Command{
 	Short: "Initialize project with team-flow framework",
 	Long: `Initialize project with team-flow skill and toolchain.
 
-By default installs v2 (beads-native). Use --v1 for v1 (task-pool).
+By default installs v2. Use --v1 for v1 (task-pool). Use --v3 for v3 (flow-driven).
 
 Steps:
   1. Check & install Python 3.10+ and pip (if missing)
   2. Check & install code-review-graph (if missing)
-  3. Check & install beads bd CLI (if missing, v2 only)
+  3. Check & install task database (if missing, v2/v3)
   4. Create .team/ directory and install skill rules
   5. Build code graph (v2)
-  6. Initialize beads database (v2)
+  6. Initialize task database (v2/v3)
   7. Configure MCP for AI IDE
   8. Verification`,
 	RunE: runInit,
@@ -47,15 +52,21 @@ Steps:
 
 func init() {
 	Cmd.Flags().BoolVar(&useV1, "v1", false, "Install v1 rules (task-pool workflow)")
-	Cmd.Flags().BoolVar(&useV2, "v2", true, "Install v2 rules (beads-native workflow, default)")
+	Cmd.Flags().BoolVar(&useV2, "v2", true, "Install v2 rules (default)")
+	Cmd.Flags().BoolVar(&useV3, "v3", false, "Install v3 rules (flow-driven workflow)")
 	Cmd.Flags().BoolVar(&force, "force", false, "Force overwrite existing files")
 	Cmd.Flags().BoolVarP(&autoYes, "yes", "y", false, "Auto-confirm all prompts")
+	Cmd.Flags().StringVar(&initFlow, "flow", "", "Default flow to bind (v3 only, e.g., dev-flow, novel-flow)")
+	Cmd.Flags().StringVar(&initTeam, "team", "", "Team template to install (v3 only, e.g., dev-team, content-team)")
 }
 
 func runInit(cmd *cobra.Command, args []string) error {
 	version := "v2"
-	if useV1 && !useV2 {
+	if useV1 && !useV2 && !useV3 {
 		version = "v1"
+	}
+	if useV3 {
+		version = "v3"
 	}
 
 	projectPath, err := os.Getwd()
@@ -75,6 +86,9 @@ func runInit(cmd *cobra.Command, args []string) error {
 	ensurePip(pyPath)
 	if version == "v2" {
 		ensureCodeReviewGraph(pyPath)
+		ensureBeads()
+	}
+	if version == "v3" {
 		ensureBeads()
 	}
 
@@ -164,8 +178,9 @@ func runInit(cmd *cobra.Command, args []string) error {
 
 ## Paths
 
-docs_path: _docs/%s/
-
+docs_internal: _docs/%s/
+docs_external: docs/
+%s
 ## Toolchain
 
 ### Backend
@@ -177,7 +192,7 @@ pipeline: bun run test | bun run build
 ## Constraints
 - No Chinese comments in code
 - TDD required
-`, filepath.Base(projectPath), version, filepath.Base(projectPath))
+`, filepath.Base(projectPath), version, filepath.Base(projectPath), defaultFlowLine(version))
 
 	projectMdPath := filepath.Join(teamDir, "project.md")
 	if _, err := os.Stat(projectMdPath); err == nil && !force {
@@ -227,26 +242,110 @@ pipeline: bun run test | bun run build
 			fmt.Println("  ⏭ Graph build skipped (Python not available)")
 		}
 
-		fmt.Println("  Initializing beads database...")
+		fmt.Println("  Initializing task database...")
 		beadsDir := filepath.Join(projectPath, ".beads")
 		if _, err := os.Stat(beadsDir); err == nil {
-			fmt.Println("  ✓ .beads already exists")
+			fmt.Println("  ✓ Task database already exists")
 		} else {
 			if bd.IsAvailable() {
 				if _, err := bd.Run("init"); err != nil {
-					fmt.Printf("  ⚠ bd init failed: %v\n", err)
-					fmt.Println("  You can init later: bd init")
+					fmt.Printf("  ⚠ Task database init failed: %v\n", err)
+					fmt.Println("  You can init later: flow task init")
 				} else {
-					fmt.Println("  ✓ beads database initialized")
+					fmt.Println("  ✓ Task database initialized")
 				}
 			} else {
-				fmt.Println("  ⏭ beads not installed, skip bd init")
-				fmt.Println("    Restart your terminal and run: bd init")
+				fmt.Println("  ⏭ Task database not available, skip init")
+				fmt.Println("    Restart your terminal and run: flow task init")
 			}
 		}
 
 		fmt.Println("  Configuring MCP...")
 		installMCPConfig(projectPath)
+	}
+
+	if version == "v3" {
+		fmt.Println("\n━━━ Step 3: v3 Team Setup ━━━")
+
+		teamID := initTeam
+		var teamInfo *teamMeta
+
+		if teamID != "" {
+			teamInfo = loadTeamFromFS(skillfs.FS, teamID)
+			if teamInfo == nil {
+				fmt.Printf("  ⚠ Team '%s' not found in preset teams\n", teamID)
+			}
+		}
+
+		if teamInfo == nil && initFlow != "" {
+			teamInfo = findTeamByFlow(skillfs.FS, initFlow)
+			if teamInfo != nil {
+				fmt.Printf("  Flow '%s' found in team '%s'\n", initFlow, teamInfo.ID)
+			}
+		}
+
+		if teamInfo == nil {
+			teamInfo = selectTeam(skillfs.FS)
+		}
+
+		if teamInfo != nil {
+			fmt.Printf("  Selected team: %s (%s)\n", teamInfo.Name, teamInfo.ID)
+
+			flowName := initFlow
+			if flowName == "" {
+				flowName = teamInfo.DefaultFlow
+			}
+
+			flowFound := false
+			for _, f := range teamInfo.Flows {
+				if f.ID == flowName {
+					flowFound = true
+					break
+				}
+			}
+			if !flowFound && len(teamInfo.Flows) > 0 {
+				flowName = teamInfo.DefaultFlow
+			}
+
+			projectMdPath := filepath.Join(teamDir, "project.md")
+			if data, err := os.ReadFile(projectMdPath); err == nil {
+				content := string(data)
+				if !strings.Contains(content, "default_flow:") {
+					content += "\ndefault_flow: " + flowName + "\n"
+				} else {
+					re := regexp.MustCompile(`default_flow:\s*\S+`)
+					content = re.ReplaceAllString(content, "default_flow: "+flowName)
+				}
+				os.WriteFile(projectMdPath, []byte(content), 0644)
+			}
+			fmt.Printf("  ✓ default_flow set to %s\n", flowName)
+
+			fmt.Println("\n  Installing team flows...")
+			projectFlowsDir := filepath.Join(projectPath, ".team", "flows")
+			os.MkdirAll(projectFlowsDir, 0755)
+			copied := installTeamFlows(skillfs.FS, teamInfo.ID, projectFlowsDir, force)
+			if copied > 0 {
+				fmt.Printf("  ✓ Copied %d flows from team '%s' to .team/flows/\n", copied, teamInfo.ID)
+			}
+		} else {
+			fmt.Println("  No team selected. Set one later with:")
+			fmt.Println("    flow init --v3 --team dev-team")
+			fmt.Println("    Or create a new team: AI loads team-flow-v3-create skill")
+		}
+
+		fmt.Println("  Initializing task database...")
+		beadsDir := filepath.Join(projectPath, ".beads")
+		if _, err := os.Stat(beadsDir); err == nil {
+			fmt.Println("  ✓ Task database already exists")
+		} else if bd.IsAvailable() {
+			if _, err := bd.Run("init"); err != nil {
+				fmt.Printf("  ⚠ Task database init failed: %v\n", err)
+			} else {
+				fmt.Println("  ✓ Task database initialized")
+			}
+		} else {
+			fmt.Println("  ⏭ Task database not available, skip init")
+		}
 	}
 
 	fmt.Println("\n━━━ Step 4: Verification ━━━")
@@ -256,9 +355,17 @@ pipeline: bun run test | bun run build
 	fmt.Println("║          Initialization Complete!        ║")
 	fmt.Println("╚══════════════════════════════════════════╝")
 	fmt.Println("\nNext steps:")
-	fmt.Println("  1. Edit .team/project.md")
-	fmt.Printf("  2. AI reads %s/SKILL.md\n", skillPath)
-	fmt.Println("  3. flow doctor (check anytime)")
+	if version == "v3" {
+		fmt.Println("  1. flow proc list          — See available flows")
+		fmt.Println("  2. flow proc run            — Start the flow engine")
+		fmt.Println("  3. AI reads v3 SKILL.md     — Follows exec skill protocol")
+		fmt.Println("  4. Switch team              — flow init --v3 --team <team-id>")
+		fmt.Println("  5. Create custom team       — AI loads team-flow-v3-create skill")
+	} else {
+		fmt.Println("  1. Edit .team/project.md")
+		fmt.Printf("  2. AI reads %s/SKILL.md\n", skillPath)
+		fmt.Println("  3. flow doctor (check anytime)")
+	}
 
 	return nil
 }
@@ -396,7 +503,7 @@ func ensureCodeReviewGraph(pyPath string) {
 func ensureBeads() {
 	if bd.IsAvailable() {
 		version, _ := exec.Command(bd.FindPath(), "--version").CombinedOutput()
-		fmt.Printf("  ✓ beads found: %s (%s)\n", bd.FindPath(), strings.TrimSpace(string(version)))
+		fmt.Printf("  ✓ Task database found: %s (%s)\n", bd.FindPath(), strings.TrimSpace(string(version)))
 
 		if err := bd.EnsureOnPath(); err != nil {
 			fmt.Printf("  ⚠ Could not add to persistent PATH. Current session updated.\n")
@@ -407,22 +514,22 @@ func ensureBeads() {
 		return
 	}
 
-	fmt.Println("  beads (bd CLI) not found.")
-	if autoYes || confirm("  Install beads?") {
+	fmt.Println("  Task database not found.")
+	if autoYes || confirm("  Install task database?") {
 		if err := bd.Install(); err != nil {
 			fmt.Println("  ⚠ Auto install failed.")
 			fmt.Println("    Manual: https://github.com/steveyegge/beads")
 		} else {
-			fmt.Println("  ✓ beads installed")
+			fmt.Println("  ✓ Task database installed")
 			if err := bd.EnsureOnPath(); err != nil {
-				fmt.Println("  ⚠ bd installed but could not be located.")
+				fmt.Println("  ⚠ Installed but could not be located.")
 				fmt.Println("    Restart your terminal and run: flow init")
 			} else {
 				fmt.Printf("  ✓ Added %s to PATH\n", filepath.Dir(bd.FindPath()))
 			}
 		}
 	} else {
-		fmt.Println("  ⏭ Skipped. Task tracking will use task-pool.md fallback.")
+		fmt.Println("  ⏭ Skipped. Task tracking will use file-based fallback.")
 	}
 }
 
@@ -466,7 +573,7 @@ func printVerify(projectPath, version string) {
 		struct {
 			label string
 			path  string
-		}{".beads/", filepath.Join(projectPath, ".beads")},
+		}{".task-db/", filepath.Join(projectPath, ".beads")},
 		struct {
 			label string
 			path  string
@@ -498,9 +605,9 @@ func printVerify(projectPath, version string) {
 		fmt.Println("  ✗ python")
 	}
 	if bd.IsAvailable() {
-		fmt.Println("  ✓ bd (beads)")
+		fmt.Println("  ✓ flow task (task database)")
 	} else {
-		fmt.Println("  ✗ bd (beads)")
+		fmt.Println("  ✗ flow task (task database)")
 	}
 }
 
@@ -510,6 +617,178 @@ func confirm(prompt string) bool {
 	response, _ := reader.ReadString('\n')
 	response = strings.TrimSpace(strings.ToLower(response))
 	return response == "y" || response == "yes"
+}
+
+func defaultFlowLine(version string) string {
+	if version != "v3" {
+		return ""
+	}
+	flowName := initFlow
+	if flowName == "" {
+		if initTeam != "" {
+			if team := loadTeamFromFS(skillfs.FS, initTeam); team != nil {
+				flowName = team.DefaultFlow
+			}
+		}
+		if flowName == "" {
+			flowName = "dev-flow"
+		}
+	}
+	return fmt.Sprintf("default_flow: %s\n", flowName)
+}
+
+type teamMeta struct {
+	ID           string `json:"id"`
+	Name         string `json:"name"`
+	NameZh       string `json:"name_zh"`
+	Description  string `json:"description"`
+	DescriptionZh string `json:"description_zh"`
+	DefaultFlow  string `json:"default_flow"`
+	Flows        []struct {
+		ID          string `json:"id"`
+		File        string `json:"file"`
+		Description string `json:"description"`
+		Default     bool   `json:"default"`
+	} `json:"flows"`
+	Tags []string `json:"tags"`
+}
+
+func loadTeamFromFS(fsys embed.FS, teamID string) *teamMeta {
+	data, err := fsys.ReadFile("teams/" + teamID + "/team.json")
+	if err != nil {
+		return nil
+	}
+	var team teamMeta
+	if json.Unmarshal(data, &team) != nil {
+		return nil
+	}
+	return &team
+}
+
+func findTeamByFlow(fsys embed.FS, flowID string) *teamMeta {
+	entries, err := fs.ReadDir(fsys, "teams")
+	if err != nil {
+		return nil
+	}
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		data, readErr := fsys.ReadFile("teams/" + entry.Name() + "/team.json")
+		if readErr != nil {
+			continue
+		}
+		var team teamMeta
+		if json.Unmarshal(data, &team) != nil {
+			continue
+		}
+		for _, f := range team.Flows {
+			if f.ID == flowID {
+				return &team
+			}
+		}
+	}
+	return nil
+}
+
+func selectTeam(fsys embed.FS) *teamMeta {
+	entries, err := fs.ReadDir(fsys, "teams")
+	if err != nil || len(entries) == 0 {
+		fmt.Println("  No preset teams found.")
+		return nil
+	}
+
+	var teams []teamMeta
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		data, readErr := fsys.ReadFile("teams/" + entry.Name() + "/team.json")
+		if readErr != nil {
+			continue
+		}
+		var team teamMeta
+		if json.Unmarshal(data, &team) != nil {
+			continue
+		}
+		teams = append(teams, team)
+	}
+
+	if len(teams) == 0 {
+		fmt.Println("  No preset teams found.")
+		return nil
+	}
+
+	fmt.Println("\n  Available teams:")
+	fmt.Println()
+	for i, t := range teams {
+		desc := t.Description
+		if t.DescriptionZh != "" {
+			desc = t.DescriptionZh
+		}
+		fmt.Printf("    %2d. %-20s — %s (%d flows)\n", i+1, t.ID, desc, len(t.Flows))
+	}
+	fmt.Printf("     0. Create new team (via AI)\n")
+	fmt.Println()
+
+	if autoYes {
+		fmt.Printf("  Auto-selected: %s (--yes mode)\n", teams[0].ID)
+		return &teams[0]
+	}
+
+	fmt.Print("  Select team [1-0]: ")
+	reader := bufio.NewReader(os.Stdin)
+	input, _ := reader.ReadString('\n')
+	input = strings.TrimSpace(input)
+
+	if input == "0" {
+		fmt.Println("  → AI will help you create a new team via team-flow-v3-create skill")
+		return nil
+	}
+
+	idx := 0
+	fmt.Sscanf(input, "%d", &idx)
+	if idx >= 1 && idx <= len(teams) {
+		return &teams[idx-1]
+	}
+
+	for i := range teams {
+		if teams[i].ID == input {
+			return &teams[i]
+		}
+	}
+
+	fmt.Printf("  Using first preset: %s\n", teams[0].ID)
+	return &teams[0]
+}
+
+func installTeamFlows(fsys embed.FS, teamID, destDir string, overwrite bool) int {
+	entries, err := fs.ReadDir(fsys, "teams/"+teamID+"/flows")
+	if err != nil {
+		return 0
+	}
+
+	copied := 0
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
+			continue
+		}
+		dst := filepath.Join(destDir, entry.Name())
+		if !overwrite {
+			if _, err := os.Stat(dst); err == nil {
+				continue
+			}
+		}
+		data, readErr := fsys.ReadFile("teams/" + teamID + "/flows/" + entry.Name())
+		if readErr != nil {
+			continue
+		}
+		if writeErr := os.WriteFile(dst, data, 0644); writeErr != nil {
+			continue
+		}
+		copied++
+	}
+	return copied
 }
 
 func copyFromFS(fsys embed.FS, srcDir, dst string, overwrite bool, excludeDirs []string) (copied, skipped int, err error) {
@@ -628,51 +907,21 @@ func generateDevMD(projectPath, skillPath string) {
 }
 
 func generateBridgeFileContent(format, skillPath string) string {
-	statusLine := "## Status Line (MANDATORY)\n\n" +
-		"Every response MUST start with:\n\n" +
-		"```\n" +
-		"[Role: {role} | TaskPool: {status} | Phase: {phase} | Asset: {asset}]\n" +
-		"```\n\n" +
-		"- Role: Triage/TechLead/Dev/QA/PM/DevOps/Analysis/UIDesigner\n" +
-		"- TaskPool: beads issue ID (e.g., `team-flow-7bd`) or ❌unread\n" +
-		"- Phase: ready/analyze/design/implement/verify/review/-(N/A)\n" +
-		"- Asset: directory path or -(N/A)\n\n" +
-		"**When TaskPool = ❌unread, you MUST execute `bd ready` FIRST before any other action.**\n" +
-		"This reads the task pool and assigns you a task. Never start working without a task ID.\n" +
-		"If no tasks exist, create one with `bd create` before starting work.\n\n"
-
-	skillRef := "Read `.team/version` for active version (v1 or v2).\n" +
-		"Load and follow ALL rules in `" + skillPath + "/SKILL.md` as the entry point.\n"
+	skillRef := "# team-flow\n\n" +
+		"Read `.team/version` for active version.\n" +
+		"Follow ALL rules in `" + skillPath + "/SKILL.md` as the entry point.\n" +
+		"Run `flow proc run` to start the flow engine.\n"
 
 	switch format {
-	case "trae":
-		return "# team-flow Rules\n\n" +
-			statusLine +
-			skillRef +
-			"The SKILL.md contains complete collaboration rules including:\n" +
-			"- Dispatch Guard (4 iron rules)\n" +
-			"- Regression Guard (10 iron rules)\n" +
-			"- Task Management (beads v2 / task-pool v1)\n" +
-			"- Role Mapping and Sub-agent orchestration\n" +
-			"- Three-Layer Gates\n" +
-			"- Core Principle: Skill ≠ Project\n"
 	case "cursor":
 		return "---\n" +
 			"description: team-flow AI collaboration rules\n" +
 			"globs:\n" +
 			"  - \"**/*\"\n" +
 			"---\n\n" +
-			"# team-flow Rules\n\n" +
-			statusLine +
 			skillRef
-	case "claude":
-		return "# team-flow Rules\n\n" +
-			statusLine +
-			skillRef
-	case "openclaw":
-		return "# team-flow Rules\n\n" +
-			statusLine +
-			skillRef
+	case "trae", "claude", "openclaw":
+		return skillRef
 	default:
 		return ""
 	}
@@ -698,7 +947,7 @@ func installMCPConfig(projectPath string) {
       "args": ["-m", "code_review_graph", "serve"],
       "env": {}
     },
-    "beads": {
+    "flow-task": {
       "command": "%s",
       "args": ["mcp"],
       "env": {}
@@ -740,6 +989,7 @@ func installMCPConfig(projectPath string) {
 
 type IDEInfo struct {
 	Name       string
+	Subdir     string
 	SkillDir   string
 	ConfigDir  string
 	BridgePath string
@@ -748,40 +998,40 @@ type IDEInfo struct {
 }
 
 func detectIDEs(projectPath string) []IDEInfo {
-	ides := []IDEInfo{
-		{
-			Name:       "Trae",
-			SkillDir:   filepath.Join(projectPath, ".trae", "skills"),
-			ConfigDir:  filepath.Join(projectPath, ".trae"),
-			BridgePath: ".trae/rules/team-flow.md",
-			BridgeFmt:  "trae",
-		},
-		{
-			Name:       "Cursor",
-			SkillDir:   filepath.Join(projectPath, ".cursor", "skills"),
-			ConfigDir:  filepath.Join(projectPath, ".cursor"),
-			BridgePath: ".cursor/rules/team-flow.mdc",
-			BridgeFmt:  "cursor",
-		},
-		{
-			Name:       "Claude",
-			SkillDir:   filepath.Join(projectPath, ".claude", "skills"),
-			ConfigDir:  filepath.Join(projectPath, ".claude"),
-			BridgePath: ".claude/rules/team-flow.md",
-			BridgeFmt:  "claude",
-		},
-		{
-			Name:       "OpenClaw",
-			SkillDir:   filepath.Join(projectPath, ".openclaw", "skills"),
-			ConfigDir:  filepath.Join(projectPath, ".openclaw"),
-			BridgePath: ".openclaw/rules/team-flow.md",
-			BridgeFmt:  "openclaw",
-		},
+	ideTemplates := []struct {
+		Name      string
+		Subdir    string
+		BridgeRel string
+		BridgeFmt string
+	}{
+		{"Trae", ".trae", ".trae/rules/team-flow.md", "trae"},
+		{"Cursor", ".cursor", ".cursor/rules/team-flow.mdc", "cursor"},
+		{"Claude", ".claude", ".claude/rules/team-flow.md", "claude"},
+		{"OpenClaw", ".openclaw", ".openclaw/rules/team-flow.md", "openclaw"},
 	}
 
-	for i := range ides {
-		if _, err := os.Stat(ides[i].ConfigDir); err == nil {
-			ides[i].Detected = true
+	var ides []IDEInfo
+	for _, tmpl := range ideTemplates {
+		configDir := filepath.Join(projectPath, tmpl.Subdir)
+		if _, err := os.Stat(configDir); err == nil {
+			ides = append(ides, IDEInfo{
+				Name:       tmpl.Name,
+				Subdir:     tmpl.Subdir,
+				SkillDir:   filepath.Join(projectPath, tmpl.Subdir, "skills"),
+				ConfigDir:  configDir,
+				BridgePath: tmpl.BridgeRel,
+				BridgeFmt:  tmpl.BridgeFmt,
+				Detected:   true,
+			})
+		}
+	}
+
+	if len(ides) == 0 {
+		ides = []IDEInfo{
+			{Name: "Trae", Subdir: ".trae", SkillDir: filepath.Join(projectPath, ".trae", "skills"), ConfigDir: filepath.Join(projectPath, ".trae"), BridgePath: ".trae/rules/team-flow.md", BridgeFmt: "trae"},
+			{Name: "Cursor", Subdir: ".cursor", SkillDir: filepath.Join(projectPath, ".cursor", "skills"), ConfigDir: filepath.Join(projectPath, ".cursor"), BridgePath: ".cursor/rules/team-flow.mdc", BridgeFmt: "cursor"},
+			{Name: "Claude", Subdir: ".claude", SkillDir: filepath.Join(projectPath, ".claude", "skills"), ConfigDir: filepath.Join(projectPath, ".claude"), BridgePath: ".claude/rules/team-flow.md", BridgeFmt: "claude"},
+			{Name: "OpenClaw", Subdir: ".openclaw", SkillDir: filepath.Join(projectPath, ".openclaw", "skills"), ConfigDir: filepath.Join(projectPath, ".openclaw"), BridgePath: ".openclaw/rules/team-flow.md", BridgeFmt: "openclaw"},
 		}
 	}
 
@@ -866,27 +1116,29 @@ func installSkillFromFS(projectPath string, fsys embed.FS, version string, overw
 	var srcDir string
 	var excludeDirs []string
 
-	if version == "v2" {
+	switch version {
+	case "v3":
+		srcDir = "team/v3"
+	case "v2":
 		srcDir = "team/v2"
-	} else {
+	default:
 		srcDir = "team/v1"
 	}
 
-	sharedDirs := []string{"team/config", "team/templates", "team/lessons", "team/standards", "team/scripts"}
+	sharedDirs := []string{"team/v1/config", "team/v1/templates", "team/v1/lessons", "team/v1/scripts"}
 
-	ides := detectIDEs(projectPath)
-	installed := false
-
-	for _, ide := range ides {
-		if !ide.Detected {
-			continue
-		}
-
-		skillDir := filepath.Join(ide.SkillDir, "team-flow")
+	installIDESkills := func(ide IDEInfo) {
+		skillDir := filepath.Join(projectPath, ide.Subdir, "skills", "team-flow")
 
 		skillEntry := filepath.Join(skillDir, "SKILL.md")
 		if _, err := os.Stat(skillEntry); err != nil || overwrite {
-			entryData, readErr := fsys.ReadFile("team/SKILL.md")
+			entryPath := "team/v1/SKILL.md"
+			if version == "v2" {
+				entryPath = "team/v2/SKILL.md"
+			} else if version == "v3" {
+				entryPath = "team/v3/SKILL.md"
+			}
+			entryData, readErr := fsys.ReadFile(entryPath)
 			if readErr != nil {
 				fmt.Printf("  ⚠ Read SKILL.md error: %v\n", readErr)
 			} else {
@@ -909,7 +1161,7 @@ func installSkillFromFS(projectPath string, fsys embed.FS, version string, overw
 		copied, skipped, err := copyFromFS(fsys, srcDir, skillDir, overwrite, excludeDirs)
 		if err != nil {
 			fmt.Printf("  ⚠ %s skill copy error: %v\n", ide.Name, err)
-			continue
+			return
 		}
 
 		fmt.Printf("  ✓ %s (%s): Copied %d files", ide.Name, version, copied)
@@ -917,7 +1169,31 @@ func installSkillFromFS(projectPath string, fsys embed.FS, version string, overw
 			fmt.Printf(" (%d skipped)", skipped)
 		}
 		fmt.Println()
-		installed = true
+
+		if version == "v3" {
+			installFallbackVersion(fsys, skillDir, "v2", ide.Name, overwrite)
+		} else if version == "v2" {
+			installFallbackVersion(fsys, skillDir, "v1", ide.Name, overwrite)
+		}
+	}
+
+	ideTemplates := []struct {
+		Name   string
+		Subdir string
+	}{
+		{"Trae", ".trae"},
+		{"Cursor", ".cursor"},
+		{"Claude", ".claude"},
+		{"OpenClaw", ".openclaw"},
+	}
+
+	installed := false
+	for _, tmpl := range ideTemplates {
+		configDir := filepath.Join(projectPath, tmpl.Subdir)
+		if _, err := os.Stat(configDir); err == nil {
+			installIDESkills(IDEInfo{Name: tmpl.Name, Subdir: tmpl.Subdir})
+			installed = true
+		}
 	}
 
 	if !installed {
@@ -925,7 +1201,13 @@ func installSkillFromFS(projectPath string, fsys embed.FS, version string, overw
 		skillDir := filepath.Join(projectPath, ".agents", "skills", "team-flow")
 
 		skillEntry := filepath.Join(skillDir, "SKILL.md")
-		entryData, readErr := fsys.ReadFile("team/SKILL.md")
+		entryPath := "team/v1/SKILL.md"
+		if version == "v2" {
+			entryPath = "team/v2/SKILL.md"
+		} else if version == "v3" {
+			entryPath = "team/v3/SKILL.md"
+		}
+		entryData, readErr := fsys.ReadFile(entryPath)
 		if readErr == nil {
 			os.MkdirAll(skillDir, 0755)
 			os.WriteFile(skillEntry, entryData, 0644)
@@ -947,5 +1229,30 @@ func installSkillFromFS(projectPath string, fsys embed.FS, version string, overw
 			}
 			fmt.Println()
 		}
+
+		if version == "v3" {
+			installFallbackVersion(fsys, skillDir, "v2", "local", overwrite)
+		} else if version == "v2" {
+			installFallbackVersion(fsys, skillDir, "v1", "local", overwrite)
+		}
 	}
+}
+
+func installFallbackVersion(fsys embed.FS, skillDir, fallbackVersion, ideName string, overwrite bool) {
+	fallbackSrcDir := "team/" + fallbackVersion
+	fallbackDstDir := filepath.Join(skillDir, fallbackVersion)
+
+	fallbackSkillEntry := filepath.Join(fallbackDstDir, "SKILL.md")
+	if _, err := os.Stat(fallbackSkillEntry); err == nil && !overwrite {
+		fmt.Printf("  ✓ %s: %s fallback already exists\n", ideName, fallbackVersion)
+		return
+	}
+
+	copied, _, err := copyFromFS(fsys, fallbackSrcDir, fallbackDstDir, overwrite, nil)
+	if err != nil {
+		fmt.Printf("  ⚠ %s: %s fallback copy error: %v\n", ideName, fallbackVersion, err)
+		return
+	}
+
+	fmt.Printf("  ✓ %s: %s fallback preserved (%d files)\n", ideName, fallbackVersion, copied)
 }

@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/origadmin/team-flow/internal/boot"
+	"github.com/origadmin/team-flow/internal/config"
 	"github.com/origadmin/team-flow/internal/doctor"
 	"github.com/origadmin/team-flow/internal/editor"
 	"github.com/origadmin/team-flow/internal/export"
@@ -51,7 +52,7 @@ func init() {
 		if verboseFlag {
 			log.SetLevel(logger.DEBUG)
 		}
-		log.Debug("Command executed: " + cmd.Name())
+		log.Debug("Command executed: %s", cmd.Name())
 		return nil
 	}
 }
@@ -68,12 +69,13 @@ func main() {
 
 	if err := viper.ReadInConfig(); err == nil {
 		log = logger.GetLogger()
-		log.Debug("Loaded config: " + viper.ConfigFileUsed())
+		log.Debug("Loaded config: %s", viper.ConfigFileUsed())
 	}
 
 	rootCmd.AddCommand(tools.Cmd)
 	rootCmd.AddCommand(task.Cmd)
 	rootCmd.AddCommand(boot.Cmd)
+	rootCmd.AddCommand(config.Cmd)
 	rootCmd.AddCommand(doctor.Cmd)
 	rootCmd.AddCommand(migrate.Cmd)
 	rootCmd.AddCommand(export.Cmd)

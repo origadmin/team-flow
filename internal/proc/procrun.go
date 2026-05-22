@@ -38,33 +38,51 @@ type FlowMeta struct {
 	Domain  string `json:"domain"`
 }
 
+type ParallelBranchOutput struct {
+	NodeID   string `json:"node_id"`
+	RoleName string `json:"role_name,omitempty"`
+	Alias    string `json:"alias,omitempty"`
+	Name     string `json:"name,omitempty"`
+}
+
 type CurrentNode struct {
-	NodeID           string           `json:"node_id"`
-	NodeType         string           `json:"node_type"`
-	Name             string           `json:"name"`
-	Description      string           `json:"description"`
-	Role             string           `json:"role"`
-	PromptSource     string           `json:"prompt_source,omitempty"`
-	StandardsSource  string           `json:"standards_source,omitempty"`
-	PromptDirectives []string         `json:"prompt_directives,omitempty"`
-	Rules            []RuleOutput     `json:"rules"`
-	Tools            []ToolOutput     `json:"tools"`
-	Skills           []SkillOutput    `json:"skills"`
-	Prompts          []PromptOutput   `json:"prompts"`
-	Docs             []DocOutput      `json:"docs"`
-	OnEnter          []OnEnterAction  `json:"on_enter"`
-	GateConditions   []GateCondOutput `json:"gate_conditions"`
-	IsTerminal       bool             `json:"is_terminal"`
-	TerminalStatus   string           `json:"terminal_status,omitempty"`
-	TerminalMessage  string           `json:"terminal_message,omitempty"`
+	NodeID            string                  `json:"node_id"`
+	NodeType          string                  `json:"node_type"`
+	Name              string                  `json:"name"`
+	Description       string                  `json:"description"`
+	Role              string                  `json:"role"`
+	RoleName          string                  `json:"role_name,omitempty"`
+	Alias             string                  `json:"alias,omitempty"`
+	AliasEn           string                  `json:"alias_en,omitempty"`
+	Principal         bool                    `json:"principal,omitempty"`
+	Persona           string                  `json:"persona,omitempty"`
+	Traits            []string                `json:"traits,omitempty"`
+	Guidance          string                  `json:"guidance,omitempty"`
+	PromptSource      string                  `json:"prompt_source,omitempty"`
+	StandardsSource   string                  `json:"standards_source,omitempty"`
+	PromptDirectives  []string                `json:"prompt_directives,omitempty"`
+	Rules             []RuleOutput            `json:"rules"`
+	Tools             []ToolOutput            `json:"tools"`
+	Skills            []SkillOutput           `json:"skills"`
+	Prompts           []PromptOutput          `json:"prompts"`
+	Docs              []DocOutput             `json:"docs"`
+	OnEnter           []OnEnterAction         `json:"on_enter"`
+	GateConditions    []GateCondOutput        `json:"gate_conditions"`
+	ParallelBranches  []ParallelBranchOutput  `json:"parallel_branches,omitempty"`
+	ParallelStrategy  string                  `json:"parallel_strategy,omitempty"`
+	MergeStrategy     string                  `json:"merge_strategy,omitempty"`
+	IsTerminal        bool                    `json:"is_terminal"`
+	TerminalStatus    string                  `json:"terminal_status,omitempty"`
+	TerminalMessage   string                  `json:"terminal_message,omitempty"`
 }
 
 type RuleOutput struct {
 	Ref         string `json:"ref"`
 	Source      string `json:"source,omitempty"`
 	Name        string `json:"name,omitempty"`
-	Description string `json:"description,omitempty"`
+	Instruction string `json:"instruction,omitempty"`
 	Enforcement string `json:"enforcement,omitempty"`
+	RuleRef     string `json:"rule_ref,omitempty"`
 }
 
 type PromptOutput struct {
@@ -271,12 +289,22 @@ func buildCurrentNode(node *flow.FlowNode, fl *flow.Flow, vars map[string]string
 
 	switch node.Type {
 	case flow.NodeTypePhase, flow.NodeTypeStart:
+		ri := resolveRoleInfo(node, fl)
 		current.Role = extractRole(node)
-		current.PromptSource, current.StandardsSource, current.PromptDirectives = extractRoleSources(node, fl)
+		current.RoleName = ri.roleName
+		current.Alias = ri.alias
+		current.AliasEn = ri.aliasEn
+		current.Principal = ri.principal
+		current.Persona = ri.persona
+		current.Traits = ri.traits
+		current.Guidance = ri.guidance
+		current.PromptSource = substituteVars(ri.promptSource, vars)
+		current.StandardsSource = substituteVars(ri.standardsSource, vars)
+		current.PromptDirectives = ri.directives
 		current.Rules = extractRules(node, fl)
 		current.Tools = extractTools(node)
 		current.Skills = extractSkills(node, fl)
-		current.Prompts = extractPrompts(node)
+		current.Prompts = extractPrompts(node, vars)
 		current.Docs = extractDocs(node, vars)
 		current.OnEnter = extractOnEnter(node)
 		current.GateConditions = nil
@@ -298,13 +326,47 @@ func buildCurrentNode(node *flow.FlowNode, fl *flow.Flow, vars map[string]string
 			}
 		}
 
+	case flow.NodeTypeParallel:
+		current.Role = ""
+		current.GateConditions = nil
+		if node.Config != nil {
+			var parCfg flow.ParallelConfig
+			if err := json.Unmarshal(node.Config, &parCfg); err == nil {
+				current.ParallelStrategy = string(parCfg.Strategy)
+				current.MergeStrategy = string(parCfg.MergeStrategy)
+				for _, b := range parCfg.Branches {
+					pbo := ParallelBranchOutput{NodeID: b.Node}
+					for i := range fl.Nodes {
+					if fl.Nodes[i].ID == b.Node {
+						pbo.Name = fl.Nodes[i].Name
+						ri := resolveRoleInfo(&fl.Nodes[i], fl)
+						pbo.RoleName = ri.roleName
+						pbo.Alias = ri.alias
+						break
+					}
+				}
+					current.ParallelBranches = append(current.ParallelBranches, pbo)
+				}
+			}
+		}
+
 	default:
+		ri := resolveRoleInfo(node, fl)
 		current.Role = extractRole(node)
-		current.PromptSource, current.StandardsSource, current.PromptDirectives = extractRoleSources(node, fl)
+		current.RoleName = ri.roleName
+		current.Alias = ri.alias
+		current.AliasEn = ri.aliasEn
+		current.Principal = ri.principal
+		current.Persona = ri.persona
+		current.Traits = ri.traits
+		current.Guidance = ri.guidance
+		current.PromptSource = substituteVars(ri.promptSource, vars)
+		current.StandardsSource = substituteVars(ri.standardsSource, vars)
+		current.PromptDirectives = ri.directives
 		current.Rules = extractRules(node, fl)
 		current.Tools = extractTools(node)
 		current.Skills = extractSkills(node, fl)
-		current.Prompts = extractPrompts(node)
+		current.Prompts = extractPrompts(node, vars)
 		current.Docs = extractDocs(node, vars)
 		current.OnEnter = extractOnEnter(node)
 	}
@@ -323,26 +385,57 @@ func extractRole(node *flow.FlowNode) string {
 	return ""
 }
 
-// extractRoleSources resolves prompt_source, standards_source, and prompt_directives
-// from the flow-level component registry by matching the node's role ref to the RoleDefinition.
-func extractRoleSources(node *flow.FlowNode, fl *flow.Flow) (promptSource, standardsSource string, directives []string) {
+type roleInfo struct {
+	promptSource    string
+	standardsSource string
+	directives      []string
+	persona         string
+	traits          []string
+	guidance        string
+	alias           string
+	aliasEn         string
+	roleName        string
+	principal       bool
+}
+
+func resolveRoleInfo(node *flow.FlowNode, fl *flow.Flow) roleInfo {
+	info := roleInfo{}
+	if node.Config == nil {
+		return info
+	}
+	var phaseCfg flow.PhaseConfig
+	if err := json.Unmarshal(node.Config, &phaseCfg); err != nil {
+		return info
+	}
 	if node.Components == nil || len(node.Components.Roles) == 0 {
-		return "", "", nil
+		return info
 	}
 	roleRef := node.Components.Roles[0].Ref
 	if fl.Components == nil {
-		return "", "", nil
+		return info
 	}
 	for _, r := range fl.Components.Roles {
 		if r.ID == roleRef {
-			return r.PromptSource, r.StandardsSource, r.PromptDirectives
+			info.promptSource = r.PromptSource
+			info.standardsSource = r.StandardsSource
+			info.directives = r.PromptDirectives
+			info.persona = r.Persona
+			info.traits = r.Traits
+			info.guidance = r.Guidance
+			info.alias = r.Alias
+			info.aliasEn = r.AliasEn
+			info.roleName = r.Name
+			if r.Principal != nil && *r.Principal {
+				info.principal = true
+			}
+			break
 		}
 	}
-	return "", "", nil
+	return info
 }
 
 // extractPrompts returns prompt file references from node components.
-func extractPrompts(node *flow.FlowNode) []PromptOutput {
+func extractPrompts(node *flow.FlowNode, vars map[string]string) []PromptOutput {
 	if node.Components == nil || len(node.Components.Prompts) == 0 {
 		return nil
 	}
@@ -351,7 +444,7 @@ func extractPrompts(node *flow.FlowNode) []PromptOutput {
 		prompts = append(prompts, PromptOutput{
 			Ref:    p.Ref,
 			Source: string(p.Source),
-			Path:   p.Path,
+			Path:   substituteVars(p.Path, vars),
 		})
 	}
 	return prompts
@@ -375,8 +468,9 @@ func extractRules(node *flow.FlowNode, fl *flow.Flow) []RuleOutput {
 		}
 		if def, ok := ruleDefs[r.Ref]; ok {
 			out.Name = def.Name
-			out.Description = def.Description
+			out.Instruction = def.Instruction
 			out.Enforcement = string(def.Enforcement)
+			out.RuleRef = fmt.Sprintf("flow proc rule %s", def.ID)
 		}
 		rules = append(rules, out)
 	}

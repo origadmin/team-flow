@@ -61,7 +61,12 @@ func (s *DefaultVarSubstitutor) CollectVars(ctx context.Context, f *flow.Flow, r
 
 	docsPath := ResolveDocsPath(req.ProjectRoot)
 	if docsPath != "" {
-		vars["docs_path"] = docsPath
+		vars["DOCS_INTERNAL"] = docsPath
+	}
+
+	docsExternalPath := ResolveDocsExternalPath(req.ProjectRoot)
+	if docsExternalPath != "" {
+		vars["DOCS_EXTERNAL"] = docsExternalPath
 	}
 
 	if req.TaskID != "" {

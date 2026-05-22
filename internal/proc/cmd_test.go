@@ -142,7 +142,7 @@ func TestPrintProcs_WithEntries(t *testing.T) {
 	if !strings.Contains(output, "my-proc") {
 		t.Error("output should contain process name 'my-proc'")
 	}
-	if !strings.Contains(output, "Total: 2 process(es)") {
+	if !strings.Contains(output, "Total: 2 flow(s)") {
 		t.Error("output should contain total count")
 	}
 }
@@ -401,7 +401,7 @@ func TestRunListCommand(t *testing.T) {
 	if !strings.Contains(output, "standard") {
 		t.Errorf("output should contain preset process 'standard', got: %s", output)
 	}
-	if !strings.Contains(output, "Total: 2 process(es)") {
+	if !strings.Contains(output, "Total: 2 flow(s)") {
 		t.Errorf("output should contain total count, got: %s", output)
 	}
 }

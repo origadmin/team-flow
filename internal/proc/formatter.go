@@ -36,15 +36,38 @@ func FormatText(w io.Writer, result *ProcRunResult) error {
 	fmt.Fprintf(w, "║  NODE: %-52s║\n", current.NodeID)
 	fmt.Fprintf(w, "║  TYPE: %-52s║\n", current.NodeType)
 	if current.Role != "" {
-		fmt.Fprintf(w, "║  ROLE: %-52s║\n", current.Role)
+		roleLabel := current.RoleName
+		if roleLabel == "" {
+			roleLabel = current.Role
+		}
+		if current.Alias != "" {
+			roleLabel = current.Alias
+			if current.AliasEn != "" {
+				roleLabel += "(" + current.AliasEn + ")"
+			}
+			roleLabel += " · " + current.RoleName
+		}
+		if current.Principal {
+			roleLabel += " ⭐"
+		}
+		fmt.Fprintf(w, "║  ROLE: %-52s║\n", roleLabel)
+	}
+	if current.Persona != "" {
+		fmt.Fprintf(w, "║  PERSONA: %-49s║\n", current.Persona)
+	}
+	if len(current.Traits) > 0 {
+		fmt.Fprintf(w, "║  TRAITS: %-50s║\n", strings.Join(current.Traits, ", "))
+	}
+	if current.Guidance != "" {
+		fmt.Fprintf(w, "║  GUIDANCE: %-48s║\n", current.Guidance)
 	}
 
 	if len(current.Rules) > 0 {
 		fmt.Fprintf(w, "║  RULES:%-53s║\n", "")
 		for _, r := range current.Rules {
-			label := r.Ref
-			if r.Name != "" {
-				label = r.Name
+			label := r.Name
+			if label == "" {
+				label = r.Ref
 			}
 			if r.Source != "" && r.Source != "builtin" {
 				label += " (" + r.Source + ")"
@@ -53,15 +76,11 @@ func FormatText(w io.Writer, result *ProcRunResult) error {
 				label += " [" + strings.ToUpper(r.Enforcement) + "]"
 			}
 			fmt.Fprintf(w, "║    - %-54s║\n", label)
-			if r.Description != "" {
-				desc := r.Description
-				for len(desc) > 52 {
-					fmt.Fprintf(w, "║      %-54s║\n", desc[:52])
-					desc = desc[52:]
-				}
-				if desc != "" {
-					fmt.Fprintf(w, "║      %-54s║\n", desc)
-				}
+			if r.Instruction != "" {
+				fmt.Fprintf(w, "║      %-54s║\n", r.Instruction)
+			}
+			if r.RuleRef != "" {
+				fmt.Fprintf(w, "║      → %-52s║\n", r.RuleRef)
 			}
 		}
 	}
@@ -103,6 +122,15 @@ func FormatText(w io.Writer, result *ProcRunResult) error {
 			if d.Description != "" {
 				fmt.Fprintf(w, "║        %-52s║\n", d.Description)
 			}
+			if d.Template != "" {
+				fmt.Fprintf(w, "║        template: %-38s║\n", d.Template)
+			}
+			for i, rule := range d.ContentRules {
+				if i == 0 {
+					fmt.Fprintf(w, "║        rules:%-43s║\n", "")
+				}
+				fmt.Fprintf(w, "║          %d. %-42s║\n", i+1, rule)
+			}
 		}
 	}
 
@@ -125,6 +153,42 @@ func FormatText(w io.Writer, result *ProcRunResult) error {
 		fmt.Fprintf(w, "║    2. Prefer is_default branch when uncertain%-23s║\n", "")
 		fmt.Fprintf(w, "║    3. Explain reasoning for non-default selection%-20s║\n", "")
 		fmt.Fprintf(w, "║    4. Pause and ask user when completely uncertain%-19s║\n", "")
+	}
+
+	if len(current.ParallelBranches) > 0 {
+		fmt.Fprintf(w, "║  PARALLEL BRANCHES:%-40s║\n", "")
+		strategy := current.ParallelStrategy
+		if strategy == "" {
+			strategy = "all_success"
+		}
+		merge := current.MergeStrategy
+		if merge == "" {
+			merge = "wait_all"
+		}
+		fmt.Fprintf(w, "║    strategy: %-46s║\n", strategy)
+		fmt.Fprintf(w, "║    merge: %-49s║\n", merge)
+		for i, b := range current.ParallelBranches {
+			label := fmt.Sprintf("[%d] %s", i+1, b.NodeID)
+			if b.Alias != "" {
+				label += " (" + b.Alias
+				if b.RoleName != "" {
+					label += " · " + b.RoleName
+				}
+				label += ")"
+			} else if b.RoleName != "" {
+				label += " (" + b.RoleName + ")"
+			}
+			if b.Name != "" {
+				label += " — " + b.Name
+			}
+			fmt.Fprintf(w, "║    %-56s║\n", label)
+		}
+		fmt.Fprintf(w, "║%-60s║\n", "")
+		fmt.Fprintf(w, "║  AI BEHAVIOR RULES:%-40s║\n", "")
+		fmt.Fprintf(w, "║    1. Dispatch ALL branches concurrently via sub-agents%-11s║\n", "")
+		fmt.Fprintf(w, "║    2. Wait for ALL branches to complete (wait_all)%-14s║\n", "")
+		fmt.Fprintf(w, "║    3. If any branch fails → report to principal%-16s║\n", "")
+		fmt.Fprintf(w, "║    4. Only proceed to next node when all branches pass%-10s║\n", "")
 	}
 
 	fmt.Fprintf(w, "%s\n", boxMid(width))

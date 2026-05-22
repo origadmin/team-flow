@@ -1,0 +1,703 @@
+{
+  "version": "v3",
+  "metadata": {
+    "name": "game-design-flow",
+    "description": "Game design flow: Concept → GDD → Prototype → Gate → Art & Levels → Gate → Polish → Terminal",
+    "author": "team-flow",
+    "tags": [
+      "game",
+      "design",
+      "creative"
+    ]
+  },
+  "config": {
+    "task_type": "game-design",
+    "auto_dispatch": true,
+    "parallel_limit": 3,
+    "timeout_minutes": 480
+  },
+  "variables": {
+    "docs_path": "",
+    "TEAM_PATH": "",
+    "task_id": "",
+    "SKILL_PATH": "",
+    "workspace": "",
+    "domain": "game-design"
+  },
+  "components": {
+    "roles": [
+      {
+        "id": "game-designer",
+        "name": "Game Designer",
+        "description": "Designs game concepts, mechanics, systems, and ensures design coherence across all game elements",
+        "capabilities": ["game-design", "mechanics-design", "system-design", "balance-tuning", "narrative-design"]
+      },
+      {
+        "id": "game-dev",
+        "name": "Game Developer",
+        "description": "Implements game prototypes and validates mechanics through playable builds",
+        "capabilities": ["prototyping", "game-programming", "playtesting", "technical-validation"]
+      },
+      {
+        "id": "artist",
+        "name": "Art Director",
+        "description": "Defines visual style, creates art direction documents, and ensures aesthetic coherence",
+        "capabilities": ["art-direction", "visual-design", "style-guide", "asset-specification"]
+      },
+      {
+        "id": "level-designer",
+        "name": "Level Designer",
+        "description": "Designs game levels, pacing, difficulty curves, and player experience flow",
+        "capabilities": ["level-design", "pacing", "difficulty-curve", "player-experience", "spatial-design"]
+      }
+    ],
+    "rules": [
+      {
+        "id": "g7k",
+        "name": "Output Guard",
+        "instruction": "每个阶段必须产出明确定义的交付物，无交付物则阶段不可结束",
+        "description": "Every phase MUST produce its required deliverable document before proceeding. Documents must be written to the specified path. Never skip a deliverable. Never mark a phase complete without producing the required output file.",
+        "type": "output_constraint",
+        "enforcement": "hard"
+      },
+      {
+        "id": "g3m",
+        "name": "Game Design Standards",
+        "instruction": "遵循核心循环、进度系统、平衡性三大设计支柱，确保游戏设计自洽且可玩",
+        "description": "Game design must follow three pillars: (1) Core Loop — every system must feed back into the core gameplay loop. (2) Progression System — player advancement must be meaningful and balanced. (3) Balance — no single strategy should dominate; all viable paths must be fun. Design documents must specify mechanics, systems, and their interactions.",
+        "type": "quality_constraint",
+        "enforcement": "hard"
+      },
+      {
+        "id": "g9p",
+        "name": "Narrative Consistency",
+        "instruction": "保持故事线、角色设定、世界观在所有设计文档中前后一致",
+        "description": "Narrative elements must remain consistent: (1) Story arc must follow the established plot structure. (2) Character behavior must match their defined profiles. (3) World lore must not contradict established rules. (4) Always reference CONCEPT.md and GDD.md before writing narrative content.",
+        "type": "behavioral_constraint",
+        "enforcement": "hard"
+      },
+      {
+        "id": "g5v",
+        "name": "Mechanic Consistency",
+        "instruction": "游戏规则在所有场景和关卡中保持内部一致，禁止隐性规则冲突",
+        "description": "Game mechanics must be internally consistent: (1) Combat/damage rules must work the same way in all contexts. (2) Economy system must be balanced across all progression paths. (3) AI behavior must follow established rules, no cheating. (4) Physics rules must be consistent across all levels. (5) Always reference GDD.md before introducing new mechanics.",
+        "type": "behavioral_constraint",
+        "enforcement": "hard"
+      },
+      {
+        "id": "g2d",
+        "name": "Editing Standards",
+        "instruction": "对设计文档进行打磨和平衡调整，确保专业品质和可实施性",
+        "description": "Design document editing must: (1) Fix all logical inconsistencies. (2) Ensure balance numbers are reasonable and playtested. (3) Verify all cross-references between documents are correct. (4) Remove redundant or contradictory rules. (5) The edited version must preserve the original creative intent.",
+        "type": "quality_constraint",
+        "enforcement": "hard"
+      },
+      {
+        "id": "g8f",
+        "name": "Phase Transition Guard",
+        "instruction": "严格按流程顺序推进，禁止跳过任何阶段或门控节点",
+        "description": "Phase transitions must follow these rules: (1) Never skip a phase. (2) Gate evaluations must be honest. (3) If a gate fails, return to the specified fallback phase. (4) Maximum 2 retry attempts per gate before terminating.",
+        "type": "process_constraint",
+        "enforcement": "hard"
+      },
+      {
+        "id": "g4h",
+        "name": "No Hallucination Guard",
+        "instruction": "只引用已定义的游戏元素，禁止编造未在文档中确立的设定",
+        "description": "Content generation must avoid hallucination: (1) Do not invent game elements not established in CONCEPT.md or GDD.md. (2) If unsure about a detail, check reference documents first. (3) If a detail is not established, either leave it ambiguous or explicitly note it needs definition. (4) Never fabricate mechanics or lore to fill gaps.",
+        "type": "behavioral_constraint",
+        "enforcement": "hard"
+      },
+      {
+        "id": "g1a",
+        "name": "QG-1: Think Before Action",
+        "instruction": "执行任何操作前先验证假设，明确最坏情况和需澄清的问题",
+        "description": "Before any action, verify assumptions: what assumptions am I acting on? What's the worst case if wrong? What should I clarify first?",
+        "enforcement": "hard",
+        "trigger": "pre_action"
+      },
+      {
+        "id": "g6c",
+        "name": "QG-2: Simplicity First",
+        "instruction": "用最少的机制实现设计意图，避免过度设计",
+        "description": "Can this be designed with fewer mechanics? Am I adding unnecessary complexity? Is this over-designed?",
+        "enforcement": "hard",
+        "trigger": "pre_output"
+      },
+      {
+        "id": "g0e",
+        "name": "QG-3: Precise Changes",
+        "instruction": "只在任务范围内修改，不优化或重构相邻内容",
+        "description": "Only modify content within task scope. Never optimize or refactor adjacent content. Clean up orphan content from own changes.",
+        "enforcement": "hard",
+        "trigger": "code_change"
+      },
+      {
+        "id": "g7b",
+        "name": "QG-4: Goal-Driven Execution",
+        "instruction": "执行前定义成功标准，每步都有可验证的完成条件",
+        "description": "Define success criteria before executing. Each step must have concrete verification criteria. Never use vague 'completed' descriptions.",
+        "enforcement": "hard",
+        "trigger": "task_start"
+      }
+    ]
+  },
+  "nodes": [
+    {
+      "id": "gc01",
+      "type": "phase",
+      "name": "Game Concept",
+      "description": "Define the game concept including genre, target audience, core loop, and creative vision",
+      "config": {
+        "role": "GameDesigner"
+      },
+      "components": {
+        "roles": [
+          {
+            "ref": "game-designer",
+            "source": "builtin"
+          }
+        ],
+        "rules": [
+          {
+            "ref": "g7k",
+            "source": "flow"
+          },
+          {
+            "ref": "g3m",
+            "source": "flow"
+          },
+          {
+            "ref": "g9p",
+            "source": "flow"
+          },
+          {
+            "ref": "g4h",
+            "source": "flow"
+          }
+        ]
+      },
+      "docs": [
+        {
+          "name": "CONCEPT.md",
+          "format": "markdown",
+          "path": "{docs_path}/{task_id}/CONCEPT.md",
+          "required": true,
+          "description": "Game concept document: genre, target audience, core gameplay loop, monetization model, creative vision, unique selling points"
+        }
+      ],
+      "on_enter": [
+        {
+          "action": "update_task_phase",
+          "phase": "analyze"
+        }
+      ]
+    },
+    {
+      "id": "gc02",
+      "type": "phase",
+      "name": "Game Design Document",
+      "description": "Write the full GDD covering mechanics, systems, progression, economy, and balance",
+      "config": {
+        "role": "GameDesigner"
+      },
+      "components": {
+        "roles": [
+          {
+            "ref": "game-designer",
+            "source": "builtin"
+          }
+        ],
+        "rules": [
+          {
+            "ref": "g7k",
+            "source": "flow"
+          },
+          {
+            "ref": "g3m",
+            "source": "flow"
+          },
+          {
+            "ref": "g5v",
+            "source": "flow"
+          },
+          {
+            "ref": "g9p",
+            "source": "flow"
+          },
+          {
+            "ref": "g4h",
+            "source": "flow"
+          }
+        ]
+      },
+      "docs": [
+        {
+          "name": "GDD.md",
+          "format": "markdown",
+          "path": "{docs_path}/{task_id}/GDD.md",
+          "required": true,
+          "description": "Game Design Document: core mechanics, progression systems, economy, balance parameters, player journey, UI/UX flow"
+        }
+      ],
+      "on_enter": [
+        {
+          "action": "update_task_phase",
+          "phase": "design"
+        }
+      ]
+    },
+    {
+      "id": "gp03",
+      "type": "phase",
+      "name": "Prototype",
+      "description": "Build a minimal playable prototype to validate core mechanics and fun factor",
+      "config": {
+        "role": "GameDev"
+      },
+      "components": {
+        "roles": [
+          {
+            "ref": "game-dev",
+            "source": "builtin"
+          }
+        ],
+        "rules": [
+          {
+            "ref": "g7k",
+            "source": "flow"
+          },
+          {
+            "ref": "g3m",
+            "source": "flow"
+          },
+          {
+            "ref": "g5v",
+            "source": "flow"
+          },
+          {
+            "ref": "g8f",
+            "source": "flow"
+          }
+        ],
+        "tools": [
+          {
+            "ref": "task"
+          },
+          {
+            "ref": "search"
+          },
+          {
+            "ref": "file-write"
+          }
+        ],
+        "constraints": [
+          {
+            "type": "file_write",
+            "allowed_paths": [
+              "{workspace}/"
+            ]
+          },
+          {
+            "type": "timeout",
+            "minutes": 120
+          }
+        ]
+      },
+      "docs": [
+        {
+          "name": "PROTOTYPE.md",
+          "format": "markdown",
+          "path": "{docs_path}/{task_id}/PROTOTYPE.md",
+          "required": true,
+          "description": "Prototype report: what was built, core loop validation results, fun factor assessment, known issues"
+        }
+      ],
+      "on_enter": [
+        {
+          "action": "update_task_phase",
+          "phase": "implement"
+        }
+      ]
+    },
+    {
+      "id": "gpt4",
+      "type": "gate",
+      "name": "Prototype Review",
+      "description": "Evaluate if the prototype validates the core gameplay concept",
+      "config": {
+        "conditions": [
+          {
+            "type": "deliverables_complete",
+            "required": [
+              "PROTOTYPE.md"
+            ]
+          }
+        ],
+        "on_pass": "ga05",
+        "on_fail": "gc01",
+        "auto_retry": {
+          "max_attempts": 2,
+          "delay_minutes": 10
+        }
+      }
+    },
+    {
+      "id": "ga05",
+      "type": "phase",
+      "name": "Art Direction",
+      "description": "Define visual style, create art guidelines, and produce key concept art",
+      "config": {
+        "role": "Artist"
+      },
+      "components": {
+        "roles": [
+          {
+            "ref": "artist",
+            "source": "builtin"
+          }
+        ],
+        "rules": [
+          {
+            "ref": "g7k",
+            "source": "flow"
+          },
+          {
+            "ref": "g2d",
+            "source": "flow"
+          },
+          {
+            "ref": "g9p",
+            "source": "flow"
+          },
+          {
+            "ref": "g4h",
+            "source": "flow"
+          }
+        ]
+      },
+      "docs": [
+        {
+          "name": "ART_DIRECTION.md",
+          "format": "markdown",
+          "path": "{docs_path}/{task_id}/ART_DIRECTION.md",
+          "required": true,
+          "description": "Art direction document: visual style guide, color palette, asset list, UI/UX wireframes, animation notes"
+        }
+      ],
+      "on_enter": [
+        {
+          "action": "update_task_phase",
+          "phase": "implement"
+        }
+      ]
+    },
+    {
+      "id": "gl06",
+      "type": "phase",
+      "name": "Level Design",
+      "description": "Design game levels, environments, puzzles, and difficulty progression",
+      "config": {
+        "role": "LevelDesigner"
+      },
+      "components": {
+        "roles": [
+          {
+            "ref": "level-designer",
+            "source": "builtin"
+          }
+        ],
+        "rules": [
+          {
+            "ref": "g7k",
+            "source": "flow"
+          },
+          {
+            "ref": "g3m",
+            "source": "flow"
+          },
+          {
+            "ref": "g5v",
+            "source": "flow"
+          },
+          {
+            "ref": "g9p",
+            "source": "flow"
+          }
+        ]
+      },
+      "docs": [
+        {
+          "name": "LEVELS.md",
+          "format": "markdown",
+          "path": "{docs_path}/{task_id}/LEVELS.md",
+          "required": true,
+          "description": "Level design document: layout descriptions, puzzle mechanics, difficulty curve, environment themes, pacing notes"
+        }
+      ],
+      "on_enter": [
+        {
+          "action": "update_task_phase",
+          "phase": "implement"
+        }
+      ]
+    },
+    {
+      "id": "gcs7",
+      "type": "gate",
+      "name": "Design Review",
+      "description": "Verify all design elements are complete",
+      "config": {
+        "conditions": [
+          {
+            "type": "deliverables_complete",
+            "required": [
+              "ART_DIRECTION.md",
+              "LEVELS.md"
+            ]
+          }
+        ],
+        "on_pass": "gp08",
+        "on_fail": "ga05",
+        "auto_retry": {
+          "max_attempts": 2,
+          "delay_minutes": 10
+        }
+      }
+    },
+    {
+      "id": "gp08",
+      "type": "phase",
+      "name": "Polish & Integration",
+      "description": "Integrate all design elements, polish details, and produce final design package",
+      "config": {
+        "role": "GameDesigner"
+      },
+      "components": {
+        "roles": [
+          {
+            "ref": "game-designer",
+            "source": "builtin"
+          }
+        ],
+        "rules": [
+          {
+            "ref": "g7k",
+            "source": "flow"
+          },
+          {
+            "ref": "g2d",
+            "source": "flow"
+          },
+          {
+            "ref": "g5v",
+            "source": "flow"
+          }
+        ]
+      },
+      "docs": [
+        {
+          "name": "DESIGN_PACKAGE.md",
+          "format": "markdown",
+          "path": "{docs_path}/{task_id}/DESIGN_PACKAGE.md",
+          "required": true,
+          "description": "Final design package: integrated GDD with all revisions, art guidelines, level specs, implementation notes"
+        }
+      ],
+      "on_enter": [
+        {
+          "action": "update_task_phase",
+          "phase": "review"
+        }
+      ]
+    },
+    {
+      "id": "gs00",
+      "type": "terminal",
+      "name": "Design Complete",
+      "description": "Game design package completed and ready for development",
+      "config": {
+        "status": "success",
+        "message": "Game design flow completed successfully"
+      }
+    },
+    {
+      "id": "gr09",
+      "type": "terminal",
+      "name": "Rework Required",
+      "description": "Design requires significant rework from concept stage",
+      "config": {
+        "status": "rejected",
+        "message": "Core concept or prototype did not pass review - rework needed"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-gc01-gc02",
+      "from": "gc01",
+      "to": "gc02"
+    },
+    {
+      "id": "e-gc02-gp03",
+      "from": "gc02",
+      "to": "gp03"
+    },
+    {
+      "id": "e-gp03-gpt4",
+      "from": "gp03",
+      "to": "gpt4"
+    },
+    {
+      "id": "e-gpt4-ga05",
+      "from": "gpt4",
+      "to": "ga05",
+      "type": "conditional",
+      "conditions": [
+        {
+          "expression": "gate.passed"
+        }
+      ]
+    },
+    {
+      "id": "e-gpt4-gr09",
+      "from": "gpt4",
+      "to": "gr09",
+      "type": "conditional",
+      "conditions": [
+        {
+          "expression": "!gate.passed"
+        }
+      ]
+    },
+    {
+      "id": "e-ga05-gl06",
+      "from": "ga05",
+      "to": "gl06"
+    },
+    {
+      "id": "e-gl06-gcs7",
+      "from": "gl06",
+      "to": "gcs7"
+    },
+    {
+      "id": "e-gcs7-gp08",
+      "from": "gcs7",
+      "to": "gp08",
+      "type": "conditional",
+      "conditions": [
+        {
+          "expression": "gate.passed"
+        }
+      ]
+    },
+    {
+      "id": "e-gcs7-gr09",
+      "from": "gcs7",
+      "to": "gr09",
+      "type": "conditional",
+      "conditions": [
+        {
+          "expression": "!gate.passed"
+        }
+      ]
+    },
+    {
+      "id": "e-gp08-gs00",
+      "from": "gp08",
+      "to": "gs00"
+    }
+  ],
+  "components": {
+    "rules": [
+      {
+        "id": "g7k",
+        "name": "输出守卫",
+        "description": "确保流程中每个阶段在完成时都有具体的、可验证的交付物产出。交付物必须符合该阶段文档模板的要求，且内容完整、质量达标。禁止以模糊描述代替实际产出，未产出交付物的阶段不可标记为完成。",
+        "instruction": "每个阶段必须产出明确定义的交付物，无交付物则阶段不可结束",
+        "enforcement": "hard",
+        "trigger": "phase_exit"
+      },
+      {
+        "id": "g3m",
+        "name": "游戏设计标准",
+        "description": "游戏设计必须围绕核心循环（Core Loop）展开，确保玩家行为有明确反馈和奖励循环；进度系统（Progression）需提供清晰的短期目标和长期追求；平衡性（Balance）要求数值、难度、资源产出与消耗经过合理推算，避免单一最优策略主导游戏体验。",
+        "instruction": "遵循核心循环、进度系统、平衡性三大设计支柱，确保游戏设计自洽且可玩",
+        "enforcement": "hard",
+        "trigger": "design_output"
+      },
+      {
+        "id": "g9p",
+        "name": "叙事一致性",
+        "description": "游戏的叙事元素——包括主线故事线、支线剧情、角色性格与动机、世界观设定——必须在所有设计文档和阶段中保持一致。新增叙事内容必须与已有设定兼容，禁止出现设定矛盾或角色行为违背已建立的人设。",
+        "instruction": "保持故事线、角色设定、世界观在所有设计文档中前后一致",
+        "enforcement": "hard",
+        "trigger": "narrative_output"
+      },
+      {
+        "id": "g5v",
+        "name": "机制一致性",
+        "description": "所有游戏机制和规则在全局范围内必须保持一致。同一机制在不同关卡、场景或模式中的行为必须相同，除非有明确的设计意图和文档说明差异。禁止出现隐性规则冲突或未文档化的机制例外。",
+        "instruction": "游戏规则在所有场景和关卡中保持内部一致，禁止隐性规则冲突",
+        "enforcement": "hard",
+        "trigger": "mechanic_output"
+      },
+      {
+        "id": "g2d",
+        "name": "编辑标准",
+        "description": "设计文档在提交前必须经过打磨：内容表述清晰无歧义、数值经过平衡调整、术语使用统一、格式符合模板规范。艺术风格指南需与整体视觉方向一致，关卡设计需验证难度曲线合理性。所有调整需记录变更原因。",
+        "instruction": "对设计文档进行打磨和平衡调整，确保专业品质和可实施性",
+        "enforcement": "hard",
+        "trigger": "review_output"
+      },
+      {
+        "id": "g8f",
+        "name": "阶段转换守卫",
+        "description": "流程必须严格按照定义的阶段顺序执行，禁止跳过任何阶段或绕过门控（Gate）节点。每个阶段必须完成其交付物并通过质量检查后，方可进入下一阶段。回退时必须回到指定的回退节点，不可随意跳转至非相邻阶段。",
+        "instruction": "严格按流程顺序推进，禁止跳过任何阶段或门控节点",
+        "enforcement": "hard",
+        "trigger": "phase_transition"
+      },
+      {
+        "id": "g4h",
+        "name": "无幻觉守卫",
+        "description": "在设计过程中，只能引用和扩展已在先前阶段文档中明确定义的游戏元素（角色、道具、技能、场景等）。禁止凭空编造未在任何文档中确立的设定、角色或机制。新元素必须先在当前阶段文档中定义，方可被后续引用。",
+        "instruction": "只引用已定义的游戏元素，禁止编造未在文档中确立的设定",
+        "enforcement": "hard",
+        "trigger": "pre_output"
+      },
+      {
+        "id": "g1a",
+        "name": "QG-1: 行动前思考",
+        "description": "在执行任何操作之前，必须先验证自身假设：我基于什么假设行动？如果假设错误最坏情况是什么？应该先澄清什么问题？避免基于未验证的假设做出不可逆的设计决策，确保每一步行动都有充分依据。",
+        "instruction": "执行任何操作前先验证假设，明确最坏情况和需澄清的问题",
+        "enforcement": "hard",
+        "trigger": "pre_action"
+      },
+      {
+        "id": "g6c",
+        "name": "QG-2: 简约优先",
+        "description": "能否用更少的机制解决这个问题？我是否在添加未被请求的功能？这是否过度设计？游戏设计应追求优雅简洁，用最少的规则创造最丰富的玩法体验，避免机制膨胀和功能堆砌。",
+        "instruction": "用最少的机制实现设计意图，避免过度设计",
+        "enforcement": "hard",
+        "trigger": "pre_output"
+      },
+      {
+        "id": "g0e",
+        "name": "QG-3: 精准变更",
+        "description": "只在当前任务范围内进行修改。绝不优化或重构相邻的设计内容。清理自己变更产生的孤立内容。每次变更都应有明确的目的和预期效果，避免涟漪式扩散修改。",
+        "instruction": "只在任务范围内修改，不优化或重构相邻内容",
+        "enforcement": "hard",
+        "trigger": "code_change"
+      },
+      {
+        "id": "g7b",
+        "name": "QG-4: 目标驱动",
+        "description": "在执行前定义成功标准。每个步骤必须有具体的验证标准。禁止使用模糊的已完成描述。成功标准应可量化或可明确判断，确保设计工作始终围绕目标推进。",
+        "instruction": "执行前定义成功标准，每步都有可验证的完成条件",
+        "enforcement": "hard",
+        "trigger": "task_start"
+      }
+    ]
+  }
+}

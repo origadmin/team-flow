@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/origadmin/team-flow/internal/bd"
+	taskSync "github.com/origadmin/team-flow/internal/sync"
 	"github.com/spf13/cobra"
 )
 
@@ -26,11 +27,18 @@ Stage routing:
 AI always uses "flow task" regardless of backend.
 Auto-timestamps: created_at and updated_at are managed automatically.
 
+Built-in subcommands:
+  sync   Sync external issues (GitHub) to local tasks
+
 Command aliases (flow task → bd):
   append → note  (append conversation record to task)
   Other commands pass through directly to bd.`,
 	DisableFlagParsing: true,
 	RunE:               runTask,
+}
+
+func init() {
+	Cmd.AddCommand(taskSync.Cmd)
 }
 
 func runTask(cmd *cobra.Command, args []string) error {
@@ -40,6 +48,14 @@ func runTask(cmd *cobra.Command, args []string) error {
 
 	if args[0] == "--help" || args[0] == "-h" {
 		return cmd.Help()
+	}
+
+	if args[0] == "sync" {
+		subCmd, _, err := cmd.Find(args)
+		if err == nil && subCmd != cmd {
+			subCmd.SetArgs(args[1:])
+			return subCmd.Execute()
+		}
 	}
 
 	if !bd.IsAvailable() {

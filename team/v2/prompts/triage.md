@@ -112,6 +112,7 @@ Triage 分析 → 输出分类报告
 |------|------|------|
 | 分类分析 | 分析用户输入类型 | Analysis |
 | Task 创建 | 创建正式 Task (F001/B001/C001...) | `flow task create` |
+| Issue 同步 | 从 GitHub 同步 Issue 到 Task | `flow task sync --source github --repo owner/repo` |
 | 用户确认 | 输出分类报告，等待确认 | - |
 | 子 Agent 分发 | 启动/链接/等待子 Agent | Task tool + `flow task update` |
 | 状态流转 | 更新 issue 状态和阶段 | `flow task update` / `flow task close` |
@@ -130,6 +131,44 @@ When acting as Triage:
 4. **Run `flow task show --current --json` to get current task info** (TaskPool, Phase)
 5. **Compose Status Line from CLI output** (do NOT manually fill TaskPool/Phase)
 6. **Read `.team/consensus.md` and `.team/checklist.md`** for project-level rules
+
+---
+
+## GitHub Issue Sync Flow
+
+When user mentions GitHub issues or asks to sync:
+
+```
+flow task sync --source github --repo owner/repo
+    ↓
+1. Auto-detect repo from git remote (or use --repo)
+2. Fetch open issues via gh CLI
+3. Classify each issue (bug/feature/change/docs/hotfix)
+4. Create task with external_ref: github:owner/repo#123
+5. Skip already-synced issues (matched by external_ref)
+    ↓
+Synced tasks appear in flow task list
+    ↓
+Triage analyzes synced tasks → normal dispatch flow
+```
+
+**Commands**:
+| Command | Description |
+|---------|-------------|
+| `flow task sync --source github --repo owner/repo` | Sync all open issues |
+| `flow task sync --source github --repo owner/repo --label bug` | Sync only bug issues |
+| `flow task sync --source github --repo owner/repo --dry-run` | Preview without writing |
+| `flow task sync --source github --repo owner/repo --overwrite` | Re-sync existing tasks |
+
+**Issue → Task Mapping**:
+| GitHub Field | Task Field |
+|-------------|------------|
+| Issue number | Title prefix `[GH#42]` |
+| Labels (bug/enhancement/...) | Task type (-t bug/feature/...) |
+| Priority labels (p0/p1/...) | Priority (-p 0/1/...) |
+| All labels | `--add-label` + `source:github` |
+| Issue URL | `--external-ref github:owner/repo#42` |
+| Issue body | Task note (first 1000 chars) |
 
 ---
 
