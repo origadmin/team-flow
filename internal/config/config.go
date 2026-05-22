@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/origadmin/team-flow/internal/proc"
 	"github.com/spf13/cobra"
 )
 
@@ -59,20 +58,26 @@ func resolvePaths(root string) PathVars {
 	vars.BEADS_DB = filepath.Join(root, ".beads")
 	vars.FLOW_DIR = filepath.Join(root, ".team", "flows")
 
-	vars.DOCS_INTERNAL = proc.ResolveDocsPath(root)
+	cfg, cfgErr := LoadProjectConfig(root)
+	if cfgErr == nil {
+		vars.DOCS_INTERNAL = cfg.Paths.DocsInternal
+		vars.DOCS_EXTERNAL = cfg.Paths.DocsExternal
+		vars.DEFAULT_FLOW = cfg.DefaultFlow
+	} else {
+		vars.DOCS_INTERNAL = resolveDocsPathFromMD(root)
+		vars.DOCS_EXTERNAL = resolveDocsExternalPathFromMD(root)
+		vars.DEFAULT_FLOW, _ = resolveDefaultFlowFromMD(root)
+	}
+
 	if vars.DOCS_INTERNAL != "" && !filepath.IsAbs(vars.DOCS_INTERNAL) {
 		vars.DOCS_INTERNAL = filepath.Join(root, vars.DOCS_INTERNAL)
 	}
 
-	vars.DOCS_EXTERNAL = proc.ResolveDocsExternalPath(root)
 	if vars.DOCS_EXTERNAL != "" && !filepath.IsAbs(vars.DOCS_EXTERNAL) {
 		vars.DOCS_EXTERNAL = filepath.Join(root, vars.DOCS_EXTERNAL)
 	}
 
 	vars.SKILL_PATH = findSkillPath(root)
-
-	defaultFlow, _ := proc.ResolveDefaultFlowName(root)
-	vars.DEFAULT_FLOW = defaultFlow
 
 	return vars
 }
@@ -145,4 +150,61 @@ func runPaths(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
+}
+
+func resolveDocsPathFromMD(root string) string {
+	projectMD := filepath.Join(root, ".team", "project.md")
+	data, err := os.ReadFile(projectMD)
+	if err != nil {
+		return ""
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.Contains(trimmed, "docs_internal:") {
+			parts := strings.SplitN(trimmed, ":", 2)
+			if len(parts) == 2 {
+				return strings.Trim(strings.TrimSpace(parts[1]), "\"' ")
+			}
+		}
+	}
+	return ""
+}
+
+func resolveDocsExternalPathFromMD(root string) string {
+	projectMD := filepath.Join(root, ".team", "project.md")
+	data, err := os.ReadFile(projectMD)
+	if err != nil {
+		return ""
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.Contains(trimmed, "docs_external:") {
+			parts := strings.SplitN(trimmed, ":", 2)
+			if len(parts) == 2 {
+				return strings.Trim(strings.TrimSpace(parts[1]), "\"' ")
+			}
+		}
+	}
+	return ""
+}
+
+func resolveDefaultFlowFromMD(root string) (string, error) {
+	projectMD := filepath.Join(root, ".team", "project.md")
+	data, err := os.ReadFile(projectMD)
+	if err != nil {
+		return "", fmt.Errorf("no default flow configured")
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.Contains(trimmed, "default_flow:") {
+			parts := strings.SplitN(trimmed, ":", 2)
+			if len(parts) == 2 {
+				val := strings.Trim(strings.TrimSpace(parts[1]), "\"' ")
+				if val != "" {
+					return val, nil
+				}
+			}
+		}
+	}
+	return "", fmt.Errorf("no default flow configured")
 }

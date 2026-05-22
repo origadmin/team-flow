@@ -17,6 +17,7 @@ import (
 
 	skillfs "github.com/origadmin/team-flow"
 	"github.com/origadmin/team-flow/internal/bd"
+	"github.com/origadmin/team-flow/internal/config"
 	"github.com/origadmin/team-flow/internal/toolchain"
 	"github.com/spf13/cobra"
 )
@@ -170,7 +171,60 @@ func runInit(cmd *cobra.Command, args []string) error {
 		fmt.Println("  ✓ .team/tools.yaml created")
 	}
 
-	projectMd := fmt.Sprintf(`## Project Configuration
+	projectName := filepath.Base(projectPath)
+
+	projectYamlContent := fmt.Sprintf(`name: %s
+version: %s
+default_flow: %s
+
+paths:
+  docs_internal: _docs/%s/
+  docs_external: docs/
+
+toolchain:
+  backend:
+    language: go
+    pipeline: go test ./... | go build -o bin/app
+  frontend:
+    language: typescript
+    pipeline: bun run test | bun run build
+`, projectName, version, defaultFlowValue(version), projectName)
+
+	projectYamlPath := filepath.Join(teamDir, "project.yaml")
+	if _, err := os.Stat(projectYamlPath); err == nil && !force {
+		fmt.Println("  .team/project.yaml already exists (use --force to overwrite)")
+	} else {
+		if err := os.WriteFile(projectYamlPath, []byte(projectYamlContent), 0644); err != nil {
+			return fmt.Errorf("create project.yaml: %w", err)
+		}
+		fmt.Println("  ✓ .team/project.yaml created")
+	}
+
+	constraintsMd := `# Constraints
+
+- No Chinese comments in code
+- TDD required
+`
+	constraintsPath := filepath.Join(teamDir, "constraints.md")
+	if _, err := os.Stat(constraintsPath); err == nil && !force {
+		fmt.Println("  .team/constraints.md already exists (use --force to overwrite)")
+	} else {
+		if err := os.WriteFile(constraintsPath, []byte(constraintsMd), 0644); err != nil {
+			return fmt.Errorf("create constraints.md: %w", err)
+		}
+		fmt.Println("  ✓ .team/constraints.md created")
+	}
+
+	docsFallbackDir := filepath.Join(teamDir, "docs")
+	os.MkdirAll(filepath.Join(docsFallbackDir, "lessons"), 0755)
+	os.MkdirAll(filepath.Join(docsFallbackDir, "sessions"), 0755)
+	os.MkdirAll(filepath.Join(docsFallbackDir, "conventions"), 0755)
+
+	projectMdPath := filepath.Join(teamDir, "project.md")
+	if _, err := os.Stat(projectMdPath); err == nil && !force {
+		fmt.Println("  .team/project.md already exists (use --force to overwrite)")
+	} else {
+		projectMd := fmt.Sprintf(`## Project Configuration
 
 - **Project Name**: %s
 - **Team Version**: %s
@@ -192,16 +246,12 @@ pipeline: bun run test | bun run build
 ## Constraints
 - No Chinese comments in code
 - TDD required
-`, filepath.Base(projectPath), version, filepath.Base(projectPath), defaultFlowLine(version))
+`, projectName, version, projectName, defaultFlowLine(version))
 
-	projectMdPath := filepath.Join(teamDir, "project.md")
-	if _, err := os.Stat(projectMdPath); err == nil && !force {
-		fmt.Println("  .team/project.md already exists (use --force to overwrite)")
-	} else {
 		if err := os.WriteFile(projectMdPath, []byte(projectMd), 0644); err != nil {
 			return fmt.Errorf("create project.md: %w", err)
 		}
-		fmt.Println("  ✓ .team/project.md created")
+		fmt.Println("  ✓ .team/project.md created (legacy, prefer project.yaml)")
 	}
 
 	versionPath := filepath.Join(teamDir, "version")
@@ -317,6 +367,28 @@ pipeline: bun run test | bun run build
 					content = re.ReplaceAllString(content, "default_flow: "+flowName)
 				}
 				os.WriteFile(projectMdPath, []byte(content), 0644)
+			}
+
+			projectYamlPath := filepath.Join(teamDir, "project.yaml")
+			if cfg, err := config.LoadProjectConfig(projectPath); err == nil {
+				cfg.DefaultFlow = flowName
+				found := false
+				for _, f := range cfg.Flows {
+					if f.ID == flowName {
+						found = true
+						break
+					}
+				}
+				if !found {
+					cfg.Flows = append(cfg.Flows, config.ProjectFlow{
+						ID:     flowName,
+						Source: "preset",
+					})
+				}
+				config.SaveProjectConfig(projectPath, cfg)
+			} else {
+				yamlContent := fmt.Sprintf("name: %s\nversion: v3\ndefault_flow: %s\n", filepath.Base(projectPath), flowName)
+				os.WriteFile(projectYamlPath, []byte(yamlContent), 0644)
 			}
 			fmt.Printf("  ✓ default_flow set to %s\n", flowName)
 
@@ -620,6 +692,14 @@ func confirm(prompt string) bool {
 }
 
 func defaultFlowLine(version string) string {
+	name := defaultFlowValue(version)
+	if name == "" {
+		return ""
+	}
+	return fmt.Sprintf("default_flow: %s\n", name)
+}
+
+func defaultFlowValue(version string) string {
 	if version != "v3" {
 		return ""
 	}
@@ -634,7 +714,7 @@ func defaultFlowLine(version string) string {
 			flowName = "dev-flow"
 		}
 	}
-	return fmt.Sprintf("default_flow: %s\n", flowName)
+	return flowName
 }
 
 type teamMeta struct {

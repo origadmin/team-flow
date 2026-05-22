@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/origadmin/team-flow/internal/flow"
+	"gopkg.in/yaml.v3"
 )
 
 func LoadFlow(root, flowID string) (*flow.Flow, error) {
@@ -83,9 +84,14 @@ func GetNodeRole(node *flow.FlowNode) string {
 }
 
 func ResolveDefaultFlowName(root string) (string, error) {
+	cfg, err := loadProjectConfig(root)
+	if err == nil && cfg.DefaultFlow != "" {
+		return cfg.DefaultFlow, nil
+	}
+
 	projectMD := filepath.Join(root, ".team", "project.md")
-	data, err := os.ReadFile(projectMD)
-	if err != nil {
+	data, mdErr := os.ReadFile(projectMD)
+	if mdErr != nil {
 		return "", fmt.Errorf("no default flow configured. Use --flow flag")
 	}
 
@@ -98,9 +104,14 @@ func ResolveDefaultFlowName(root string) (string, error) {
 }
 
 func ResolveDocsPath(root string) string {
+	cfg, err := loadProjectConfig(root)
+	if err == nil && cfg.Paths.DocsInternal != "" {
+		return cfg.Paths.DocsInternal
+	}
+
 	projectMD := filepath.Join(root, ".team", "project.md")
-	data, err := os.ReadFile(projectMD)
-	if err != nil {
+	data, mdErr := os.ReadFile(projectMD)
+	if mdErr != nil {
 		return ""
 	}
 
@@ -120,9 +131,14 @@ func ResolveDocsPath(root string) string {
 }
 
 func ResolveDocsExternalPath(root string) string {
+	cfg, err := loadProjectConfig(root)
+	if err == nil && cfg.Paths.DocsExternal != "" {
+		return cfg.Paths.DocsExternal
+	}
+
 	projectMD := filepath.Join(root, ".team", "project.md")
-	data, err := os.ReadFile(projectMD)
-	if err != nil {
+	data, mdErr := os.ReadFile(projectMD)
+	if mdErr != nil {
 		return ""
 	}
 
@@ -139,4 +155,36 @@ func ResolveDocsExternalPath(root string) string {
 		}
 	}
 	return ""
+}
+
+func ResolveInternalDocs(root string) string {
+	docsPath := ResolveDocsPath(root)
+	if docsPath != "" {
+		if !filepath.IsAbs(docsPath) {
+			docsPath = filepath.Join(root, docsPath)
+		}
+		return docsPath
+	}
+	return filepath.Join(root, ".team", "docs")
+}
+
+func loadProjectConfig(root string) (*projectYAML, error) {
+	yamlPath := filepath.Join(root, ".team", "project.yaml")
+	data, err := os.ReadFile(yamlPath)
+	if err != nil {
+		return nil, err
+	}
+	var cfg projectYAML
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		return nil, err
+	}
+	return &cfg, nil
+}
+
+type projectYAML struct {
+	DefaultFlow string `yaml:"default_flow"`
+	Paths       struct {
+		DocsInternal string `yaml:"docs_internal"`
+		DocsExternal string `yaml:"docs_external"`
+	} `yaml:"paths"`
 }
