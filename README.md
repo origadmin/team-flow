@@ -17,7 +17,6 @@
 | No quality enforcement | **Gate nodes** — automated quality checks block progress until passed |
 | Prompt engineering is ad-hoc | **Structured rules** — instruction (30 chars) + reference + full description |
 | Work is lost between sessions | **Session persistence** — every session produces traceable logs |
-| Can't visualize what AI is doing | **Flow Editor** — web UI for visual workflow editing and monitoring |
 
 ## Key Features
 
@@ -53,17 +52,15 @@ Every flow has exactly one **principal** role — the team's public face:
 | **Trading Team** | 1 flow (trading) | Trading analysis |
 | **Skill Team** | 2 flows (skill-dev/test-simple) | AI skill development |
 
-### Compatible with 10+ AI Tools
+### v1/v2/v3 Parallel Coexistence
 
-Claude Code, Cursor, Trae, Windsurf, GitHub Copilot, OpenCode, OpenClaw, Cline, Gemini CLI, WorkBuddy, QClaw
+| Version | Capability | Process Management | Task Management |
+|---------|-----------|-------------------|-----------------|
+| v1 | Document-only workflow | Markdown files | None |
+| v2 | flow task management | Markdown + flow task | beads (bd CLI) |
+| v3 | Full flow engine | JSON process definitions + engine | Config-driven (beads/file/custom) |
 
 ## Installation
-
-### Via Go (Recommended for developers)
-
-```bash
-go install github.com/origadmin/team-flow/cmd/flow@latest
-```
 
 ### Via npm (Recommended for AI tool users)
 
@@ -71,7 +68,13 @@ go install github.com/origadmin/team-flow/cmd/flow@latest
 npx skills add @origadmin/team-flow
 ```
 
-This uses embedded skill files — no network required after install.
+This installs the skill to your IDE's skill directory. Embedded skill files — no network required after install.
+
+### Via Go (For developers)
+
+```bash
+go install github.com/origadmin/team-flow/cmd/flow@latest
+```
 
 ### Build from Source
 
@@ -101,7 +104,7 @@ flow init --v3
 # Or specify a team directly
 flow init --v3 --team dev-team
 
-# Or specify a flow directly
+# Or specify a flow directly (auto-finds the team)
 flow init --v3 --flow dev-flow
 ```
 
@@ -124,7 +127,6 @@ flow proc run
 
 ```bash
 flow project detect    # Detect project and lock status
-flow status            # Show project status
 flow config paths      # Show resolved path variables
 ```
 
@@ -152,7 +154,6 @@ flow migrate rollback
 | `flow proc validate` | Validate flow definitions |
 | `flow proc rule <id>` | Show full rule description |
 | `flow project detect` | Detect and lock project |
-| `flow status` | Show project status |
 | `flow version` | Show version info |
 
 ### Configuration
@@ -161,7 +162,6 @@ flow migrate rollback
 |---------|-------------|
 | `flow config paths` | Show resolved path variables |
 | `flow config paths --json` | Show paths in JSON format |
-| `flow config get <key>` | Get specific config value |
 
 ### Task Management
 
@@ -180,21 +180,6 @@ flow migrate rollback
 | `flow migrate v3` | Migrate from v2 to v3 |
 | `flow migrate rollback` | Rollback from v3 to v2 |
 
-### Visualization
-
-| Command | Description |
-|---------|-------------|
-| `flow editor` | Start visual flow editor (Web UI) |
-
-### Code Graph Analysis
-
-| Command | Description |
-|---------|-------------|
-| `flow graph build` | Build code graph |
-| `flow graph search <query>` | Semantic search |
-| `flow graph impact [files...]` | Analyze impact radius |
-| `flow graph changes` | Detect and analyze changes |
-
 ## Project Structure
 
 ```
@@ -210,23 +195,20 @@ team-flow/
 │   ├── task/                  # flow task management
 │   ├── skill/                 # Skill management
 │   ├── editor/                # flow editor (Web UI)
-│   ├── graph/                 # flow graph (code analysis)
-│   ├── doctor/                # flow doctor (diagnostics)
-│   └── version/               # Version info
-├── v3/
-│   ├── flows/                 # 15+ v3 flow definitions (JSON)
-│   ├── schema/                # Flow JSON Schema
-│   ├── teams/                 # 5 preset team templates
-│   └── docs/                  # Architecture decisions & specs
-├── team/
-│   ├── v3/                    # v3 skill files (SKILL.md, prompts, templates)
-│   ├── v2/                    # v2 fallback (preserved during migration)
-│   └── v1/                    # v1 legacy (preserved during migration)
+│   └── state/                 # Gate state tracking
+├── assets/                    # Unified embed root (skillfs.go)
+│   ├── skill/                 # Skill files (v1/v2/v3 coexist)
+│   │   ├── v3/                # v3: SKILL.md, prompts, templates, references
+│   │   ├── v2/                # v2: fallback (preserved during migration)
+│   │   └── v1/                # v1: legacy (preserved during migration)
+│   ├── orgs/                  # Organization templates (team.json + flows/)
+│   ├── flows/                 # Preset flow definitions
+│   └── schema/                # JSON Schema for flow validation
 ├── editor/                    # Flow visual editor (React + TypeScript)
-├── skillfs.go                 # Embedded FS (team/ + v3/flows + v3/schema)
+├── skillfs.go                 # Embedded FS: //go:embed all:assets
 ├── go.mod
 ├── package.json               # npm package (@origadmin/team-flow)
-└── SKILL.md                   # v3 entry point for AI tools
+└── SKILL.md                   # Root entry point for AI tools
 ```
 
 ## v2 vs v3
@@ -243,26 +225,6 @@ team-flow/
 | Configuration | project.md (monolithic) | **project.yaml** (structured, ~100 tokens) |
 | Session tracking | None | **Session logs** for traceability |
 | Migration | v1→v2 manual | **v2→v3 automatic** (7 steps) with rollback |
-| Visual editor | None | **Flow Editor** — web UI for workflow visualization |
-| Compatible AI tools | Limited | **10+ tools** — Claude Code, Cursor, Trae, etc. |
-
-## Config-Run Architecture
-
-team-flow separates **configuration** from **execution**:
-
-| Layer | Responsibility | Output |
-|-------|---------------|--------|
-| **Config** | Resolve paths, validate settings | Resolved absolute paths |
-| **Run** | Execute flows, use resolved values | Structured output (no placeholders) |
-
-```bash
-# Config layer — resolve and validate
-flow config paths          # Show all resolved paths
-flow config get docs_internal  # Get specific path
-
-# Run layer — execute with resolved values
-flow proc run              # Get work instructions (all paths resolved)
-```
 
 ## Session Startup Protocol
 
