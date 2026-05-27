@@ -10,9 +10,7 @@
   "files": [
     "SKILL.md",
     "bin/",
-    "team/",
-    "v3/flows/",
-    "v3/schema/",
+    "assets/",
     "scripts/",
     "INSTALL.md",
     "README.md"
