@@ -2,8 +2,12 @@ package skillfs
 
 import "embed"
 
-//go:embed all:team
-//go:embed all:teams
-//go:embed all:v3/flows
-//go:embed all:v3/schema
+//go:embed all:assets
 var FS embed.FS
+
+const (
+	SkillRoot  = "assets/skill"
+	OrgsRoot   = "assets/orgs"
+	FlowsRoot  = "assets/flows"
+	SchemaRoot = "assets/schema"
+)
