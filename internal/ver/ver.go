@@ -98,16 +98,11 @@ func showStatus(projectPath, currentVersion string) error {
 		fmt.Println("    Run: flow migrate v3")
 	case "v3":
 		fmt.Println("  Execution engine: flow-engine (v3)")
-		flowsDir := filepath.Join(projectPath, "v3", "flows")
-		if dirExists(flowsDir) {
-			fmt.Println("  ✓ v3/flows/ exists")
+		altFlowsDir := filepath.Join(projectPath, ".team", "flows")
+		if dirExists(altFlowsDir) {
+			fmt.Println("  ✓ .team/flows/ exists")
 		} else {
-			altFlowsDir := filepath.Join(projectPath, ".team", "flows")
-			if dirExists(altFlowsDir) {
-				fmt.Println("  ✓ .team/flows/ exists")
-			} else {
-				fmt.Println("  ⚠ No flows directory found")
-			}
+			fmt.Println("  ⚠ No flows directory found")
 		}
 		beadsDir := filepath.Join(projectPath, ".beads")
 		if dirExists(beadsDir) {

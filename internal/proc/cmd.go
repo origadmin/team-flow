@@ -44,7 +44,7 @@ With node-id, returns the specified node's instruction.`,
 var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all available processes",
-	Long:  `List all available processes from preset (v3/flows/) and project (.team/flows/) directories.`,
+	Long:  `List all available processes from preset (assets/flows/) and project (.team/flows/) directories.`,
 	RunE:  runList,
 }
 
@@ -111,7 +111,7 @@ func init() {
 	ruleCmd.Flags().StringVar(&procFormat, "format", "text", "Output format: json or text")
 	gateCmd.Flags().StringVar(&procFlowName, "flow", "", "Flow name (default: project's configured flow from .team/project.md)")
 	gateCmd.Flags().StringVar(&procFormat, "format", "text", "Output format: json or text")
-	createCmd.Flags().StringVar(&procTemplate, "template", "", "Template process name from v3/flows/ to base the new process on")
+	createCmd.Flags().StringVar(&procTemplate, "template", "", "Template process name from assets/flows/ to base the new process on")
 }
 
 func getRootDir() string {

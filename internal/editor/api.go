@@ -28,7 +28,7 @@ func (s *apiServer) handleTeams(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	entries, err := fs.ReadDir(skillfs.FS, "teams")
+	entries, err := fs.ReadDir(skillfs.FS, skillfs.OrgsRoot)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
@@ -48,7 +48,7 @@ func (s *apiServer) handleTeams(w http.ResponseWriter, r *http.Request) {
 		if !entry.IsDir() {
 			continue
 		}
-		data, readErr := skillfs.FS.ReadFile("teams/" + entry.Name() + "/team.json")
+		data, readErr := skillfs.FS.ReadFile(skillfs.OrgsRoot + "/" + entry.Name() + "/team.json")
 		if readErr != nil {
 			continue
 		}
@@ -82,7 +82,7 @@ func (s *apiServer) handleTeamFlows(w http.ResponseWriter, r *http.Request, team
 		return
 	}
 
-	data, err := skillfs.FS.ReadFile("teams/" + teamID + "/team.json")
+	data, err := skillfs.FS.ReadFile(skillfs.OrgsRoot + "/" + teamID + "/team.json")
 	if err != nil {
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "team not found"})
 		return
@@ -110,7 +110,7 @@ func (s *apiServer) handleTeamFlowJSON(w http.ResponseWriter, r *http.Request, t
 		return
 	}
 
-	data, err := skillfs.FS.ReadFile("teams/" + teamID + "/flows/" + flowID + ".json")
+	data, err := skillfs.FS.ReadFile(skillfs.OrgsRoot + "/" + teamID + "/flows/" + flowID + ".json")
 	if err != nil {
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "flow not found"})
 		return

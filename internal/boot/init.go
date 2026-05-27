@@ -765,7 +765,7 @@ type teamMeta struct {
 }
 
 func loadTeamFromFS(fsys embed.FS, teamID string) *teamMeta {
-	data, err := fsys.ReadFile("teams/" + teamID + "/team.json")
+	data, err := fsys.ReadFile(skillfs.OrgsRoot + "/" + teamID + "/team.json")
 	if err != nil {
 		return nil
 	}
@@ -777,7 +777,7 @@ func loadTeamFromFS(fsys embed.FS, teamID string) *teamMeta {
 }
 
 func loadTeamDefinition(fsys embed.FS, teamID string) *flow.TeamDefinition {
-	data, err := fsys.ReadFile("teams/" + teamID + "/team.json")
+	data, err := fsys.ReadFile(skillfs.OrgsRoot + "/" + teamID + "/team.json")
 	if err != nil {
 		return nil
 	}
@@ -789,7 +789,7 @@ func loadTeamDefinition(fsys embed.FS, teamID string) *flow.TeamDefinition {
 }
 
 func findTeamByFlow(fsys embed.FS, flowID string) *teamMeta {
-	entries, err := fs.ReadDir(fsys, "teams")
+	entries, err := fs.ReadDir(fsys, skillfs.OrgsRoot)
 	if err != nil {
 		return nil
 	}
@@ -797,7 +797,7 @@ func findTeamByFlow(fsys embed.FS, flowID string) *teamMeta {
 		if !entry.IsDir() {
 			continue
 		}
-		data, readErr := fsys.ReadFile("teams/" + entry.Name() + "/team.json")
+		data, readErr := fsys.ReadFile(skillfs.OrgsRoot + "/" + entry.Name() + "/team.json")
 		if readErr != nil {
 			continue
 		}
@@ -815,7 +815,7 @@ func findTeamByFlow(fsys embed.FS, flowID string) *teamMeta {
 }
 
 func selectTeam(fsys embed.FS) *teamMeta {
-	entries, err := fs.ReadDir(fsys, "teams")
+	entries, err := fs.ReadDir(fsys, skillfs.OrgsRoot)
 	if err != nil || len(entries) == 0 {
 		fmt.Println("  No preset teams found.")
 		return nil
@@ -826,7 +826,7 @@ func selectTeam(fsys embed.FS) *teamMeta {
 		if !entry.IsDir() {
 			continue
 		}
-		data, readErr := fsys.ReadFile("teams/" + entry.Name() + "/team.json")
+		data, readErr := fsys.ReadFile(skillfs.OrgsRoot + "/" + entry.Name() + "/team.json")
 		if readErr != nil {
 			continue
 		}
@@ -886,7 +886,7 @@ func selectTeam(fsys embed.FS) *teamMeta {
 }
 
 func installTeamFlows(fsys embed.FS, teamID, destDir string, overwrite bool) int {
-	entries, err := fs.ReadDir(fsys, "teams/"+teamID+"/flows")
+	entries, err := fs.ReadDir(fsys, skillfs.OrgsRoot+"/"+teamID+"/flows")
 	if err != nil {
 		return 0
 	}
@@ -902,7 +902,7 @@ func installTeamFlows(fsys embed.FS, teamID, destDir string, overwrite bool) int
 				continue
 			}
 		}
-		data, readErr := fsys.ReadFile("teams/" + teamID + "/flows/" + entry.Name())
+		data, readErr := fsys.ReadFile(skillfs.OrgsRoot + "/" + teamID + "/flows/" + entry.Name())
 		if readErr != nil {
 			continue
 		}
@@ -915,7 +915,7 @@ func installTeamFlows(fsys embed.FS, teamID, destDir string, overwrite bool) int
 }
 
 func installTeamDefinition(fsys embed.FS, teamID, teamDir string, overwrite bool) error {
-	data, err := fsys.ReadFile("teams/" + teamID + "/team.json")
+	data, err := fsys.ReadFile(skillfs.OrgsRoot + "/" + teamID + "/team.json")
 	if err != nil {
 		return fmt.Errorf("team '%s' definition not found: %w", teamID, err)
 	}
@@ -1416,11 +1416,11 @@ func installSkillFromFS(projectPath string, fsys embed.FS, version string, overw
 
 	switch version {
 	case "v3":
-		srcDir = "team/v3"
+		srcDir = skillfs.SkillRoot + "/v3"
 	case "v2":
-		srcDir = "team/v2"
+		srcDir = skillfs.SkillRoot + "/v2"
 	default:
-		srcDir = "team/v1"
+		srcDir = skillfs.SkillRoot + "/v1"
 	}
 
 	sharedDirs := []string{"team/v1/config", "team/v1/templates", "team/v1/lessons", "team/v1/scripts"}
@@ -1541,7 +1541,7 @@ func installSkillFromFS(projectPath string, fsys embed.FS, version string, overw
 }
 
 func installFallbackVersion(fsys embed.FS, skillDir, fallbackVersion, ideName string, overwrite bool) {
-	fallbackSrcDir := "team/" + fallbackVersion
+	fallbackSrcDir := skillfs.SkillRoot + "/" + fallbackVersion
 	fallbackDstDir := filepath.Join(skillDir, fallbackVersion)
 
 	fallbackSkillEntry := filepath.Join(fallbackDstDir, "SKILL.md")

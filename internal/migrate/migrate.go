@@ -323,7 +323,7 @@ func runMigrateV3(cmd *cobra.Command, args []string) error {
 }
 
 func installV3Skills(projectPath string, fsys embed.FS) {
-	srcDir := "team/v3"
+	srcDir := skillfs.SkillRoot + "/v3"
 	ides := detectIDEs(projectPath)
 	installed := false
 
@@ -336,7 +336,7 @@ func installV3Skills(projectPath string, fsys embed.FS) {
 
 		skillEntry := filepath.Join(skillDir, "SKILL.md")
 		if _, err := os.Stat(skillEntry); err == nil || migrateForce {
-			entryData, readErr := fsys.ReadFile("team/v3/SKILL.md")
+			entryData, readErr := fsys.ReadFile(skillfs.SkillRoot + "/v3/SKILL.md")
 			if readErr != nil {
 				fmt.Printf("  ⚠ Read SKILL.md error: %v\n", readErr)
 			} else {
@@ -363,7 +363,7 @@ func installV3Skills(projectPath string, fsys embed.FS) {
 	if !installed {
 		fmt.Println("  No IDE detected. Installing to .agents/skills/team-flow/")
 		skillDir := filepath.Join(projectPath, ".agents", "skills", "team-flow")
-		entryData, readErr := fsys.ReadFile("team/v3/SKILL.md")
+		entryData, readErr := fsys.ReadFile(skillfs.SkillRoot + "/v3/SKILL.md")
 		if readErr == nil {
 			os.MkdirAll(skillDir, 0755)
 			os.WriteFile(filepath.Join(skillDir, "SKILL.md"), entryData, 0644)
@@ -380,7 +380,7 @@ func installV3Skills(projectPath string, fsys embed.FS) {
 }
 
 func installMigrateFallback(fsys embed.FS, skillDir, fallbackVersion, ideName string) {
-	fallbackSrcDir := "team/" + fallbackVersion
+	fallbackSrcDir := skillfs.SkillRoot + "/" + fallbackVersion
 	fallbackDstDir := filepath.Join(skillDir, fallbackVersion)
 
 	fallbackSkillEntry := filepath.Join(fallbackDstDir, "SKILL.md")
@@ -399,7 +399,7 @@ func installMigrateFallback(fsys embed.FS, skillDir, fallbackVersion, ideName st
 }
 
 func installPresetFlows(projectPath string, fsys embed.FS) {
-	presetSrcDir := "v3/flows"
+	presetSrcDir := skillfs.FlowsRoot
 	projectFlowsDir := filepath.Join(projectPath, ".team", "flows")
 
 	if _, err := fs.ReadDir(fsys, presetSrcDir); err != nil {
@@ -556,8 +556,8 @@ func updateBridgeFile(projectPath string, targetVersion ...string) {
 		content := string(data)
 
 		if target == "v3" {
-			if strings.Contains(content, "v2") || strings.Contains(content, "team/v2") {
-				content = strings.Replace(content, "team/v2/SKILL.md", "team/v3/SKILL.md", -1)
+			if strings.Contains(content, "v2") || strings.Contains(content, "assets/skill/v2") {
+				content = strings.Replace(content, "assets/skill/v2/SKILL.md", "assets/skill/v3/SKILL.md", -1)
 				content = strings.Replace(content, "team-flow/v2", "team-flow/v3", -1)
 
 				if strings.Contains(content, "bd ready") {
@@ -609,7 +609,7 @@ func updateBridgeFile(projectPath string, targetVersion ...string) {
 				content = re.ReplaceAllString(content, skillRef)
 			}
 		} else if target == "v2" {
-			content = strings.Replace(content, "team/v3/SKILL.md", "team/v2/SKILL.md", -1)
+			content = strings.Replace(content, "assets/skill/v3/SKILL.md", "assets/skill/v2/SKILL.md", -1)
 			content = strings.Replace(content, "team-flow/v3", "team-flow/v2", -1)
 			content = strings.Replace(content, "flow proc run", "bd ready", -1)
 			content = strings.Replace(content, "flow task show", "bd show", -1)

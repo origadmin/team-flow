@@ -181,7 +181,7 @@ func TestBridgeFilesAreMinimal(t *testing.T) {
 func TestCopyFromFS_V2(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	copied, skipped, err := copyFromFS(skillfs.FS, "team/v2", tmpDir, true, nil)
+	copied, skipped, err := copyFromFS(skillfs.FS, skillfs.SkillRoot+"/v2", tmpDir, true, nil)
 	if err != nil {
 		t.Fatalf("copyFromFS v2 failed: %v", err)
 	}
@@ -212,7 +212,7 @@ func TestCopyFromFS_V2(t *testing.T) {
 func TestCopyFromFS_V1(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	copied, _, err := copyFromFS(skillfs.FS, "team/v1", tmpDir, true, nil)
+	copied, _, err := copyFromFS(skillfs.FS, skillfs.SkillRoot+"/v1", tmpDir, true, nil)
 	if err != nil {
 		t.Fatalf("copyFromFS v1 failed: %v", err)
 	}
@@ -235,7 +235,7 @@ func TestCopyFromFS_NoOverwrite(t *testing.T) {
 	existingFile := filepath.Join(tmpDir, "SKILL.md")
 	os.WriteFile(existingFile, []byte("existing"), 0644)
 
-	_, skipped, err := copyFromFS(skillfs.FS, "team/v2", tmpDir, false, nil)
+	_, skipped, err := copyFromFS(skillfs.FS, skillfs.SkillRoot+"/v2", tmpDir, false, nil)
 	if err != nil {
 		t.Fatalf("copyFromFS no-overwrite failed: %v", err)
 	}
@@ -255,7 +255,7 @@ func TestCopyFromFS_Overwrite(t *testing.T) {
 	existingFile := filepath.Join(tmpDir, "SKILL.md")
 	os.WriteFile(existingFile, []byte("old"), 0644)
 
-	copied, _, err := copyFromFS(skillfs.FS, "team/v2", tmpDir, true, nil)
+	copied, _, err := copyFromFS(skillfs.FS, skillfs.SkillRoot+"/v2", tmpDir, true, nil)
 	if err != nil {
 		t.Fatalf("copyFromFS overwrite failed: %v", err)
 	}
@@ -270,7 +270,7 @@ func TestCopyFromFS_Overwrite(t *testing.T) {
 }
 
 func TestSkillfsHasTeamContent(t *testing.T) {
-	entries, err := skillfs.FS.ReadDir("team")
+	entries, err := skillfs.FS.ReadDir(skillfs.SkillRoot)
 	if err != nil {
 		t.Fatalf("skillfs.FS.ReadDir failed: %v", err)
 	}
@@ -278,33 +278,33 @@ func TestSkillfsHasTeamContent(t *testing.T) {
 		t.Error("skillfs.FS should contain entries under team/")
 	}
 
-	skillData, err := skillfs.FS.ReadFile("team/v1/SKILL.md")
+	skillData, err := skillfs.FS.ReadFile(skillfs.SkillRoot + "/v1/SKILL.md")
 	if err != nil {
 		t.Fatalf("skillfs.FS.ReadFile team/v1/SKILL.md failed: %v", err)
 	}
 	if len(skillData) == 0 {
-		t.Error("team/v1/SKILL.md should not be empty")
+		t.Error("assets/skill/v1/SKILL.md should not be empty")
 	}
 
-	v2Data, err := skillfs.FS.ReadFile("team/v2/SKILL.md")
+	v2Data, err := skillfs.FS.ReadFile(skillfs.SkillRoot + "/v2/SKILL.md")
 	if err != nil {
 		t.Fatalf("skillfs.FS.ReadFile team/v2/SKILL.md failed: %v", err)
 	}
 	if len(v2Data) == 0 {
-		t.Error("team/v2/SKILL.md should not be empty")
+		t.Error("assets/skill/v2/SKILL.md should not be empty")
 	}
 
-	v3Data, err := skillfs.FS.ReadFile("team/v3/SKILL.md")
+	v3Data, err := skillfs.FS.ReadFile(skillfs.SkillRoot + "/v3/SKILL.md")
 	if err != nil {
 		t.Fatalf("skillfs.FS.ReadFile team/v3/SKILL.md failed: %v", err)
 	}
 	if len(v3Data) == 0 {
-		t.Error("team/v3/SKILL.md should not be empty")
+		t.Error("assets/skill/v3/SKILL.md should not be empty")
 	}
 }
 
 func TestSkillfsHasTeamsTemplates(t *testing.T) {
-	entries, err := skillfs.FS.ReadDir("teams")
+	entries, err := skillfs.FS.ReadDir(skillfs.OrgsRoot)
 	if err != nil {
 		t.Fatalf("skillfs.FS.ReadDir teams/ failed: %v", err)
 	}

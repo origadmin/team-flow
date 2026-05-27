@@ -46,4 +46,4 @@ Claude Code, Cursor, Trae, Windsurf, GitHub Copilot, OpenCode, OpenClaw, Cline, 
 
 ## Documentation
 
-See `team/v3/SKILL.md` for the complete v3 entry point.
+See `assets/skill/v3/SKILL.md` for the complete v3 entry point.
