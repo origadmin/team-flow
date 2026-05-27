@@ -988,7 +988,6 @@ func buildStatusLineWithRef(fl *flow.Flow, node *flow.FlowNode, current CurrentN
 		alias = "System"
 	}
 
-	nodePart := fmt.Sprintf("%s:%s", node.ID, current.Name)
 	flowPart := fl.Metadata.Name
 
 	if ref == "" {
@@ -1005,7 +1004,7 @@ func buildStatusLineWithRef(fl *flow.Flow, node *flow.FlowNode, current CurrentN
 		phase = current.Name
 	}
 
-	return fmt.Sprintf("[%s | %s(%s) | %s | %s]", alias, nodePart, flowPart, ref, phase)
+	return fmt.Sprintf("[%s | %s(%s:%s) | %s | %s]", alias, current.Name, node.ID, flowPart, ref, phase)
 }
 
 func substituteVars(path string, vars map[string]string) string {
