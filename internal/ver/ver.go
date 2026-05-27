@@ -6,7 +6,13 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/origadmin/team-flow/internal/updater"
+	"github.com/origadmin/team-flow/internal/version"
 	"github.com/spf13/cobra"
+)
+
+var (
+	forceUpdateCheck bool
 )
 
 var Cmd = &cobra.Command{
@@ -16,9 +22,14 @@ var Cmd = &cobra.Command{
 Auto-detects if project is on a lower version and suggests upgrade.
 
 Usage:
-  flow ver          Show current version and status`,
+  flow ver                Show current version and status
+  flow ver --force-check  Force update check (ignore cache)`,
 	Args: cobra.NoArgs,
 	RunE: runVersion,
+}
+
+func init() {
+	Cmd.Flags().BoolVar(&forceUpdateCheck, "force-check", false, "Force update check, ignore cache")
 }
 
 func runVersion(cmd *cobra.Command, args []string) error {
@@ -27,6 +38,18 @@ func runVersion(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("get cwd: %w", err)
 	}
 
+	// First show flow CLI version info
+	fmt.Println("╔══════════════════════════════════════════╗")
+	fmt.Println("║         flow CLI Version Info            ║")
+	fmt.Println("╚══════════════════════════════════════════╝")
+	fmt.Printf("  %s\n\n", version.Info())
+
+	// Check for both CLI and team updates
+	fmt.Println("  Checking for updates...")
+	updater.CheckForUpdatesInVerCommand(version.Version, projectPath, forceUpdateCheck)
+	fmt.Println()
+
+	// Now show project team-flow version status
 	versionFile := filepath.Join(projectPath, ".team", "version")
 	currentVersion := "unknown"
 	if data, err := os.ReadFile(versionFile); err == nil {

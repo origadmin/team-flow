@@ -14,6 +14,7 @@ var supportedVariables = []string{
 	"task_id",
 	"SKILL_PATH",
 	"PROJECT_PATH",
+	"DOC_CATEGORY",
 }
 
 func ResolveDocSpecPaths(docs []DocSpec, vars map[string]string) []DocSpec {

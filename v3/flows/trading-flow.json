@@ -144,7 +144,7 @@
           {
             "type": "file_write",
             "allowed_paths": [
-              "{DOCS_INTERNAL}/{task_id}/"
+              "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/"
             ]
           }
         ]
@@ -153,7 +153,7 @@
         {
           "name": "TECHNICAL_ANALYSIS.md",
           "format": "markdown",
-          "path": "{DOCS_INTERNAL}/{task_id}/TECHNICAL_ANALYSIS.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/TECHNICAL_ANALYSIS.md",
           "required": true,
           "description": "技术分析报告：K线形态、趋势判断、支撑阻力位、技术指标信号（MACD/RSI/布林带等）、交易信号汇总",
           "content_rules": [
@@ -166,7 +166,7 @@
         {
           "name": "FUNDAMENTAL_ANALYSIS.md",
           "format": "markdown",
-          "path": "{DOCS_INTERNAL}/{task_id}/FUNDAMENTAL_ANALYSIS.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/FUNDAMENTAL_ANALYSIS.md",
           "required": true,
           "description": "基本面分析报告：财务数据、估值指标、行业地位、盈利能力、成长性评估",
           "content_rules": [
@@ -179,7 +179,7 @@
         {
           "name": "NEWS_ANALYSIS.md",
           "format": "markdown",
-          "path": "{DOCS_INTERNAL}/{task_id}/NEWS_ANALYSIS.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/NEWS_ANALYSIS.md",
           "required": true,
           "description": "新闻分析报告：重大新闻事件、政策变动、行业动态、事件影响评估",
           "content_rules": [
@@ -192,7 +192,7 @@
         {
           "name": "SENTIMENT_ANALYSIS.md",
           "format": "markdown",
-          "path": "{DOCS_INTERNAL}/{task_id}/SENTIMENT_ANALYSIS.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/SENTIMENT_ANALYSIS.md",
           "required": true,
           "description": "情绪分析报告：恐惧贪婪指数、市场情绪指标、资金流向、投资者行为分析",
           "content_rules": [
@@ -289,7 +289,7 @@
           {
             "type": "file_write",
             "allowed_paths": [
-              "{DOCS_INTERNAL}/{task_id}/"
+              "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/"
             ]
           }
         ]
@@ -298,7 +298,7 @@
         {
           "name": "DEBATE_SUMMARY.md",
           "format": "markdown",
-          "path": "{DOCS_INTERNAL}/{task_id}/DEBATE_SUMMARY.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/DEBATE_SUMMARY.md",
           "required": true,
           "description": "多空辩论总结：多头论据、空头论据、辩论焦点、研究主管综合评判、多空力量对比结论",
           "content_rules": [
@@ -396,7 +396,7 @@
           {
             "type": "file_write",
             "allowed_paths": [
-              "{DOCS_INTERNAL}/{task_id}/"
+              "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/"
             ]
           }
         ]
@@ -405,7 +405,7 @@
         {
           "name": "TRADING_DECISION.md",
           "format": "markdown",
-          "path": "{DOCS_INTERNAL}/{task_id}/TRADING_DECISION.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/TRADING_DECISION.md",
           "required": true,
           "description": "交易决策方案：BUY/SELL/HOLD建议、入场价位、止损位、止盈位、仓位大小、交易时机、策略官意见",
           "content_rules": [
@@ -488,7 +488,7 @@
           {
             "type": "file_write",
             "allowed_paths": [
-              "{DOCS_INTERNAL}/{task_id}/"
+              "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/"
             ]
           }
         ]
@@ -497,7 +497,7 @@
         {
           "name": "RISK_ASSESSMENT.md",
           "format": "markdown",
-          "path": "{DOCS_INTERNAL}/{task_id}/RISK_ASSESSMENT.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/RISK_ASSESSMENT.md",
           "required": true,
           "description": "风险评估报告：激进视角评估、保守视角评估、中性视角评估、风险主管综合意见、风险等级判定",
           "content_rules": [
@@ -588,7 +588,7 @@
           {
             "type": "file_write",
             "allowed_paths": [
-              "{DOCS_INTERNAL}/{task_id}/"
+              "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/"
             ]
           }
         ]
@@ -597,7 +597,7 @@
         {
           "name": "FINAL_REPORT.md",
           "format": "markdown",
-          "path": "{DOCS_INTERNAL}/{task_id}/FINAL_REPORT.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/FINAL_REPORT.md",
           "required": true,
           "description": "最终投资分析报告：分析标的概述、四面数据摘要、多空辩论结论、交易建议（BUY/SELL/HOLD）、操作方案、风险评估摘要、风险提示和免责声明",
           "content_rules": [

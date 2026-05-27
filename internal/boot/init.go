@@ -19,6 +19,7 @@ import (
 	"github.com/origadmin/team-flow/internal/bd"
 	"github.com/origadmin/team-flow/internal/config"
 	"github.com/origadmin/team-flow/internal/flow"
+	"github.com/origadmin/team-flow/internal/ide"
 	"github.com/origadmin/team-flow/internal/skill"
 	"github.com/origadmin/team-flow/internal/toolchain"
 	"github.com/spf13/cobra"
@@ -39,7 +40,7 @@ var Cmd = &cobra.Command{
 	Short: "Initialize project with team-flow framework",
 	Long: `Initialize project with team-flow skill and toolchain.
 
-By default installs v2. Use --v1 for v1 (task-pool). Use --v3 for v3 (flow-driven).
+By default installs v3 (flow-driven). Use --v1 for v1 (task-pool). Use --v2 for v2 (beads-native).
 
 Steps:
   1. Check & install Python 3.10+ and pip (if missing)
@@ -55,8 +56,8 @@ Steps:
 
 func init() {
 	Cmd.Flags().BoolVar(&useV1, "v1", false, "Install v1 rules (task-pool workflow)")
-	Cmd.Flags().BoolVar(&useV2, "v2", true, "Install v2 rules (default)")
-	Cmd.Flags().BoolVar(&useV3, "v3", false, "Install v3 rules (flow-driven workflow)")
+	Cmd.Flags().BoolVar(&useV2, "v2", false, "Install v2 rules (beads-native workflow)")
+	Cmd.Flags().BoolVar(&useV3, "v3", true, "Install v3 rules (flow-driven workflow, default)")
 	Cmd.Flags().BoolVar(&force, "force", false, "Force overwrite existing files")
 	Cmd.Flags().BoolVarP(&autoYes, "yes", "y", false, "Auto-confirm all prompts")
 	Cmd.Flags().StringVar(&initFlow, "flow", "", "Default flow to bind (v3 only, e.g., dev-flow, novel-flow)")
@@ -64,12 +65,12 @@ func init() {
 }
 
 func runInit(cmd *cobra.Command, args []string) error {
-	version := "v2"
+	version := "v3"
 	if useV1 && !useV2 && !useV3 {
 		version = "v1"
 	}
-	if useV3 {
-		version = "v3"
+	if useV2 && !useV1 && !useV3 {
+		version = "v2"
 	}
 
 	projectPath, err := os.Getwd()
@@ -1015,7 +1016,7 @@ func generateDevMD(projectPath, skillPath, version string) {
 
 	ides := detectIDEs(projectPath)
 	if len(ides) == 0 {
-		ides = append(ides, IDEInfo{
+		ides = append(ides, ide.IDEInfo{
 			Name:       "Trae",
 			ConfigDir:  filepath.Join(projectPath, ".trae"),
 			BridgePath: ".trae/rules/dev.md",
@@ -1067,19 +1068,23 @@ Step 0: PATH 保障
    验证: flow --version (必须成功)
 
 Step 1: 启动流程引擎
-   Run: flow proc run
+   Run: cd {PROJECT_ROOT}; flow proc run
+   → PROJECT_ROOT = 包含 .team/ 目录的路径（不是 IDE workspace 路径）
    → 内部自动读取 .team/version, .team/project.yaml, team.json, flow JSON
    → 接收第一个节点的结构化指令
+   → 输出中包含 PROJECT_ROOT 行 — 这是所有路径的基准
    → 如果报错 "no default flow" → 进入 First-Time Setup（见下文）
 
 Step 2: 采用主理人角色
    → 从 flow proc run 输出中读取 principal 角色的 alias, persona, traits
+   → 记住 PROJECT_ROOT — 所有文件操作都基于此路径
    → 向用户宣布身份
    → 等待用户输入
 ` + "```" + `
 
 ⛔ **禁止手动读取 .team/version 或 .team/project.md** — flow proc run 已内部处理，手动读取浪费 Token。
 ⛔ v2 项目仍需手动读取（v2 不支持 flow proc run）。
+⛔ **不要假设 cwd == PROJECT_ROOT** — IDE workspace 可能不是项目根目录。PROJECT_ROOT 以 flow proc run 输出为准。
 
 **⛔ 在 Step 2 完成之前，禁止：**
 - 解析用户的问题
@@ -1125,7 +1130,7 @@ Step C: 用户选择后:
 
 **每次回复必须以状态行开头。没有例外。**
 
-格式: ` + "`[Role: {alias} | Flow: {flow-name}#{beads-id} | Node: {node-id} | Phase: {phase}]`" + `
+格式: ` + "`[Role: {alias} | Flow: {flow-name} | Node: {node-id} ({node-name}) | Phase: {phase}]`" + `
 
 - 数据来源: ` + "`flow proc run`" + ` 输出，禁止硬编码
 - 如果还没有运行 flow proc run → 状态行为: ` + "`[Role: unassigned | Flow: none | Node: - | Phase: startup]`" + `
@@ -1171,8 +1176,8 @@ After each node execution completes:
 2. Git commit (if code/docs changed):
    git add -A
    git commit -m "node: {flow-name} {node-id} {date}"
-3. Update task status (if beads task):
-   flow task update {beads-id} --notes "Node {node-id} completed"
+3. Update task status (if flow task):
+   flow task update {task-id} --notes "Node {node-id} completed"
 
 At session end (terminal node or user leaves):
 4. Git push:
@@ -1188,8 +1193,8 @@ At session end (terminal node or user leaves):
 2. Git push:
    git pull --rebase
    git push
-3. Update task status (if beads task):
-   flow task update {beads-id} --notes "Session closed at node {node-id}"
+3. Update task status (if flow task):
+   flow task update {task-id} --notes "Session closed at node {node-id}"
 4. Report to user: summary + deliverables + position + next steps
 ` + "```" + `
 
@@ -1245,7 +1250,7 @@ flow project status                     # 查看项目状态
 				"  - \"**/*\"\n" +
 				"---\n\n" +
 				v3Content
-		case "trae", "claude", "openclaw":
+		case "trae", "claude", "openclaw", "gemini":
 			return v3Content
 		default:
 			return ""
@@ -1332,55 +1337,8 @@ func installMCPConfig(projectPath string) {
 	fmt.Println("    Note: Restart AI IDE to load MCP servers")
 }
 
-type IDEInfo struct {
-	Name       string
-	Subdir     string
-	SkillDir   string
-	ConfigDir  string
-	BridgePath string
-	BridgeFmt  string
-	Detected   bool
-}
-
-func detectIDEs(projectPath string) []IDEInfo {
-	ideTemplates := []struct {
-		Name      string
-		Subdir    string
-		BridgeRel string
-		BridgeFmt string
-	}{
-		{"Trae", ".trae", ".trae/rules/team-flow.md", "trae"},
-		{"Cursor", ".cursor", ".cursor/rules/team-flow.mdc", "cursor"},
-		{"Claude", ".claude", ".claude/rules/team-flow.md", "claude"},
-		{"OpenClaw", ".openclaw", ".openclaw/rules/team-flow.md", "openclaw"},
-	}
-
-	var ides []IDEInfo
-	for _, tmpl := range ideTemplates {
-		configDir := filepath.Join(projectPath, tmpl.Subdir)
-		if _, err := os.Stat(configDir); err == nil {
-			ides = append(ides, IDEInfo{
-				Name:       tmpl.Name,
-				Subdir:     tmpl.Subdir,
-				SkillDir:   filepath.Join(projectPath, tmpl.Subdir, "skills"),
-				ConfigDir:  configDir,
-				BridgePath: tmpl.BridgeRel,
-				BridgeFmt:  tmpl.BridgeFmt,
-				Detected:   true,
-			})
-		}
-	}
-
-	if len(ides) == 0 {
-		ides = []IDEInfo{
-			{Name: "Trae", Subdir: ".trae", SkillDir: filepath.Join(projectPath, ".trae", "skills"), ConfigDir: filepath.Join(projectPath, ".trae"), BridgePath: ".trae/rules/team-flow.md", BridgeFmt: "trae"},
-			{Name: "Cursor", Subdir: ".cursor", SkillDir: filepath.Join(projectPath, ".cursor", "skills"), ConfigDir: filepath.Join(projectPath, ".cursor"), BridgePath: ".cursor/rules/team-flow.mdc", BridgeFmt: "cursor"},
-			{Name: "Claude", Subdir: ".claude", SkillDir: filepath.Join(projectPath, ".claude", "skills"), ConfigDir: filepath.Join(projectPath, ".claude"), BridgePath: ".claude/rules/team-flow.md", BridgeFmt: "claude"},
-			{Name: "OpenClaw", Subdir: ".openclaw", SkillDir: filepath.Join(projectPath, ".openclaw", "skills"), ConfigDir: filepath.Join(projectPath, ".openclaw"), BridgePath: ".openclaw/rules/team-flow.md", BridgeFmt: "openclaw"},
-		}
-	}
-
-	return ides
+func detectIDEs(projectPath string) []ide.IDEInfo {
+	return ide.DetectIDEs(projectPath, skillfs.FS)
 }
 
 func isInteractive() bool {
@@ -1404,22 +1362,17 @@ func installSkill(projectPath string, fsys embed.FS, version string, overwrite b
 		fmt.Printf("  npx found: %s\n", npxPath)
 		if autoYes || confirm("  Install skill via npx skills add? (recommended)") {
 			ides := detectIDEs(projectPath)
-			detectedIDE := ""
-			for _, ide := range ides {
-				if ide.Detected {
-					detectedIDE = ide.Name
+			detectedIDEInfo := ide.IDEInfo{}
+			for _, info := range ides {
+				if info.Detected {
+					detectedIDEInfo = info
 					break
 				}
 			}
 
 			agentFlag := ""
-			switch strings.ToLower(detectedIDE) {
-			case "trae":
-				agentFlag = "--agent trae"
-			case "cursor":
-				agentFlag = "--agent cursor"
-			case "claude":
-				agentFlag = "--agent claude"
+			if detectedIDEInfo.NpxAgent != "" {
+				agentFlag = "--agent " + detectedIDEInfo.NpxAgent
 			}
 
 			npxCmd := fmt.Sprintf("npx skills add origadmin/team-flow %s", agentFlag)
@@ -1472,8 +1425,8 @@ func installSkillFromFS(projectPath string, fsys embed.FS, version string, overw
 
 	sharedDirs := []string{"team/v1/config", "team/v1/templates", "team/v1/lessons", "team/v1/scripts"}
 
-	installIDESkills := func(ide IDEInfo) {
-		skillDir := filepath.Join(projectPath, ide.Subdir, "skills", "team-flow")
+	installIDESkills := func(ideEntry ide.IDEInfo) {
+		skillDir := filepath.Join(projectPath, ideEntry.Subdir, "skills", "team-flow")
 
 		skillEntry := filepath.Join(skillDir, "SKILL.md")
 		if _, err := os.Stat(skillEntry); err != nil || overwrite {
@@ -1498,59 +1451,50 @@ func installSkillFromFS(projectPath string, fsys embed.FS, version string, overw
 			for _, sharedDir := range sharedDirs {
 				c, _, err := copyFromFS(fsys, sharedDir, skillDir, overwrite, excludeDirs)
 				if err == nil && c > 0 {
-					fmt.Printf("  ✓ %s shared: %d files from %s\n", ide.Name, c, sharedDir)
+					fmt.Printf("  ✓ %s shared: %d files from %s\n", ideEntry.Name, c, sharedDir)
 				}
 			}
 		}
 
 		copied, skipped, err := copyFromFS(fsys, srcDir, skillDir, overwrite, excludeDirs)
 		if err != nil {
-			fmt.Printf("  ⚠ %s skill copy error: %v\n", ide.Name, err)
+			fmt.Printf("  ⚠ %s skill copy error: %v\n", ideEntry.Name, err)
 			return
 		}
 
-		fmt.Printf("  ✓ %s (%s): Copied %d files", ide.Name, version, copied)
+		fmt.Printf("  ✓ %s (%s): Copied %d files", ideEntry.Name, version, copied)
 		if skipped > 0 {
 			fmt.Printf(" (%d skipped)", skipped)
 		}
 		fmt.Println()
 
 		if version == "v3" {
-			installFallbackVersion(fsys, skillDir, "v2", ide.Name, overwrite)
+			installFallbackVersion(fsys, skillDir, "v2", ideEntry.Name, overwrite)
 		} else if version == "v2" {
-			installFallbackVersion(fsys, skillDir, "v1", ide.Name, overwrite)
+			installFallbackVersion(fsys, skillDir, "v1", ideEntry.Name, overwrite)
 		}
 	}
 
-	ideTemplates := []struct {
-		Name   string
-		Subdir string
-	}{
-		{"Trae", ".trae"},
-		{"Cursor", ".cursor"},
-		{"Claude", ".claude"},
-		{"OpenClaw", ".openclaw"},
+	registry, regErr := ide.LoadRegistry(fsys)
+	if regErr != nil {
+		fmt.Printf("  ⚠ Failed to load IDE registry: %v\n", regErr)
+		fmt.Println("  Using built-in defaults")
 	}
-
-	alwaysInstallIDEs := []string{".trae", ".claude"}
 
 	installed := false
-	for _, tmpl := range ideTemplates {
-		configDir := filepath.Join(projectPath, tmpl.Subdir)
-		shouldInstall := false
-		if _, err := os.Stat(configDir); err == nil {
-			shouldInstall = true
-		} else if version == "v3" {
-			for _, a := range alwaysInstallIDEs {
-				if tmpl.Subdir == a {
-					shouldInstall = true
-					break
-				}
+	if registry != nil {
+		for _, entry := range registry.IDEs {
+			configDir := filepath.Join(projectPath, entry.Subdir)
+			shouldInstall := false
+			if _, err := os.Stat(configDir); err == nil {
+				shouldInstall = true
+			} else if version == "v3" && entry.AlwaysInstall {
+				shouldInstall = true
 			}
-		}
-		if shouldInstall {
-			installIDESkills(IDEInfo{Name: tmpl.Name, Subdir: tmpl.Subdir})
-			installed = true
+			if shouldInstall {
+				installIDESkills(ide.IDEInfo{Name: entry.Name, Subdir: entry.Subdir})
+				installed = true
+			}
 		}
 	}
 

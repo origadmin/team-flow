@@ -8,6 +8,13 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+type ProjectDecl struct {
+	Name string `yaml:"name"`
+	Path string `yaml:"path"`
+	Type string `yaml:"type,omitempty"`
+	Team string `yaml:"team,omitempty"`
+}
+
 type ProjectConfig struct {
 	Name         string             `yaml:"name"`
 	Version      string             `yaml:"version"`
@@ -16,9 +23,27 @@ type ProjectConfig struct {
 	Toolchain    ProjectToolchain   `yaml:"toolchain"`
 	Flows        []ProjectFlow      `yaml:"flows"`
 	Dependencies []ProjectDependency `yaml:"dependencies,omitempty"`
+	Flow         FlowConfig         `yaml:"flow,omitempty"`
+	Skills       ProjectSkillConfig `yaml:"skills,omitempty"`
+	Projects     []ProjectDecl      `yaml:"projects,omitempty"`
+}
+
+type ProjectSkillConfig struct {
+	Tags         []string          `yaml:"tags,omitempty"`
+	LocalSkills  []string          `yaml:"local,omitempty"`
+	Disabled     []string          `yaml:"disabled,omitempty"`
+	Overrides    map[string]string `yaml:"overrides,omitempty"`
+}
+
+type FlowConfig struct {
+	Path           string `yaml:"path,omitempty"`
+	BackupPath     string `yaml:"backup_path,omitempty"`
+	UpdateDisabled bool   `yaml:"update_disabled,omitempty"`
+	UpdateInterval string `yaml:"update_interval,omitempty"`
 }
 
 type ProjectPaths struct {
+	ProjectsPath  string `yaml:"projects_path"`
 	DocsInternal string `yaml:"docs_internal"`
 	DocsExternal string `yaml:"docs_external"`
 }
@@ -112,7 +137,9 @@ func parseProjectMD(data []byte) (*ProjectConfig, error) {
 
 	for _, line := range lines {
 		trimmed := trimSpace(line)
-		if contains(trimmed, "docs_internal:") {
+		if contains(trimmed, "projects_path:") {
+			cfg.Paths.ProjectsPath = extractValue(trimmed)
+		} else if contains(trimmed, "docs_internal:") {
 			cfg.Paths.DocsInternal = extractValue(trimmed)
 		} else if contains(trimmed, "docs_external:") {
 			cfg.Paths.DocsExternal = extractValue(trimmed)

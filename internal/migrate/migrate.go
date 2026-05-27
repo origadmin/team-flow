@@ -14,6 +14,7 @@ import (
 
 	skillfs "github.com/origadmin/team-flow"
 	"github.com/origadmin/team-flow/internal/bd"
+	"github.com/origadmin/team-flow/internal/ide"
 	"github.com/origadmin/team-flow/internal/logger"
 	"github.com/spf13/cobra"
 )
@@ -526,7 +527,7 @@ func updateBridgeFile(projectPath string, targetVersion ...string) {
 
 	ides := detectIDEs(projectPath)
 	if len(ides) == 0 {
-		ides = append(ides, IDEInfo{
+		ides = append(ides, ide.IDEInfo{
 			Name:       "Trae",
 			ConfigDir:  filepath.Join(projectPath, ".trae"),
 			BridgePath: ".trae/rules/team-flow.md",
@@ -579,11 +580,11 @@ func updateBridgeFile(projectPath string, targetVersion ...string) {
 			statusLine := "## Status Line (MANDATORY)\n\n" +
 				"Every response MUST start with:\n\n" +
 				"```\n" +
-				"[Role: {alias} | Flow: {flow-name} | Node: {node-id} | Phase: {phase}]\n" +
+				"[Role: {alias} | Flow: {flow-name} | Node: {node-id} ({node-name}) | Phase: {phase}]\n" +
 				"```\n\n" +
 				"- Role: alias from flow proc run output\n" +
 				"- Flow: flow name (e.g., dev-flow)\n" +
-				"- Node: current node ID\n" +
+				"- Node: current node ID and name\n" +
 				"- Phase: current execution phase\n\n"
 
 			if !strings.Contains(content, "Flow: {flow-name}") {
@@ -634,59 +635,8 @@ func updateBridgeFile(projectPath string, targetVersion ...string) {
 	}
 }
 
-type IDEInfo struct {
-	Name       string
-	SkillDir   string
-	ConfigDir  string
-	BridgePath string
-	BridgeFmt  string
-	Detected   bool
-}
-
-func detectIDEs(projectPath string) []IDEInfo {
-	searchPaths := []string{projectPath}
-	for dir := filepath.Dir(projectPath); dir != "" && dir != "." && dir != filepath.Dir(dir); dir = filepath.Dir(dir) {
-		searchPaths = append(searchPaths, dir)
-	}
-
-	ideTemplates := []struct {
-		Name      string
-		Subdir    string
-		BridgeRel string
-		BridgeFmt string
-	}{
-		{"Trae", ".trae", ".trae/rules/team-flow.md", "trae"},
-		{"Cursor", ".cursor", ".cursor/rules/team-flow.mdc", "cursor"},
-		{"Claude", ".claude", ".claude/rules/team-flow.md", "claude"},
-	}
-
-	var ides []IDEInfo
-	for _, tmpl := range ideTemplates {
-		for _, base := range searchPaths {
-			configDir := filepath.Join(base, tmpl.Subdir)
-			if _, err := os.Stat(configDir); err == nil {
-				ides = append(ides, IDEInfo{
-					Name:       tmpl.Name,
-					SkillDir:   filepath.Join(base, tmpl.Subdir, "skills"),
-					ConfigDir:  configDir,
-					BridgePath: tmpl.BridgeRel,
-					BridgeFmt:  tmpl.BridgeFmt,
-					Detected:   true,
-				})
-				break
-			}
-		}
-	}
-
-	if len(ides) == 0 {
-		ides = []IDEInfo{
-			{Name: "Trae", SkillDir: filepath.Join(projectPath, ".trae", "skills"), ConfigDir: filepath.Join(projectPath, ".trae"), BridgePath: ".trae/rules/team-flow.md", BridgeFmt: "trae"},
-			{Name: "Cursor", SkillDir: filepath.Join(projectPath, ".cursor", "skills"), ConfigDir: filepath.Join(projectPath, ".cursor"), BridgePath: ".cursor/rules/team-flow.mdc", BridgeFmt: "cursor"},
-			{Name: "Claude", SkillDir: filepath.Join(projectPath, ".claude", "skills"), ConfigDir: filepath.Join(projectPath, ".claude"), BridgePath: ".claude/rules/team-flow.md", BridgeFmt: "claude"},
-		}
-	}
-
-	return ides
+func detectIDEs(projectPath string) []ide.IDEInfo {
+	return ide.DetectIDEsWithParentSearch(projectPath, skillfs.FS)
 }
 
 func copyFromFS(fsys embed.FS, srcDir, dst string, overwrite bool, excludeDirs []string) (copied, skipped int, err error) {

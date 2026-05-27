@@ -70,7 +70,7 @@
         {
           "name": "TASK_CLASSIFICATION",
           "format": "markdown",
-          "path": "{DOCS_INTERNAL}/{task_id}/CLASSIFICATION.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/CLASSIFICATION.md",
           "description": "Task classification and dispatch decision record",
           "required": true,
           "content_rules": [
@@ -92,7 +92,7 @@
       "rules": ["s1a", "s1c", "s1g", "v1", "v2", "qg1"],
       "tools": [{"ref": "flow", "commands": ["flow proc validate", "flow proc show"]}],
       "docs": [
-        {"name": "SPEC", "format": "markdown", "path": "{DOCS_INTERNAL}/{task_id}/SPEC.md", "description": "SKILL specification with flow structure, role definitions, and rule design", "required": true, "content_rules": [
+        {"name": "SPEC", "format": "markdown", "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/SPEC.md", "description": "SKILL specification with flow structure, role definitions, and rule design", "required": true, "content_rules": [
           "Must contain: Overview, Roles table, Flow structure, Rules list, Gates definition",
           "Each role must have: id, name, alias, alias_en, persona summary",
           "Flow structure must show: node IDs, types, edges, role assignments",
@@ -100,12 +100,12 @@
           "Define what deliverable docs this skill will use: name, format, purpose, structure",
           "Interactive with user to confirm doc structure before implementation"
         ]},
-        {"name": "AC", "format": "markdown", "path": "{DOCS_INTERNAL}/{task_id}/AC.md", "description": "Acceptance criteria for the SKILL", "required": true, "content_rules": [
+        {"name": "AC", "format": "markdown", "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/AC.md", "description": "Acceptance criteria for the SKILL", "required": true, "content_rules": [
           "Must contain: acceptance criteria as testable assertions",
           "Each criterion must be verifiable (pass/fail)",
           "Must cover: flow validation, role completeness, rule enforcement, doc deliverables"
         ]},
-        {"name": "VERIFY_REPORT", "format": "markdown", "path": "{DOCS_INTERNAL}/{task_id}/VERIFY_fa03.md", "description": "Self-check verification report", "required": true, "content_rules": [
+        {"name": "VERIFY_REPORT", "format": "markdown", "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/VERIFY_fa03.md", "description": "Self-check verification report", "required": true, "content_rules": [
           "Must contain: what was checked, result (pass/fail), evidence",
           "Must verify: SPEC structure completeness, role definitions, rule clarity",
           "Must verify: AC is testable and covers all aspects"
@@ -144,7 +144,7 @@
           "Templates should have clear placeholders and instructions",
           "Template filenames should match doc names in flow JSON"
         ]},
-        {"name": "VERIFY_REPORT", "format": "markdown", "path": "{DOCS_INTERNAL}/{task_id}/VERIFY_fd04.md", "description": "Self-check verification report", "required": true, "content_rules": [
+        {"name": "VERIFY_REPORT", "format": "markdown", "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/VERIFY_fd04.md", "description": "Self-check verification report", "required": true, "content_rules": [
           "Must contain: what was checked, result (pass/fail), evidence",
           "Must verify: upstream SPEC completeness and executability",
           "Must verify: flow proc validate passes, SKILL.md is self-contained"
@@ -176,12 +176,12 @@
       "rules": ["s1e", "v1", "v2", "qg1", "qg3"],
       "tools": [{"ref": "go", "commands": ["go build", "go test", "go run", "go vet"]}, {"ref": "git", "commands": ["git status"]}],
       "docs": [
-        {"name": "IMPLEMENTATION", "format": "markdown", "path": "{DOCS_INTERNAL}/{task_id}/IMPLEMENTATION.md", "description": "Implementation notes and change summary", "required": true, "content_rules": [
+        {"name": "IMPLEMENTATION", "format": "markdown", "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/IMPLEMENTATION.md", "description": "Implementation notes and change summary", "required": true, "content_rules": [
           "Must contain: Files changed, Key decisions, Deviations from SPEC",
           "Each change must list: file path, what was added/modified/removed",
           "Must note any deviations from the original SPEC design"
         ]},
-        {"name": "VERIFY_REPORT", "format": "markdown", "path": "{DOCS_INTERNAL}/{task_id}/VERIFY_fd05.md", "description": "Self-check verification report", "required": true, "content_rules": [
+        {"name": "VERIFY_REPORT", "format": "markdown", "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/VERIFY_fd05.md", "description": "Self-check verification report", "required": true, "content_rules": [
           "Must contain: what was checked, result (pass/fail), evidence",
           "Must verify: upstream FLOW_JSON validity, SKILL.md completeness",
           "Must verify: go build passes, go test passes"
@@ -198,12 +198,12 @@
       "rules": ["s1f", "v1", "v2", "qg1", "qg3"],
       "tools": [{"ref": "bun", "commands": ["bun run build", "bun run test"]}],
       "docs": [
-        {"name": "FRONTEND_CHANGES", "format": "markdown", "path": "{DOCS_INTERNAL}/{task_id}/FRONTEND.md", "description": "Frontend change summary", "required": true, "content_rules": [
+        {"name": "FRONTEND_CHANGES", "format": "markdown", "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/FRONTEND.md", "description": "Frontend change summary", "required": true, "content_rules": [
           "Must contain: Components changed, Props/State changes, Style changes",
           "Each component must list: file path, what was modified",
           "Must note any UX impact or breaking changes"
         ]},
-        {"name": "VERIFY_REPORT", "format": "markdown", "path": "{DOCS_INTERNAL}/{task_id}/VERIFY_fd06.md", "description": "Self-check verification report", "required": true, "content_rules": [
+        {"name": "VERIFY_REPORT", "format": "markdown", "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/VERIFY_fd06.md", "description": "Self-check verification report", "required": true, "content_rules": [
           "Must contain: what was checked, result (pass/fail), evidence",
           "Must verify: upstream implementation notes, API contracts",
           "Must verify: bun run build passes"
@@ -220,12 +220,12 @@
       "rules": ["s1b", "s1e", "v1", "v2", "qg1"],
       "tools": [{"ref": "go", "commands": ["go build", "go test"]}, {"ref": "flow", "commands": ["flow proc validate", "flow proc run"]}],
       "docs": [
-        {"name": "INTEGRATION_REPORT", "format": "markdown", "path": "{DOCS_INTERNAL}/{task_id}/INTEGRATION.md", "description": "Integration test results and verification", "required": true, "content_rules": [
+        {"name": "INTEGRATION_REPORT", "format": "markdown", "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/INTEGRATION.md", "description": "Integration test results and verification", "required": true, "content_rules": [
           "Must contain: Test results, Integration points verified, Issues found",
           "Each test must show: test name, pass/fail, details if failed",
           "Must verify: flow proc validate, flow proc run, flow proc rule all work"
         ]},
-        {"name": "VERIFY_REPORT", "format": "markdown", "path": "{DOCS_INTERNAL}/{task_id}/VERIFY_int7.md", "description": "Self-check verification report", "required": true, "content_rules": [
+        {"name": "VERIFY_REPORT", "format": "markdown", "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/VERIFY_int7.md", "description": "Self-check verification report", "required": true, "content_rules": [
           "Must contain: what was checked, result (pass/fail), evidence",
           "Must verify: upstream VERIFY_REPORTs are credible and complete",
           "Must verify: end-to-end integration passes"
@@ -243,7 +243,7 @@
       "tools": [{"ref": "go", "commands": ["go build", "go test"]}, {"ref": "bun", "commands": ["bun run build"]}, {"ref": "flow", "commands": ["flow proc validate", "flow proc run", "flow proc rule"]}],
       "skills": [{"ref": "skill-creator", "description": "SKILL quality evaluation methodology"}],
       "docs": [
-        {"name": "QA_REPORT", "format": "markdown", "path": "{DOCS_INTERNAL}/{task_id}/QA.md", "description": "QA verification report covering all layers + SKILL evaluation", "required": true, "content_rules": [
+        {"name": "QA_REPORT", "format": "markdown", "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/QA.md", "description": "QA verification report covering all layers + SKILL evaluation", "required": true, "content_rules": [
           "Must contain: SKILL Evaluation, Compilation check, API verification, Frontend check, E2E results",
           "SKILL Evaluation section must follow skill-creator methodology: test prompts → run → evaluate → benchmark",
           "Each layer must show: what was tested, pass/fail, evidence",

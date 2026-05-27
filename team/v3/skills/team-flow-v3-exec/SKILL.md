@@ -219,11 +219,20 @@ Step 4: Determine execution mode
 
 Step 5: Produce deliverables
   → For each doc in current.docs:
-    - Create the file at doc.path
+    - Create the file at doc.path (resolved by engine, NOT by reading flow JSON yourself)
     - Follow doc.description for content requirements
     - If doc.template is specified → Use it as the structure
     - If doc.content_rules is specified → Follow each rule
     - If doc.required == true → File MUST exist and be non-empty after execution
+
+  ⛔ PATH RESOLUTION RULE:
+    - Deliverable paths come from `flow proc run` output ONLY
+    - NEVER read the raw flow JSON (dev-flow.json, feature-flow.json, etc.) to resolve paths
+    - NEVER guess or construct paths yourself — the engine resolves {DOCS_INTERNAL}, {TEAM_PATH}, etc.
+    - If path contains unresolved variables like {task_id}:
+      → Run `flow task ready` to find available tasks
+      → Run `flow proc run --task <id> {node-id}` to get fully resolved paths
+    - If you need to know where docs_internal points to → Run `flow config paths`
 
 Step 6: Verify completion
   → All hard-enforcement rules followed?
@@ -741,9 +750,50 @@ Principal NEVER executes work directly. Always dispatch via Task tool. "I'll jus
 
 ---
 
+## Workspace vs Project (CRITICAL)
+
+**⛔ AI agents frequently confuse workspace and project. This rule prevents that.**
+
+### Definitions
+
+| Term | Meaning | How to Identify |
+|------|---------|-----------------|
+| **Project** | The directory containing `.team/` — this is where `flow` commands run | Contains `.team/version`, `.team/project.md`, `.team/flows/` |
+| **Workspace** | The IDE's working directory — may or may not be the project root | `cwd` shown in terminal |
+
+### ⛔ Mandatory Rules
+
+1. **PROJECT_ROOT comes from `flow proc run` output** — the `PROJECT_ROOT:` line tells you exactly where the project is
+2. **All `flow` commands MUST run from PROJECT_ROOT** — use `cd {PROJECT_ROOT}` before any `flow` command
+3. **All deliverable paths are relative to PROJECT_ROOT** — do NOT prepend workspace path or any other prefix
+4. **DOCS_INTERNAL is relative to PROJECT_ROOT** — if `flow proc run` shows `_docs/framework/`, the full path is `{PROJECT_ROOT}/_docs/framework/`
+5. **NEVER assume cwd == PROJECT_ROOT** — always check. The IDE may open in a subdirectory or a parent directory
+6. **When writing files, always use absolute paths** — construct as `{PROJECT_ROOT}/{doc.path}`
+
+### How to Verify
+
+```
+Before writing any deliverable:
+1. Read PROJECT_ROOT from flow proc run output
+2. Confirm the path exists: ls {PROJECT_ROOT}/.team/
+3. Construct full path: {PROJECT_ROOT}/{doc.path}
+4. Write file to that full path
+```
+
+### Common Mistakes
+
+| ❌ Wrong | ✅ Correct |
+|----------|-----------|
+| Writing to `cwd/_docs/...` | Writing to `{PROJECT_ROOT}/_docs/...` |
+| Running `flow proc run` from workspace root | Running `cd {PROJECT_ROOT}; flow proc run` |
+| Reading `dev-flow.json` to resolve paths | Using paths from `flow proc run` output |
+| Assuming project = workspace | Checking PROJECT_ROOT from engine output |
+
+---
+
 ## Workspace Boundary
 
-- **Project paths**: Read and write allowed
+- **Project paths**: Read and write allowed (relative to PROJECT_ROOT)
 - **v3 flow files** (`v3/flows/`): Read only during execution (write only via create skill)
 - **v3 skill files** (`team/v3/skills/`): Read only
 - **v2 files** (`team/v2/`): Read only — never modify

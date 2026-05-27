@@ -168,7 +168,7 @@
           "description": "Change triage record with change type, scope assessment, and dispatch decision",
           "format": "markdown",
           "name": "TRIAGE.md",
-          "path": "{DOCS_INTERNAL}/{task_id}/TRIAGE.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/TRIAGE.md",
           "required": true
         }
       ],
@@ -257,7 +257,7 @@
           "description": "Change scope: what will be modified, added, or removed, with dependency map",
           "format": "markdown",
           "name": "SCOPE.md",
-          "path": "{DOCS_INTERNAL}/{task_id}/SCOPE.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/SCOPE.md",
           "required": true,
           "template": "{TEAM_PATH}/templates/scope-template.md"
         },
@@ -265,7 +265,7 @@
           "description": "Impact analysis: affected components, dependencies, migration steps, rollback plan",
           "format": "markdown",
           "name": "IMPACT.md",
-          "path": "{DOCS_INTERNAL}/{task_id}/IMPACT.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/IMPACT.md",
           "required": true
         }
       ],
@@ -334,7 +334,7 @@
           "description": "Change execution notes: modifications made, files affected, test updates",
           "format": "markdown",
           "name": "EXEC.md",
-          "path": "{DOCS_INTERNAL}/{task_id}/EXEC.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/EXEC.md",
           "required": true
         }
       ],
@@ -424,7 +424,7 @@
           "description": "Test coverage report for the change including regression test results",
           "format": "markdown",
           "name": "TEST_COVERAGE.md",
-          "path": "{DOCS_INTERNAL}/{task_id}/TEST_COVERAGE.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/TEST_COVERAGE.md",
           "required": true,
           "template": "{TEAM_PATH}/templates/feature-test-template.md"
         }

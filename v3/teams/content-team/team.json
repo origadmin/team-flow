@@ -13,6 +13,27 @@
     {"id": "novel-flow", "file": "novel-flow.json", "description": "Novel writing flow"}
   ],
   "default_flow": "content-distribution-flow",
+  "toolchain": {
+    "docs_internal": "_docs"
+  },
+  "gate_checkers": {
+    "word_count_met": {
+      "type": "ai_judgment",
+      "description": "Verify word count meets chapter target (3000-5000 words)"
+    },
+    "pov_consistent": {
+      "type": "ai_judgment",
+      "description": "Verify POV consistency within each scene"
+    },
+    "character_consistent": {
+      "type": "ai_judgment",
+      "description": "Verify character behavior matches CHARACTERS.md"
+    },
+    "outline_adherence": {
+      "type": "ai_judgment",
+      "description": "Verify manuscript follows OUTLINE.md"
+    }
+  },
   "roles": [
     {
       "id": "strategist",

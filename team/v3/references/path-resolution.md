@@ -16,7 +16,7 @@ flow config paths --json
 | `{PROJECT}` | Current project root directory | yes |
 | `{DOCS_INTERNAL}` | Internal docs (team-only, not public) | no |
 | `{DOCS_EXTERNAL}` | External docs (public, open-source documentation) | no |
-| `{BEADS_DB}` | beads database directory | yes |
+| `{TASK_DB}` | task database directory | yes |
 | `{TEAM_PATH}` | Skill installation path | yes |
 | `{TMP_DIR}` | AI temporary files directory | no |
 

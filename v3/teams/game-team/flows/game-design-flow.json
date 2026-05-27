@@ -1,0 +1,700 @@
+{
+  "components": {
+    "roles": [],
+    "rules": [],
+    "skills": [],
+    "tools": [
+      {
+        "commands": [
+          "create",
+          "update",
+          "close",
+          "show",
+          "list",
+          "ready",
+          "append",
+          "dep"
+        ],
+        "id": "task",
+        "name": "Task CLI",
+        "type": "cli"
+      },
+      {
+        "id": "search",
+        "name": "Code Search",
+        "type": "builtin"
+      },
+      {
+        "id": "file-ops",
+        "name": "File Operations",
+        "type": "builtin"
+      }
+    ]
+  },
+  "config": {
+    "auto_dispatch": true,
+    "parallel_limit": 3,
+    "task_type": "game-design",
+    "timeout_minutes": 480
+  },
+  "edges": [
+    {
+      "from": "con1",
+      "id": "e-con1-des2",
+      "to": "des2"
+    },
+    {
+      "from": "des2",
+      "id": "e-des2-drg3",
+      "to": "drg3"
+    },
+    {
+      "conditions": [
+        {
+          "expression": "gate.passed"
+        }
+      ],
+      "from": "drg3",
+      "id": "e-drg3-pro4",
+      "to": "pro4",
+      "type": "conditional"
+    },
+    {
+      "conditions": [
+        {
+          "expression": "!gate.passed AND iteration_count < 3"
+        }
+      ],
+      "from": "drg3",
+      "id": "e-drg3-des2",
+      "to": "des2",
+      "type": "conditional"
+    },
+    {
+      "conditions": [
+        {
+          "expression": "!gate.passed AND iteration_count >= 3"
+        }
+      ],
+      "from": "drg3",
+      "id": "e-drg3-rej0",
+      "to": "rej0",
+      "type": "conditional"
+    },
+    {
+      "from": "pro4",
+      "id": "e-pro4-imp5",
+      "to": "imp5"
+    },
+    {
+      "from": "imp5",
+      "id": "e-imp5-plt6",
+      "to": "plt6"
+    },
+    {
+      "from": "plt6",
+      "id": "e-plt6-plg7",
+      "to": "plg7"
+    },
+    {
+      "conditions": [
+        {
+          "expression": "gate.passed"
+        }
+      ],
+      "from": "plg7",
+      "id": "e-plg7-pol8",
+      "to": "pol8",
+      "type": "conditional"
+    },
+    {
+      "conditions": [
+        {
+          "expression": "!gate.passed AND feedback_severity = minor"
+        }
+      ],
+      "from": "plg7",
+      "id": "e-plg7-imp5",
+      "to": "imp5",
+      "type": "conditional"
+    },
+    {
+      "conditions": [
+        {
+          "expression": "!gate.passed AND feedback_severity = major"
+        }
+      ],
+      "from": "plg7",
+      "id": "e-plg7-pro4",
+      "to": "pro4",
+      "type": "conditional"
+    },
+    {
+      "from": "pol8",
+      "id": "e-pol8-suc9",
+      "to": "suc9"
+    }
+  ],
+  "metadata": {
+    "author": "team-flow",
+    "description": "Game design flow: Concept → Design → Design Review Gate → Prototype → Implementation → Playtest → Playtest Gate → Polish → Terminal",
+    "name": "game-design-flow",
+    "tags": [
+      "game",
+      "design",
+      "creative",
+      "main-flow",
+      "sequential"
+    ]
+  },
+  "nodes": [
+    {
+      "components": {
+        "roles": [
+          {
+            "ref": "game-designer",
+            "source": "team"
+          }
+        ],
+        "rules": [
+          {
+            "ref": "g7k",
+            "source": "team"
+          },
+          {
+            "ref": "g0e",
+            "source": "team"
+          },
+          {
+            "ref": "g4h",
+            "source": "team"
+          }
+        ],
+        "tools": [
+          {
+            "commands": [
+              "show",
+              "update",
+              "append"
+            ],
+            "ref": "task"
+          },
+          {
+            "ref": "search"
+          }
+        ]
+      },
+      "config": {
+        "role": "GameDesigner"
+      },
+      "description": "Define game concept: core experience, genre, target audience, MVP scope, and emotional goals",
+      "docs": [
+        {
+          "description": "Game concept document with core experience pillars, genre definition, target audience, MVP feature list, and emotional arc outline",
+          "format": "markdown",
+          "name": "CONCEPT.md",
+          "path": "{DOCS_INTERNAL}/{task_id}/CONCEPT.md",
+          "required": true
+        }
+      ],
+      "id": "con1",
+      "name": "Concept",
+      "on_enter": [
+        {
+          "action": "update_task_phase",
+          "phase": "concept"
+        }
+      ],
+      "type": "phase"
+    },
+    {
+      "components": {
+        "roles": [
+          {
+            "ref": "game-designer",
+            "source": "team"
+          },
+          {
+            "ref": "artist",
+            "source": "team"
+          }
+        ],
+        "rules": [
+          {
+            "ref": "g7k",
+            "source": "team"
+          },
+          {
+            "ref": "g9p",
+            "source": "team"
+          },
+          {
+            "ref": "g2d",
+            "source": "team"
+          },
+          {
+            "ref": "g4h",
+            "source": "team"
+          },
+          {
+            "ref": "g8f",
+            "source": "team"
+          }
+        ],
+        "tools": [
+          {
+            "commands": [
+              "show",
+              "update",
+              "append"
+            ],
+            "ref": "task"
+          },
+          {
+            "ref": "search"
+          }
+        ]
+      },
+      "config": {
+        "role": "GameDesigner"
+      },
+      "description": "Detailed game design: mechanics, systems, visual style guide, core loop, difficulty curve, and performance budget",
+      "docs": [
+        {
+          "description": "Complete game design document with mechanics, system architecture, visual style guide, core loop diagram, difficulty curve, and performance budget",
+          "format": "markdown",
+          "name": "DESIGN.md",
+          "path": "{DOCS_INTERNAL}/{task_id}/DESIGN.md",
+          "required": true
+        }
+      ],
+      "id": "des2",
+      "name": "Design",
+      "on_enter": [
+        {
+          "action": "update_task_phase",
+          "phase": "design"
+        }
+      ],
+      "type": "phase"
+    },
+    {
+      "config": {
+        "auto_retry": {
+          "delay_minutes": 5,
+          "max_attempts": 3
+        },
+        "conditions": [
+          {
+            "check": "Design intent is clear and documented for every system",
+            "required": true,
+            "type": "design_intent_documented"
+          },
+          {
+            "check": "Core gameplay loop is complete: action → feedback → reward → next action",
+            "required": true,
+            "type": "core_loop_complete"
+          },
+          {
+            "check": "All systems serve unified experience goal with no conflicts",
+            "required": true,
+            "type": "experience_coherent"
+          },
+          {
+            "check": "Technical feasibility has been assessed",
+            "required": true,
+            "type": "feasibility_assessed"
+          },
+          {
+            "check": "Visual style guide is established and consistent",
+            "required": false,
+            "type": "art_style_consistent"
+          },
+          {
+            "check": "Performance budget is defined for target platform",
+            "required": true,
+            "type": "performance_budget_defined"
+          },
+          {
+            "check": "MVP scope is locked with prioritized feature list",
+            "required": true,
+            "type": "scope_locked"
+          }
+        ]
+      },
+      "description": "Design review gate: verify design intent, core loop completeness, experience coherence, feasibility, and scope lock",
+      "id": "drg3",
+      "name": "Design Review Gate",
+      "type": "gate"
+    },
+    {
+      "components": {
+        "roles": [
+          {
+            "ref": "game-dev",
+            "source": "team"
+          },
+          {
+            "ref": "game-designer",
+            "source": "team"
+          }
+        ],
+        "rules": [
+          {
+            "ref": "g3m",
+            "source": "team"
+          },
+          {
+            "ref": "g5v",
+            "source": "team"
+          },
+          {
+            "ref": "g7b",
+            "source": "team"
+          },
+          {
+            "ref": "g4h",
+            "source": "team"
+          }
+        ],
+        "tools": [
+          {
+            "commands": [
+              "show",
+              "update",
+              "append"
+            ],
+            "ref": "task"
+          },
+          {
+            "ref": "search"
+          },
+          {
+            "ref": "file-ops"
+          }
+        ]
+      },
+      "config": {
+        "role": "GameDev"
+      },
+      "description": "Build playable prototype: implement core loop, verify mechanics feel right, validate design assumptions",
+      "docs": [
+        {
+          "description": "Prototype report with core loop verification results, mechanics validation, design assumption outcomes, and iteration log",
+          "format": "markdown",
+          "name": "PROTOTYPE.md",
+          "path": "{DOCS_INTERNAL}/{task_id}/PROTOTYPE.md",
+          "required": true
+        }
+      ],
+      "id": "pro4",
+      "name": "Prototype",
+      "on_enter": [
+        {
+          "action": "update_task_phase",
+          "phase": "prototype"
+        }
+      ],
+      "type": "phase"
+    },
+    {
+      "components": {
+        "roles": [
+          {
+            "ref": "game-dev",
+            "source": "team"
+          },
+          {
+            "ref": "artist",
+            "source": "team"
+          },
+          {
+            "ref": "level-designer",
+            "source": "team"
+          }
+        ],
+        "rules": [
+          {
+            "ref": "g5v",
+            "source": "team"
+          },
+          {
+            "ref": "g8f",
+            "source": "team"
+          },
+          {
+            "ref": "g2d",
+            "source": "team"
+          },
+          {
+            "ref": "g9p",
+            "source": "team"
+          },
+          {
+            "ref": "g4h",
+            "source": "team"
+          }
+        ],
+        "tools": [
+          {
+            "commands": [
+              "show",
+              "update",
+              "append"
+            ],
+            "ref": "task"
+          },
+          {
+            "ref": "search"
+          },
+          {
+            "ref": "file-ops"
+          }
+        ]
+      },
+      "config": {
+        "role": "GameDev"
+      },
+      "description": "Full implementation: build all systems, create art assets, design levels, integrate audio, meet performance budget",
+      "docs": [
+        {
+          "description": "Implementation report with system completion status, art asset inventory, level design overview, performance profiling results, and deviation log",
+          "format": "markdown",
+          "name": "IMPLEMENTATION.md",
+          "path": "{DOCS_INTERNAL}/{task_id}/IMPLEMENTATION.md",
+          "required": true
+        }
+      ],
+      "id": "imp5",
+      "name": "Implementation",
+      "on_enter": [
+        {
+          "action": "update_task_phase",
+          "phase": "implementation"
+        }
+      ],
+      "type": "phase"
+    },
+    {
+      "components": {
+        "roles": [
+          {
+            "ref": "game-designer",
+            "source": "team"
+          }
+        ],
+        "rules": [
+          {
+            "ref": "g6c",
+            "source": "team"
+          },
+          {
+            "ref": "g9p",
+            "source": "team"
+          },
+          {
+            "ref": "g4h",
+            "source": "team"
+          }
+        ],
+        "tools": [
+          {
+            "commands": [
+              "show",
+              "update",
+              "append"
+            ],
+            "ref": "task"
+          },
+          {
+            "ref": "search"
+          }
+        ]
+      },
+      "config": {
+        "role": "GameDesigner"
+      },
+      "description": "Playtest the game: conduct sessions, observe player behavior, collect feedback, categorize issues",
+      "docs": [
+        {
+          "description": "Playtest report with session logs, player behavior observations, categorized feedback (bug/confusion/frustration/delight), and priority-ranked issues",
+          "format": "markdown",
+          "name": "PLAYTEST.md",
+          "path": "{DOCS_INTERNAL}/{task_id}/PLAYTEST.md",
+          "required": true
+        }
+      ],
+      "id": "plt6",
+      "name": "Playtest",
+      "on_enter": [
+        {
+          "action": "update_task_phase",
+          "phase": "playtest"
+        }
+      ],
+      "type": "phase"
+    },
+    {
+      "config": {
+        "auto_retry": {
+          "delay_minutes": 5,
+          "max_attempts": 2
+        },
+        "conditions": [
+          {
+            "check": "All critical bugs from playtest have been addressed",
+            "required": true,
+            "type": "critical_bugs_fixed"
+          },
+          {
+            "check": "Player confusion issues have been resolved or documented",
+            "required": true,
+            "type": "confusion_resolved"
+          },
+          {
+            "check": "Core loop sustains engagement for target duration",
+            "required": true,
+            "type": "engagement_sustained"
+          },
+          {
+            "check": "Experience coherence verified through playtest data",
+            "required": true,
+            "type": "experience_validated"
+          },
+          {
+            "check": "Performance meets budget (60fps minimum for gameplay)",
+            "required": true,
+            "type": "performance_budget_met"
+          },
+          {
+            "check": "Art style consistency confirmed across all assets",
+            "required": false,
+            "type": "art_style_consistent"
+          }
+        ]
+      },
+      "description": "Playtest validation gate: verify critical issues addressed, engagement sustained, experience coherent, and performance met",
+      "id": "plg7",
+      "name": "Playtest Gate",
+      "type": "gate"
+    },
+    {
+      "components": {
+        "roles": [
+          {
+            "ref": "game-designer",
+            "source": "team"
+          },
+          {
+            "ref": "game-dev",
+            "source": "team"
+          },
+          {
+            "ref": "artist",
+            "source": "team"
+          },
+          {
+            "ref": "level-designer",
+            "source": "team"
+          }
+        ],
+        "rules": [
+          {
+            "ref": "g7b",
+            "source": "team"
+          },
+          {
+            "ref": "g8f",
+            "source": "team"
+          },
+          {
+            "ref": "g2d",
+            "source": "team"
+          },
+          {
+            "ref": "g4h",
+            "source": "team"
+          }
+        ],
+        "tools": [
+          {
+            "commands": [
+              "show",
+              "update",
+              "append"
+            ],
+            "ref": "task"
+          },
+          {
+            "ref": "search"
+          },
+          {
+            "ref": "file-ops"
+          }
+        ]
+      },
+      "config": {
+        "role": "GameDesigner"
+      },
+      "description": "Polish and finalize: balance tuning, visual polish, performance optimization, bug fixes, final quality pass",
+      "docs": [
+        {
+          "description": "Polish report with balance tuning results, visual polish checklist, final performance profile, bug fix log, and ship readiness assessment",
+          "format": "markdown",
+          "name": "POLISH.md",
+          "path": "{DOCS_INTERNAL}/{task_id}/POLISH.md",
+          "required": true
+        }
+      ],
+      "id": "pol8",
+      "name": "Polish",
+      "on_enter": [
+        {
+          "action": "update_task_phase",
+          "phase": "polish"
+        }
+      ],
+      "type": "phase"
+    },
+    {
+      "config": {
+        "message": "Game design and development completed successfully",
+        "status": "success"
+      },
+      "description": "Game design flow completed successfully",
+      "id": "suc9",
+      "name": "Completed",
+      "type": "terminal"
+    },
+    {
+      "config": {
+        "message": "Design review failed after maximum iterations - fundamental design issues require re-concept",
+        "status": "rejected"
+      },
+      "description": "Design rejected at review gate after exhausting iteration budget",
+      "id": "rej0",
+      "name": "Rejected",
+      "type": "terminal"
+    },
+    {
+      "config": {
+        "message": "Game development failed - manual intervention required",
+        "status": "failed"
+      },
+      "description": "Game development failed and requires manual escalation",
+      "id": "fai1",
+      "name": "Failed",
+      "type": "terminal"
+    }
+  ],
+  "variables": {
+    "DOCS_INTERNAL": "",
+    "TEAM_PATH": "",
+    "domain": "game-design",
+    "feedback_severity": "",
+    "iteration_count": "0",
+    "task_id": "",
+    "workspace": ""
+  },
+  "version": "v3"
+}

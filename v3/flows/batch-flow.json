@@ -163,7 +163,7 @@
           "description": "Batch triage record with task list, scope, and dispatch decision",
           "format": "markdown",
           "name": "TRIAGE.md",
-          "path": "{DOCS_INTERNAL}/{task_id}/TRIAGE.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/TRIAGE.md",
           "required": true
         }
       ],
@@ -247,7 +247,7 @@
           "description": "Batch execution notes: items processed, changes made, test results",
           "format": "markdown",
           "name": "EXEC.md",
-          "path": "{DOCS_INTERNAL}/{task_id}/EXEC.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/EXEC.md",
           "required": true
         }
       ],
@@ -331,7 +331,7 @@
           "description": "Batch scope: what was processed, changed, and any known issues",
           "format": "markdown",
           "name": "SCOPE.md",
-          "path": "{DOCS_INTERNAL}/{task_id}/SCOPE.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/SCOPE.md",
           "required": true,
           "template": "{TEAM_PATH}/templates/scope-template.md"
         }

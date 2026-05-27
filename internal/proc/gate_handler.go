@@ -24,14 +24,25 @@ func ExtractGateConditions(node *flow.FlowNode) []GateCondOutput {
 			required = *c.Required
 		}
 		conditions = append(conditions, GateCondOutput{
-			Type:      string(c.Type),
-			Threshold: c.Threshold,
-			Required:  required,
-			Check:     c.Check,
-			Expected:  c.Expected,
+			Type:         string(c.Type),
+			Threshold:    c.Threshold,
+			Required:     required,
+			Check:        c.Check,
+			Expected:     c.Expected,
+			Deliverables: c.Deliverables,
 		})
 	}
 	return conditions
+}
+
+func SubstituteGateConditions(conditions []GateCondOutput, vars map[string]string) []GateCondOutput {
+	result := make([]GateCondOutput, len(conditions))
+	for i, c := range conditions {
+		result[i] = c
+		result[i].Check = substituteVars(c.Check, vars)
+		result[i].Expected = substituteVars(c.Expected, vars)
+	}
+	return result
 }
 
 func BuildNextOptionsFromGateFallback(node *flow.FlowNode, edges []flow.FlowEdge, nodeMap map[string]*flow.FlowNode) []NextOption {

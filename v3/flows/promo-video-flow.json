@@ -89,7 +89,7 @@
         {
           "name": "BRIEF.md",
           "format": "markdown",
-          "path": "{DOCS_INTERNAL}/{task_id}/BRIEF.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/BRIEF.md",
           "required": true,
           "description": "Creative brief: one-line core message, target audience, emotional tone, selling point priority, emotional anchor, brand constraints"
         }
@@ -143,14 +143,14 @@
         {
           "name": "STORYBOARD.md",
           "format": "markdown",
-          "path": "{DOCS_INTERNAL}/{task_id}/STORYBOARD.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/STORYBOARD.md",
           "required": true,
           "description": "Shot-by-shot storyboard: shot number, duration, visual description, voiceover/subtitle text, emotion tag, total 60-90 seconds"
         },
         {
           "name": "VISUAL_GUIDE.md",
           "format": "markdown",
-          "path": "{DOCS_INTERNAL}/{task_id}/VISUAL_GUIDE.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/VISUAL_GUIDE.md",
           "required": true,
           "description": "Visual style guide: color palette, composition rules, transition style, typography, AI generation prompt templates, reference frames"
         }
@@ -219,7 +219,7 @@
         {
           "name": "MUSIC_BRIEF.md",
           "format": "markdown",
-          "path": "{DOCS_INTERNAL}/{task_id}/MUSIC_BRIEF.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/MUSIC_BRIEF.md",
           "required": true,
           "description": "Music brief: emotion curve, BPM planning per section, sound design aligned with product features, licensing/generation plan, entry/exit points"
         }
@@ -292,14 +292,14 @@
         {
           "name": "ASSET_LOG.md",
           "format": "markdown",
-          "path": "{DOCS_INTERNAL}/{task_id}/ASSET_LOG.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/ASSET_LOG.md",
           "required": true,
           "description": "Asset production log: source/type of each asset, AI generation parameters, resolution, duration, file references"
         },
         {
           "name": "DRAFT_CUT.md",
           "format": "markdown",
-          "path": "{DOCS_INTERNAL}/{task_id}/DRAFT_CUT.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/DRAFT_CUT.md",
           "required": true,
           "description": "Draft cut report: timeline breakdown, shot assembly, audio sync status, subtitle placement, technical parameters, file path to video"
         }
@@ -387,14 +387,14 @@
         {
           "name": "QC_REPORT.md",
           "format": "markdown",
-          "path": "{DOCS_INTERNAL}/{task_id}/QC_REPORT.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/QC_REPORT.md",
           "required": true,
           "description": "QC report: frame-by-frame check results, brand accuracy, audio-visual sync status, narrative coherence, technical compliance, issues found and fixes applied"
         },
         {
           "name": "FINAL_DELIVERY.md",
           "format": "markdown",
-          "path": "{DOCS_INTERNAL}/{task_id}/FINAL_DELIVERY.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/FINAL_DELIVERY.md",
           "required": true,
           "description": "Final delivery manifest: video file paths, technical specs, version list (60s/90s), checksum, brand sign-off"
         }

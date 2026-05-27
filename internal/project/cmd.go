@@ -8,6 +8,7 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/origadmin/team-flow/internal/config"
 	"github.com/origadmin/team-flow/internal/state"
 	"github.com/spf13/cobra"
 )
@@ -61,8 +62,21 @@ var depsCmd = &cobra.Command{
 	RunE:  runDeps,
 }
 
+var detectCmd = &cobra.Command{
+	Use:   "detect",
+	Short: "Detect current project and available projects",
+	RunE:  runDetect,
+}
+
+var currentCmd = &cobra.Command{
+	Use:   "current",
+	Short: "Show current project",
+	RunE:  runCurrent,
+}
+
 func init() {
 	addCmd.Flags().StringVar(&projectNameOverride, "name", "", "Override project name (default: directory basename)")
+	detectCmd.Flags().Bool("json", false, "Output in JSON format")
 
 	Cmd.AddCommand(listCmd)
 	Cmd.AddCommand(addCmd)
@@ -70,6 +84,8 @@ func init() {
 	Cmd.AddCommand(switchCmd)
 	Cmd.AddCommand(statusCmd)
 	Cmd.AddCommand(depsCmd)
+	Cmd.AddCommand(detectCmd)
+	Cmd.AddCommand(currentCmd)
 }
 
 func runList(cmd *cobra.Command, args []string) error {
@@ -308,4 +324,61 @@ func truncateStr(s string, max int) string {
 		return s
 	}
 	return "..." + s[len(s)-max+3:]
+}
+
+func runDetect(cmd *cobra.Command, args []string) error {
+	result := DetectProject()
+
+	detectJSON, _ := cmd.Flags().GetBool("json")
+	if detectJSON {
+		data, err := json.MarshalIndent(result, "", "  ")
+		if err != nil {
+			return fmt.Errorf("marshal result: %w", err)
+		}
+		fmt.Println(string(data))
+		return nil
+	}
+
+	PrintDetectionResult(result)
+	return nil
+}
+
+func runCurrent(cmd *cobra.Command, args []string) error {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("get cwd: %w", err)
+	}
+
+	projectRoot := config.ResolveProjectRoot(cwd)
+	teamRoot := config.FindTeamRoot(cwd)
+	if projectRoot == "" && teamRoot == "" {
+		fmt.Println("Not in any project directory")
+		fmt.Println("\nUse 'flow project list' to see available projects")
+		fmt.Println("Use 'flow project add <path>' to register a project")
+		return nil
+	}
+
+	if projectRoot == "" {
+		projectRoot = teamRoot
+	}
+
+	name := getProjectName(projectRoot)
+	version := getProjectVersion(projectRoot)
+
+	fmt.Printf("Current project: %s\n", name)
+	if version != "" {
+		fmt.Printf("Version: %s\n", version)
+	}
+	fmt.Printf("PROJECT_ROOT: %s\n", projectRoot)
+
+	if teamRoot != "" && teamRoot != projectRoot {
+		fmt.Printf("TEAM_ROOT:    %s\n", teamRoot)
+	}
+
+	workspace := config.FindWorkspaceRoot(cwd)
+	if workspace != "" {
+		fmt.Printf("Workspace:    %s\n", workspace)
+	}
+
+	return nil
 }

@@ -1,0 +1,40 @@
+ides:
+  - name: Trae
+    subdir: .trae
+    bridge_path: .trae/rules/team-flow.md
+    bridge_format: trae
+    always_install: true
+    npx_agent: trae
+    skill_dir: .trae/skills
+
+  - name: Cursor
+    subdir: .cursor
+    bridge_path: .cursor/rules/team-flow.mdc
+    bridge_format: cursor
+    always_install: false
+    npx_agent: cursor
+    skill_dir: .cursor/skills
+
+  - name: Claude
+    subdir: .claude
+    bridge_path: .claude/rules/team-flow.md
+    bridge_format: claude
+    always_install: true
+    npx_agent: claude
+    skill_dir: .claude/skills
+
+  - name: OpenClaw
+    subdir: .openclaw
+    bridge_path: .openclaw/rules/team-flow.md
+    bridge_format: openclaw
+    always_install: true
+    npx_agent: openclaw
+    skill_dir: .openclaw/skills
+
+  - name: Gemini
+    subdir: .gemini
+    bridge_path: .gemini/rules/team-flow.md
+    bridge_format: gemini
+    always_install: false
+    npx_agent: gemini
+    skill_dir: .gemini/skills

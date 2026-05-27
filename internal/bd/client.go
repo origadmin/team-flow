@@ -9,6 +9,74 @@ import (
 	"strings"
 )
 
+// FindWorkspaceRoot finds the workspace root directory by looking for .beads or .git
+func FindWorkspaceRoot(startDir string) (string, error) {
+	dir := startDir
+	for {
+		// Check for .beads directory first
+		if _, err := os.Stat(filepath.Join(dir, ".beads")); err == nil {
+			return dir, nil
+		}
+		// Check for .git directory as fallback
+		if _, err := os.Stat(filepath.Join(dir, ".git")); err == nil {
+			return dir, nil
+		}
+		// Move up to parent directory
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			// Reached filesystem root without finding
+			return "", fmt.Errorf("no workspace root found. Run from a directory with .beads/ or .git/")
+		}
+		dir = parent
+	}
+}
+
+// RunInWorkspace runs a bd command in the workspace root
+func RunInWorkspace(startDir string, args ...string) (string, error) {
+	workspaceRoot, err := FindWorkspaceRoot(startDir)
+	if err != nil {
+		return "", err
+	}
+	
+	path := MustPath()
+	
+	cmd := exec.Command(path, args...)
+	cmd.Dir = workspaceRoot // Set the working directory to workspace root
+	output, err := cmd.CombinedOutput()
+	
+	if err != nil {
+		if len(output) > 0 {
+			return string(output), fmt.Errorf("task-db %s failed: %w", strings.Join(args, " "), err)
+		}
+		return "", fmt.Errorf("task-db %s failed: %w", strings.Join(args, " "), err)
+	}
+	
+	return string(output), nil
+}
+
+// RunQuietInWorkspace runs a bd command quietly in the workspace root
+func RunQuietInWorkspace(startDir string, args ...string) (string, error) {
+	workspaceRoot, err := FindWorkspaceRoot(startDir)
+	if err != nil {
+		return "", err
+	}
+	
+	path := MustPath()
+	
+	cmd := exec.Command(path, args...)
+	cmd.Dir = workspaceRoot
+	output, err := cmd.Output()
+	
+	if err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			return string(exitErr.Stderr), fmt.Errorf("task-db %s failed: %w", strings.Join(args, " "), err)
+		}
+		return "", fmt.Errorf("task-db %s failed: %w", strings.Join(args, " "), err)
+	}
+	
+	return string(output), nil
+}
+
 var (
 	bdPath     string
 	bdPathOnce bool

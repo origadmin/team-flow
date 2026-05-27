@@ -195,7 +195,7 @@
           "description": "Triage classification record with task type, priority, and dispatch decision",
           "format": "markdown",
           "name": "TRIAGE.md",
-          "path": "{DOCS_INTERNAL}/{task_id}/TRIAGE.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/TRIAGE.md",
           "required": true
         }
       ],
@@ -289,7 +289,7 @@
           "description": "Feature specification document detailing requirements, scope, and constraints",
           "format": "markdown",
           "name": "SPEC.md",
-          "path": "{DOCS_INTERNAL}/{task_id}/SPEC.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/SPEC.md",
           "required": true,
           "template": "{TEAM_PATH}/templates/prd-template.md"
         },
@@ -301,7 +301,7 @@
           "description": "Acceptance criteria with measurable conditions for feature completion",
           "format": "markdown",
           "name": "AC.md",
-          "path": "{DOCS_INTERNAL}/{task_id}/AC.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/AC.md",
           "required": true,
           "template": "{TEAM_PATH}/templates/prd-template.md"
         }
@@ -371,7 +371,7 @@
           "description": "Data model design including entity relationships and schema definitions",
           "format": "markdown",
           "name": "R1_DATA_MODEL.md",
-          "path": "{DOCS_INTERNAL}/{task_id}/R1_DATA_MODEL.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/R1_DATA_MODEL.md",
           "required": true,
           "template": "{TEAM_PATH}/templates/architecture-template.md"
         },
@@ -379,7 +379,7 @@
           "description": "State machine design defining transitions, events, and lifecycle",
           "format": "markdown",
           "name": "R2_STATE_MACHINE.md",
-          "path": "{DOCS_INTERNAL}/{task_id}/R2_STATE_MACHINE.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/R2_STATE_MACHINE.md",
           "required": true,
           "template": "{TEAM_PATH}/templates/architecture-template.md"
         },
@@ -387,7 +387,7 @@
           "description": "API contract definitions including endpoints, request/response schemas",
           "format": "markdown",
           "name": "R3_API_CONTRACT.md",
-          "path": "{DOCS_INTERNAL}/{task_id}/R3_API_CONTRACT.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/R3_API_CONTRACT.md",
           "required": true,
           "template": "{TEAM_PATH}/templates/api-issue-template.md"
         }
@@ -457,7 +457,7 @@
           "description": "Implementation notes documenting key code changes, architectural decisions, and test coverage",
           "format": "markdown",
           "name": "IMPL.md",
-          "path": "{DOCS_INTERNAL}/{task_id}/IMPL.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/IMPL.md",
           "required": true
         }
       ],
@@ -533,7 +533,7 @@
           "description": "Test coverage report including unit, integration, and E2E test results",
           "format": "markdown",
           "name": "TEST_COVERAGE.md",
-          "path": "{DOCS_INTERNAL}/{task_id}/TEST_COVERAGE.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/TEST_COVERAGE.md",
           "required": true,
           "template": "{TEAM_PATH}/templates/feature-test-template.md"
         }
@@ -590,7 +590,7 @@
           "description": "Completion scope document summarizing what was implemented, changed, and any known issues",
           "format": "markdown",
           "name": "SCOPE.md",
-          "path": "{DOCS_INTERNAL}/{task_id}/SCOPE.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/SCOPE.md",
           "required": true,
           "template": "{TEAM_PATH}/templates/scope-template.md"
         }

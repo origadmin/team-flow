@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>team-flow v3 — Architecture Redesign Final</title>
+<style scoped>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#0f172a;color:#e2e8f0;padding:20px;min-height:100vh}
+.arch-wrapper{max-width:1500px;margin:0 auto}
+.arch-title{text-align:center;padding:24px 0 8px;font-size:28px;font-weight:700;color:#f8fafc;letter-spacing:-0.5px}
+.arch-subtitle{text-align:center;font-size:14px;color:#94a3b8;margin-bottom:20px}
+.arch-layer{border-radius:12px;padding:16px 20px;margin-bottom:10px;position:relative}
+.arch-layer-title{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.arch-grid{display:grid;gap:10px}
+.arch-grid-2{grid-template-columns:1fr 1fr}
+.arch-grid-3{grid-template-columns:1fr 1fr 1fr}
+.arch-grid-4{grid-template-columns:1fr 1fr 1fr 1fr}
+.arch-grid-5{grid-template-columns:1fr 1fr 1fr 1fr 1fr}
+.arch-box{border-radius:8px;padding:12px 14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);font-size:12px;line-height:1.5;transition:all .2s}
+.arch-box:hover{background:rgba(255,255,255,0.1);border-color:rgba(255,255,255,0.15)}
+.arch-box.highlight{border-color:rgba(56,189,248,0.5);background:rgba(56,189,248,0.08)}
+.arch-box.error{border-color:rgba(239,68,68,0.5);background:rgba(239,68,68,0.08)}
+.arch-box.success{border-color:rgba(34,197,94,0.5);background:rgba(34,197,94,0.08)}
+.arch-box small{color:#94a3b8;font-size:11px}
+.arch-box .label{font-weight:600;color:#f8fafc;display:block;margin-bottom:4px}
+.arch-box .cmd{font-family:'Cascadia Code',Consolas,monospace;color:#38bdf8;font-size:11px;background:rgba(56,189,248,0.1);padding:2px 6px;border-radius:4px;display:inline-block;margin:2px 0}
+.arch-box .err{color:#f87171;font-size:11px}
+.arch-box .fix{color:#4ade80;font-size:11px}
+.arch-box .warn{color:#fbbf24;font-size:11px}
+.entry{background:linear-gradient(135deg,rgba(56,189,248,0.12),rgba(139,92,246,0.12));border:1px solid rgba(56,189,248,0.25)}
+.layer{background:linear-gradient(135deg,rgba(100,116,139,0.06),rgba(71,85,105,0.06));border:1px solid rgba(100,116,139,0.12)}
+.code{background:linear-gradient(135deg,rgba(6,182,212,0.08),rgba(14,165,233,0.08));border:1px solid rgba(6,182,212,0.2)}
+.tool{background:linear-gradient(135deg,rgba(245,158,11,0.08),rgba(234,179,8,0.08));border:1px solid rgba(245,158,11,0.2)}
+.v1{background:linear-gradient(135deg,rgba(100,116,139,0.08),rgba(71,85,105,0.08));border:1px solid rgba(100,116,139,0.2)}
+.v2{background:linear-gradient(135deg,rgba(59,130,246,0.08),rgba(37,99,235,0.08));border:1px solid rgba(59,130,246,0.2)}
+.v3{background:linear-gradient(135deg,rgba(139,92,246,0.08),rgba(168,85,247,0.08));border:1px solid rgba(139,92,246,0.2)}
+.flow-arrow{text-align:center;font-size:18px;color:#475569;padding:2px 0;line-height:1}
+.flow-arrow-down::before{content:"▼"}
+.badge{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;text-transform:uppercase;letter-spacing:0.5px}
+.badge-entry{background:rgba(56,189,248,0.2);color:#38bdf8}
+.badge-layer{background:rgba(100,116,139,0.2);color:#94a3b8}
+.badge-code{background:rgba(6,182,212,0.2);color:#22d3ee}
+.badge-tool{background:rgba(245,158,11,0.2);color:#fbbf24}
+.badge-v1{background:rgba(100,116,139,0.2);color:#94a3b8}
+.badge-v2{background:rgba(59,130,246,0.2);color:#60a5fa}
+.badge-v3{background:rgba(139,92,246,0.2);color:#a78bfa}
+.section-label{font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:2px;margin:18px 0 8px;padding-left:4px}
+.divider{border:none;border-top:1px solid rgba(100,116,139,0.15);margin:16px 0}
+</style>
+</head>
+<body>
+<div class="arch-wrapper">
+<div class="arch-title">team-flow v3 — Architecture Redesign Final</div>
+<div class="arch-subtitle">v1/v2/v3 并行 · 配置驱动路由 · 统一工具路径 · 单词命名</div>
+
+<hr class="divider">
+<div class="section-label">C2 — Config-Driven Tool Routing + Unified Tool Path</div>
+<div class="arch-layer tool">
+<div class="arch-layer-title"><span class="badge badge-tool">C2+D4</span> tools.yaml — 配置驱动 + 统一工具路径</div>
+<div class="arch-grid arch-grid-2">
+<div class="arch-box">
+<span class="label">tools.yaml 配置文件</span>
+<code style="font-size:11px;color:#38bdf8">
+# .team/tools.yaml<br>
+version: 1<br>
+<br>
+paths:<br>
+&nbsp;&nbsp;flow: "[$]/flow"          ← flow 自身路径<br>
+&nbsp;&nbsp;workspace: "[@]"          ← workspace root<br>
+&nbsp;&nbsp;project: "[#]"            ← project root<br>
+&nbsp;&nbsp;bin: "[$]"               ← 工具二进制目录<br>
+<br>
+tools:<br>
+&nbsp;&nbsp;task:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;backend: beads<br>
+&nbsp;&nbsp;&nbsp;&nbsp;command: "{bin}/bd"<br>
+&nbsp;&nbsp;&nbsp;&nbsp;args_template: "{args}"<br>
+&nbsp;&nbsp;sync:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;backend: github<br>
+&nbsp;&nbsp;&nbsp;&nbsp;command: gh<br>
+&nbsp;&nbsp;&nbsp;&nbsp;args_template: "issue list --repo {repo} --json"<br>
+&nbsp;&nbsp;test:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;backend: shell<br>
+&nbsp;&nbsp;&nbsp;&nbsp;command: go<br>
+&nbsp;&nbsp;&nbsp;&nbsp;args_template: "test ./... -json"<br>
+&nbsp;&nbsp;custom-report:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;backend: shell<br>
+&nbsp;&nbsp;&nbsp;&nbsp;command: python3<br>
+&nbsp;&nbsp;&nbsp;&nbsp;args_template: "scripts/report.py --task {task_id}"
+</code>
+</div>
+<div class="arch-box">
+<span class="label">工具发现命令</span>
+<code style="font-size:11px;color:#38bdf8">
+# AI 发现可用工具<br>
+flow tools list<br>
+&nbsp;&nbsp;→ task (beads) — 任务管理<br>
+&nbsp;&nbsp;→ sync (github) — 同步管理<br>
+&nbsp;&nbsp;→ test (shell) — 测试运行<br>
+&nbsp;&nbsp;→ lint (shell) — 代码检查<br>
+&nbsp;&nbsp;→ custom-report (shell) — 自定义报告<br>
+<br>
+# AI 执行工具<br>
+flow tools run task list --json<br>
+&nbsp;&nbsp;→ [路由] beads<br>
+&nbsp;&nbsp;→ [替换] {bin}/bd list --json<br>
+&nbsp;&nbsp;→ [执行] 输出结果<br>
+<br>
+# AI 查询工具路径<br>
+flow tools path bd<br>
+&nbsp;&nbsp;→ D:\.trae\skills\team-flow\bin\bd.exe<br>
+<br>
+flow tools path flow<br>
+&nbsp;&nbsp;→ D:\.trae\skills\team-flow\bin\flow.exe
+</code>
+</div>
+</div>
+</div>
+
+<hr class="divider">
+<div class="section-label">C3 — Internal Code Restructure (Final)</div>
+<div class="arch-layer code">
+<div class="arch-layer-title"><span class="badge badge-code">C3</span> internal/ 三层 — core/ + tools/ + cmd/（单词命名）</div>
+<div class="arch-grid arch-grid-2">
+<div class="arch-box success">
+<span class="label">新结构</span>
+<code style="font-size:11px;color:#38bdf8">
+internal/<br>
+├── core/                  ← 核心层（纯逻辑，无 CLI）<br>
+│   ├── flow/              ← 流程解析+验证+序列化<br>
+│   ├── config/            ← 配置解析+路径解析<br>
+│   ├── state/             ← 状态管理<br>
+│   ├── org/               ← 组织模板管理<br>
+│   ├── role/              ← 角色注册表<br>
+│   ├── skill/             ← 技能扫描+解析<br>
+│   ├── ide/               ← IDE 桥接注册<br>
+│   ├── logger/            ← 日志<br>
+│   └── version/           ← 版本信息+路由<br>
+│<br>
+├── tools/                 ← 工具路由层（配置驱动）<br>
+│   ├── router.go          ← ToolRouter 通用路由器<br>
+│   ├── config.go          ← tools.yaml 解析<br>
+│   ├── internal.go        ← 内部处理<br>
+│   ├── forward.go         ← 转发处理<br>
+│   └── builtin/           ← 内置工具实现<br>
+│       ├── task_beads.go  ← beads 转发<br>
+│       ├── task_file.go   ← 文件后端<br>
+│       └── sync_github.go ← GitHub 转发<br>
+│<br>
+└── cmd/                   ← 命令层（CLI 入口）<br>
+&nbsp;&nbsp;&nbsp;&nbsp;├── root.go<br>
+&nbsp;&nbsp;&nbsp;&nbsp;├── proc.go            ← flow proc run<br>
+&nbsp;&nbsp;&nbsp;&nbsp;├── init.go            ← flow init<br>
+&nbsp;&nbsp;&nbsp;&nbsp;├── org.go             ← flow org *<br>
+&nbsp;&nbsp;&nbsp;&nbsp;├── task.go            ← flow task *<br>
+&nbsp;&nbsp;&nbsp;&nbsp;├── tools.go           ← flow tools *<br>
+&nbsp;&nbsp;&nbsp;&nbsp;├── migrate.go         ← flow migrate<br>
+&nbsp;&nbsp;&nbsp;&nbsp;├── doctor.go          ← flow doctor<br>
+&nbsp;&nbsp;&nbsp;&nbsp;├── editor.go          ← flow editor<br>
+&nbsp;&nbsp;&nbsp;&nbsp;├── config.go          ← flow config<br>
+&nbsp;&nbsp;&nbsp;&nbsp;├── graph.go           ← flow graph<br>
+&nbsp;&nbsp;&nbsp;&nbsp;└── version.go         ← flow version
+</code>
+</div>
+<div class="arch-box">
+<span class="label">依赖规则 + 合并清单</span>
+<code style="font-size:11px;color:#38bdf8">
+依赖方向（严格单向）：<br>
+cmd/ → core/ + tools/<br>
+tools/ → core/<br>
+core/ → 无内部依赖<br>
+⛔ 禁止反向依赖
+</code><br>
+<br>
+<b>合并清单（30 → 14 包）：</b><br>
+bd/ + beads/ → tools/builtin/task_beads.go<br>
+task/ → cmd/task.go + tools/builtin/<br>
+sync/ → tools/builtin/sync_github.go + cmd/sync.go<br>
+export/ → cmd/export.go（转发）<br>
+boot/ → cmd/init.go<br>
+migrate/ → cmd/migrate.go<br>
+config/ + configcmd/ → core/config/ + cmd/config.go<br>
+proc/ → cmd/proc.go + core/flow/<br>
+project/ → cmd/project.go + core/org/<br>
+skill/ → core/skill/<br>
+tools/ + toolchain/ + toolrunner/ → core/flow/（流程内工具）<br>
+update/ + updater/ → cmd/update.go<br>
+ver/ + version/ → core/version/<br>
+state/ → core/state/<br>
+ide/ → core/ide/<br>
+logger/ → core/logger/<br>
+doctor/ → cmd/doctor.go<br>
+editor/ → cmd/editor.go<br>
+graph/ → cmd/graph.go<br>
+status/ → cmd/status.go
+</div>
+</div>
+</div>
+
+<hr class="divider">
+<div class="section-label">Code Inconsistencies — 当前代码不一致分析</div>
+<div class="arch-layer error">
+<div class="arch-layer-title">需要修改的代码不一致（按严重程度排序）</div>
+<div class="arch-grid arch-grid-2">
+<div class="arch-box error">
+<span class="label">🔴 P0: beads 直接暴露（184 处，15 个文件）</span>
+bd.IsAvailable() / bd.RunQuiet() / bd.RunInWorkspace() 直接出现在：<br>
+- proc/procrun.go (4处)<br>
+- proc/gate_checker.go (3处)<br>
+- migrate/migrate.go (43处)<br>
+- boot/init.go (32处)<br>
+- config/config.go (8处)<br>
+- task/task.go (5处)<br>
+- sync/cmd.go (2处)<br>
+- sync/sync.go (6处)<br>
+- export/export.go (6处)<br>
+- tools/tools.go (4处)<br>
+- status/status.go (13处)<br>
+- doctor/doctor.go (10处)<br>
+- ver/ver.go (11处)<br>
+<br>
+<span class="fix">→ 全部改为 tools.ToolRouter 调用</span>
+</div>
+<div class="arch-box error">
+<span class="label">🔴 P0: 硬编码 beads 路径（28 处，9 个文件）</span>
+".beads/" / "beads_db" / "BEADS_DB" / "task-pool.md" 出现在：<br>
+- proc/gate_checker.go (1处)<br>
+- migrate/migrate.go (9处)<br>
+- config/config.go (6处)<br>
+- task/task.go (1处)<br>
+- ver/ver.go (4处)<br>
+- sync/cmd.go (1处)<br>
+- sync/sync.go (2处)<br>
+- export/export.go (2处)<br>
+- status/status.go (2处)<br>
+<br>
+<span class="fix">→ 改为从 tools.yaml 读取路径配置</span>
+</div>
+<div class="arch-box error">
+<span class="label">🔴 P0: project.md 双配置（11 个文件）</span>
+project.md 引用出现在：<br>
+- proc/cmd.go, migrate/migrate.go<br>
+- boot/init.go, config/config.go<br>
+- project/manager.go, config/project.go<br>
+- updater/updater.go, configcmd/configcmd.go<br>
+- proc/runtime.go, config/project_test.go<br>
+- export/export.go<br>
+<br>
+<span class="fix">→ v3 模式下只使用 project.yaml</span>
+</div>
+<div class="arch-box error">
+<span class="label">🔴 P0: 模板版本不一致（10 个文件）</span>
+version "2.0.0" 出现在：<br>
+- v3/teams/ 下 5 个 team.json<br>
+- teams/ 下 5 个 team.json<br>
+<br>
+v3 目录下的模板仍然是 v2 版本号<br>
+<br>
+<span class="fix">→ orgs/ 下统一为 "3.0.0"</span>
+</div>
+</div>
+<div class="arch-grid arch-grid-3" style="margin-top:10px">
+<div class="arch-box">
+<span class="label">🟡 P1: 重复包（6 对）</span>
+bd/ vs beads/ — 功能重叠<br>
+tools/ vs toolchain/ vs toolrunner/ — 三包重叠<br>
+ver/ vs version/ — 版本处理重叠<br>
+update/ vs updater/ — 更新逻辑重叠<br>
+config/ vs configcmd/ — 配置+命令混合<br>
+<br>
+<span class="fix">→ 按合并清单归并</span>
+</div>
+<div class="arch-box">
+<span class="label">🟡 P1: StatusLine 格式</span>
+StatusLine 仅在 proc/procrun.go 中实现<br>
+但 init.go 生成的 IDE 桥接文件中<br>
+StatusLine 格式可能不同步<br>
+<br>
+<span class="fix">→ 统一由 core/flow/ 生成</span>
+</div>
+<div class="arch-box">
+<span class="label">🟡 P1: gate_checker 文件后端</span>
+之前添加的 checkTaskDirExists 等方法<br>
+硬编码了 _docs/task/ 路径<br>
+应该从 tools.yaml 读取路径配置<br>
+<br>
+<span class="fix">→ 改为从 config 解析路径</span>
+</div>
+</div>
+</div>
+
+<hr class="divider">
+<div class="section-label">Implementation — 实施计划（最终版）</div>
+<div class="arch-layer layer">
+<div class="arch-layer-title">5 个阶段，按依赖顺序</div>
+<div class="arch-grid arch-grid-5">
+<div class="arch-box highlight">
+<span class="label">Phase 1: 代码重组</span>
+D5<br>
+<br>
+1. 创建 core/ tools/ cmd/ 三层<br>
+2. 迁移核心逻辑到 core/<br>
+3. 实现 ToolRouter<br>
+4. 迁移命令到 cmd/<br>
+5. 删除旧包<br>
+6. 编译+测试验证
+</div>
+<div class="arch-box highlight">
+<span class="label">Phase 2: 配置驱动</span>
+D2+D4<br>
+<br>
+1. tools.yaml 定义+解析<br>
+2. ToolRouter 实现<br>
+3. 统一工具路径<br>
+4. flow tools list/run/path<br>
+5. flow task 重构（转发）<br>
+6. flow sync 重构（转发）
+</div>
+<div class="arch-box">
+<span class="label">Phase 3: 两目录归一</span>
+D6+D7+D8<br>
+<br>
+1. skill/ 三版本共存<br>
+2. orgs/ 创建+org.json<br>
+3. main_flows/sub_flows<br>
+4. skillfs.go 更新<br>
+5. 删除 teams/ + v3/teams/
+</div>
+<div class="arch-box">
+<span class="label">Phase 4: 工具化编辑</span>
+D9<br>
+<br>
+1. flow org * 命令族<br>
+2. 角色注册表验证<br>
+3. 流程节点验证<br>
+4. 组织完整性验证<br>
+5. install 技能适配
+</div>
+<div class="arch-box">
+<span class="label">Phase 5: 追踪+调度</span>
+D10+多技能<br>
+<br>
+1. Session Log<br>
+2. Context Chain<br>
+3. 诊断链 D1-D7<br>
+4. 技能分发机制<br>
+5. 讨论一致性检查
+</div>
+</div>
+</div>
+
+</div>
+</body>
+</html>

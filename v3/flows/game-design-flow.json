@@ -67,7 +67,7 @@
         {
           "name": "CONCEPT.md",
           "format": "markdown",
-          "path": "{DOCS_INTERNAL}/{task_id}/CONCEPT.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/CONCEPT.md",
           "required": true,
           "description": "Game concept document: genre, target audience, core gameplay loop, monetization model, creative vision, unique selling points"
         }
@@ -121,7 +121,7 @@
         {
           "name": "GDD.md",
           "format": "markdown",
-          "path": "{DOCS_INTERNAL}/{task_id}/GDD.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/GDD.md",
           "required": true,
           "description": "Game Design Document: core mechanics, progression systems, economy, balance parameters, player journey, UI/UX flow"
         }
@@ -194,7 +194,7 @@
         {
           "name": "PROTOTYPE.md",
           "format": "markdown",
-          "path": "{DOCS_INTERNAL}/{task_id}/PROTOTYPE.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/PROTOTYPE.md",
           "required": true,
           "description": "Prototype report: what was built, core loop validation results, fun factor assessment, known issues"
         }
@@ -266,7 +266,7 @@
         {
           "name": "ART_DIRECTION.md",
           "format": "markdown",
-          "path": "{DOCS_INTERNAL}/{task_id}/ART_DIRECTION.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/ART_DIRECTION.md",
           "required": true,
           "description": "Art direction document: visual style guide, color palette, asset list, UI/UX wireframes, animation notes"
         }
@@ -316,7 +316,7 @@
         {
           "name": "LEVELS.md",
           "format": "markdown",
-          "path": "{DOCS_INTERNAL}/{task_id}/LEVELS.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/LEVELS.md",
           "required": true,
           "description": "Level design document: layout descriptions, puzzle mechanics, difficulty curve, environment themes, pacing notes"
         }
@@ -385,7 +385,7 @@
         {
           "name": "DESIGN_PACKAGE.md",
           "format": "markdown",
-          "path": "{DOCS_INTERNAL}/{task_id}/DESIGN_PACKAGE.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/DESIGN_PACKAGE.md",
           "required": true,
           "description": "Final design package: integrated GDD with all revisions, art guidelines, level specs, implementation notes"
         }

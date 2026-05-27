@@ -103,7 +103,7 @@
         {
           "name": "CONCEPT.md",
           "format": "markdown",
-          "path": "{DOCS_INTERNAL}/{task_id}/CONCEPT.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/CONCEPT.md",
           "required": true,
           "description": "Novel concept: genre, themes, target audience, narrative vision, tone, comparable works, unique angle"
         }
@@ -149,7 +149,7 @@
         {
           "name": "OUTLINE.md",
           "format": "markdown",
-          "path": "{DOCS_INTERNAL}/{task_id}/OUTLINE.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/OUTLINE.md",
           "required": true,
           "description": "Story outline: three-act structure, chapter breakdown, key plot points, turning points, climax, resolution"
         }
@@ -199,14 +199,14 @@
         {
           "name": "CHARACTERS.md",
           "format": "markdown",
-          "path": "{DOCS_INTERNAL}/{task_id}/CHARACTERS.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/CHARACTERS.md",
           "required": true,
           "description": "Character profiles: backstory, motivations, relationships, character arcs, voice, quirks"
         },
         {
           "name": "WORLDBUILDING.md",
           "format": "markdown",
-          "path": "{DOCS_INTERNAL}/{task_id}/WORLDBUILDING.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/WORLDBUILDING.md",
           "required": true,
           "description": "World settings: geography, culture, magic/technology system, social structure, history, rules"
         }
@@ -297,7 +297,7 @@
           {
             "type": "file_write",
             "allowed_paths": [
-              "{DOCS_INTERNAL}/{task_id}/"
+              "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/"
             ]
           }
         ]
@@ -306,7 +306,7 @@
         {
           "name": "MANUSCRIPT.md",
           "format": "markdown",
-          "path": "{DOCS_INTERNAL}/{task_id}/MANUSCRIPT.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/MANUSCRIPT.md",
           "required": true,
           "description": "Full manuscript: all chapters with narrative prose, dialogue, scene descriptions, following outline structure"
         }
@@ -384,7 +384,7 @@
         {
           "name": "FINAL_MANUSCRIPT.md",
           "format": "markdown",
-          "path": "{DOCS_INTERNAL}/{task_id}/FINAL_MANUSCRIPT.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/FINAL_MANUSCRIPT.md",
           "required": true,
           "description": "Final edited manuscript: polished prose, corrected grammar, consistent style, ready for publication"
         }

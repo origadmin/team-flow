@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"regexp"
 	"sort"
 	"strings"
 )
@@ -73,10 +74,40 @@ func formatTeamIntro(w io.Writer, intro *TeamIntroData) {
 }
 
 func padLine(s string, width int) string {
-	if len(s) >= width {
+	if len(s) > width {
 		return s[:width]
 	}
 	return s + strings.Repeat(" ", width-len(s))
+}
+
+func formatPathValidation(w io.Writer, pv *PathValidation) {
+	if pv == nil || pv.IsMatch {
+		return
+	}
+
+	fmt.Fprintln(w, "")
+	fmt.Fprintln(w, "╔══════════════════════════════════════════════════════════════════════════╗")
+	fmt.Fprintln(w, "║  ⛔  PATH MISMATCH DETECTED                                                ║")
+	fmt.Fprintln(w, "╠══════════════════════════════════════════════════════════════════════════╣")
+	fmt.Fprintf(w, "║  PROJECT_ROOT: %-60s║\n", padLine(pv.ProjectRoot, 60))
+	fmt.Fprintf(w, "║  CURRENT_CWD:   %-60s║\n", padLine(pv.CurrentCwd, 60))
+	fmt.Fprintln(w, "╠══════════════════════════════════════════════════════════════════════════╣")
+	fmt.Fprintln(w, "║  ⛔  AI MUST operate in PROJECT_ROOT, not in CURRENT_CWD!                 ║")
+	fmt.Fprintln(w, "║                                                                        ║")
+	if pv.Warning != "" {
+		fmt.Fprintf(w, "║  ⚠️  %s\n", padLine(pv.Warning, 67))
+	}
+	if pv.RequiredAction != "" {
+		fmt.Fprintf(w, "║  REQUIRED ACTION:%-57s║\n", "")
+		fmt.Fprintf(w, "║    → %-65s║\n", padLine(pv.RequiredAction, 65))
+	} else {
+		fmt.Fprintf(w, "║  REQUIRED ACTION:%-57s║\n", "")
+		fmt.Fprintf(w, "║    → cd %-65s║\n", padLine(pv.ProjectRoot, 65))
+	}
+	fmt.Fprintln(w, "║                                                                        ║")
+	fmt.Fprintln(w, "║  [AI: Execute 'cd {PROJECT_ROOT}' BEFORE any other commands]              ║")
+	fmt.Fprintln(w, "╚══════════════════════════════════════════════════════════════════════════╝")
+	fmt.Fprintln(w, "")
 }
 
 func FormatJSON(w io.Writer, result *ProcRunResult) error {
@@ -111,6 +142,20 @@ func FormatText(w io.Writer, result *ProcRunResult) error {
 
 	fmt.Fprintf(w, "║  NODE: %-52s║\n", current.NodeID)
 	fmt.Fprintf(w, "║  TYPE: %-52s║\n", current.NodeType)
+	if result.Workspace != "" {
+		fmt.Fprintf(w, "║  WORKSPACE: %-46s║\n", result.Workspace)
+	}
+	if result.ProjectRoot != "" {
+		fmt.Fprintf(w, "║  PROJECT_ROOT: %-43s║\n", result.ProjectRoot)
+	}
+	if result.TeamRoot != "" && result.TeamRoot != result.ProjectRoot {
+		fmt.Fprintf(w, "║  TEAM_ROOT: %-46s║\n", result.TeamRoot)
+		fmt.Fprintf(w, "║  (config from TEAM_ROOT, work in PROJECT_ROOT)%-20s║\n", "")
+	}
+
+	if result.PathValidation != nil {
+		formatPathValidation(w, result.PathValidation)
+	}
 	if current.Role != "" {
 		roleLabel := current.RoleName
 		if roleLabel == "" {
@@ -194,7 +239,16 @@ func FormatText(w io.Writer, result *ProcRunResult) error {
 				req = " [REQUIRED]"
 			}
 			fmt.Fprintf(w, "║    - %-54s║\n", d.Name+req)
-			fmt.Fprintf(w, "║      → %-52s║\n", d.Path)
+			displayPath := d.Path
+			unresolvedVars := extractUnresolvedVars(d.Path)
+			if len(unresolvedVars) > 0 {
+				hint := " (use --task <id> to resolve)"
+				if len(unresolvedVars) == 1 && unresolvedVars[0] == "task_id" {
+					hint = " (use: flow task ready → flow proc run --task <id> " + current.NodeID + ")"
+				}
+				displayPath = d.Path + hint
+			}
+			fmt.Fprintf(w, "║      → %-52s║\n", displayPath)
 			if d.Description != "" {
 				fmt.Fprintf(w, "║        %-52s║\n", d.Description)
 			}
@@ -223,6 +277,41 @@ func FormatText(w io.Writer, result *ProcRunResult) error {
 			}
 			fmt.Fprintf(w, "║    %s %-47s║\n", reqLabel, line)
 		}
+
+		if len(result.GateCheckResults) > 0 {
+			fmt.Fprintf(w, "║%-60s║\n", "")
+			fmt.Fprintf(w, "║  GATE CHECK RESULTS (automated):%-30s║\n", "")
+			for _, r := range result.GateCheckResults {
+				statusIcon := "✓"
+				if !r.Passed {
+					statusIcon = "✗"
+				}
+				if r.Skipped {
+					statusIcon = "⊘"
+				}
+				modeLabel := "[AUTO]"
+				if !r.Auto {
+					modeLabel = "[AI]"
+				}
+				reqMark := ""
+				if r.Required {
+					reqMark = " *"
+				}
+				fmt.Fprintf(w, "║    %s %s %s%s\n", statusIcon, modeLabel, padLine(r.Type+reqMark, 24), padLine("", 24))
+				msgLines := wrapMessage(r.Message, 58)
+				for _, line := range msgLines {
+					fmt.Fprintf(w, "║      %s\n", padLine(line, 56))
+				}
+			}
+			passed, summary := GateOverallResult(result.GateCheckResults)
+			overallIcon := "✓"
+			if !passed {
+				overallIcon = "✗"
+			}
+			fmt.Fprintf(w, "║%-60s║\n", "")
+			fmt.Fprintf(w, "║  %s OVERALL: %s\n", overallIcon, padLine(summary, 50))
+		}
+
 		fmt.Fprintf(w, "║%-60s║\n", "")
 		fmt.Fprintf(w, "║  AI BEHAVIOR RULES:%-40s║\n", "")
 		fmt.Fprintf(w, "║    1. Evaluate ALL conditions%-33s║\n", "")
@@ -265,6 +354,16 @@ func FormatText(w io.Writer, result *ProcRunResult) error {
 		fmt.Fprintf(w, "║    2. Wait for ALL branches to complete (wait_all)%-14s║\n", "")
 		fmt.Fprintf(w, "║    3. If any branch fails → report to principal%-16s║\n", "")
 		fmt.Fprintf(w, "║    4. Only proceed to next node when all branches pass%-10s║\n", "")
+	}
+
+	if current.SubflowRef != "" {
+		fmt.Fprintf(w, "║  SUBFLOW:%-51s║\n", "")
+		fmt.Fprintf(w, "║    → %-54s║\n", current.SubflowRef)
+		fmt.Fprintf(w, "║%-60s║\n", "")
+		fmt.Fprintf(w, "║  AI BEHAVIOR RULES:%-40s║\n", "")
+		fmt.Fprintf(w, "║    1. Run 'flow proc run --flow %s' to enter subflow%-8s║\n", current.SubflowRef, "")
+		fmt.Fprintf(w, "║    2. Complete subflow execution, then return to parent%-8s║\n", "")
+		fmt.Fprintf(w, "║    3. Use 'flow proc run' (no --flow) to resume parent%-7s║\n", "")
 	}
 
 	fmt.Fprintf(w, "%s\n", boxMid(width))
@@ -363,4 +462,40 @@ func padRight(s string, width int) string {
 		return s[:width]
 	}
 	return s
+}
+
+var unresolvedVarRe = regexp.MustCompile(`\{(\w+)\}`)
+
+func wrapMessage(s string, width int) []string {
+	if len(s) <= width {
+		return []string{s}
+	}
+	var lines []string
+	for len(s) > width {
+		idx := width
+		for i := width; i > 0; i-- {
+			if s[i] == ' ' || s[i] == ',' || s[i] == '\n' {
+				idx = i + 1
+				break
+			}
+		}
+		if idx == width {
+			idx = width
+		}
+		lines = append(lines, s[:idx])
+		s = s[idx:]
+	}
+	if s != "" {
+		lines = append(lines, s)
+	}
+	return lines
+}
+
+func extractUnresolvedVars(path string) []string {
+	matches := unresolvedVarRe.FindAllStringSubmatch(path, -1)
+	vars := make([]string, 0, len(matches))
+	for _, m := range matches {
+		vars = append(vars, m[1])
+	}
+	return vars
 }

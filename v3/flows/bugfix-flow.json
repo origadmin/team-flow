@@ -183,7 +183,7 @@
           "description": "Bug triage record with severity assessment, priority, and dispatch decision",
           "format": "markdown",
           "name": "TRIAGE.md",
-          "path": "{DOCS_INTERNAL}/{task_id}/TRIAGE.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/TRIAGE.md",
           "required": true
         }
       ],
@@ -273,7 +273,7 @@
           "description": "Root cause analysis document detailing bug origin, affected components, and reproduction steps",
           "format": "markdown",
           "name": "RCA.md",
-          "path": "{DOCS_INTERNAL}/{task_id}/R0/RCA.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/R0/RCA.md",
           "required": true,
           "template": "{TEAM_PATH}/templates/bug-test-template.md"
         }
@@ -347,7 +347,7 @@
           "description": "Bug fix implementation notes: fix approach, code changes, regression test additions",
           "format": "markdown",
           "name": "FIX.md",
-          "path": "{DOCS_INTERNAL}/{task_id}/{iteration}/FIX.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/{iteration}/FIX.md",
           "required": true
         },
         {
@@ -357,7 +357,7 @@
           "description": "Change scope document: what was fixed, what changed, known side effects",
           "format": "markdown",
           "name": "SCOPE.md",
-          "path": "{DOCS_INTERNAL}/{task_id}/{iteration}/SCOPE.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/{iteration}/SCOPE.md",
           "required": true,
           "template": "{TEAM_PATH}/templates/scope-template.md"
         }
@@ -511,7 +511,7 @@
           "description": "Test case document for the bug fix including reproduction steps and verification results",
           "format": "markdown",
           "name": "TEST_CASE.md",
-          "path": "{DOCS_INTERNAL}/{task_id}/{iteration}/TEST_CASE.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/{iteration}/TEST_CASE.md",
           "required": true,
           "template": "{TEAM_PATH}/templates/bug-test-template.md"
         }

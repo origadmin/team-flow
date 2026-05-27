@@ -141,7 +141,7 @@
           "description": "Analysis triage record with research question, scope, and dispatch decision",
           "format": "markdown",
           "name": "TRIAGE.md",
-          "path": "{DOCS_INTERNAL}/{task_id}/TRIAGE.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/TRIAGE.md",
           "required": true
         }
       ],
@@ -222,7 +222,7 @@
           "description": "Analysis findings: investigation results, evidence, patterns, technical insights",
           "format": "markdown",
           "name": "FINDINGS.md",
-          "path": "{DOCS_INTERNAL}/{task_id}/FINDINGS.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/FINDINGS.md",
           "required": true
         }
       ],
@@ -271,7 +271,7 @@
           "description": "Final analysis report: conclusions, recommendations, action items, risk assessment",
           "format": "markdown",
           "name": "REPORT.md",
-          "path": "{DOCS_INTERNAL}/{task_id}/REPORT.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/REPORT.md",
           "required": true
         }
       ],

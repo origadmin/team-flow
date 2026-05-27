@@ -75,14 +75,17 @@ func (s *DefaultVarSubstitutor) CollectVars(ctx context.Context, f *flow.Flow, r
 
 	if f != nil {
 		domain := ""
+		taskType := ""
 		if f.Config != nil {
 			domain = f.Config.Domain
 			if domain == "" {
 				domain = string(f.Config.TaskType)
 			}
+			taskType = string(f.Config.TaskType)
 		}
 		vars["domain"] = domain
 		vars["flow_id"] = f.Metadata.Name
+		vars["DOC_CATEGORY"] = MapDocCategory(taskType)
 	}
 
 	if resolvedNodeID != "" {
@@ -90,6 +93,25 @@ func (s *DefaultVarSubstitutor) CollectVars(ctx context.Context, f *flow.Flow, r
 	}
 
 	return vars
+}
+
+func MapDocCategory(taskType string) string {
+	switch taskType {
+	case string(flow.TaskTypeFeature), string(flow.TaskTypeDocs):
+		return "requirements"
+	case string(flow.TaskTypeBug), string(flow.TaskTypeHotfix):
+		return "reports/bugs"
+	case string(flow.TaskTypeChange):
+		return "reports/changes"
+	case string(flow.TaskTypeAnalysis):
+		return "analysis"
+	case string(flow.TaskTypeRelease):
+		return "releases"
+	case string(flow.TaskTypeBatch):
+		return "batch"
+	default:
+		return "requirements"
+	}
 }
 
 func extractFlowNameFromProjectMD(data []byte) string {

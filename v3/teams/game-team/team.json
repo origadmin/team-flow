@@ -11,6 +11,30 @@
     {"id": "game-design-flow", "file": "game-design-flow.json", "description": "Game design and development flow", "default": true}
   ],
   "default_flow": "game-design-flow",
+  "toolchain": {
+    "test_command": "",
+    "lint_command": "",
+    "build_command": "",
+    "docs_internal": "_docs"
+  },
+  "gate_checkers": {
+    "build_passes": {
+      "type": "ai_judgment",
+      "description": "Verify game build compiles without errors"
+    },
+    "performance_budget_met": {
+      "type": "ai_judgment",
+      "description": "Verify performance meets budget (60fps minimum)"
+    },
+    "playtest_feedback_addressed": {
+      "type": "ai_judgment",
+      "description": "Verify playtest feedback has been addressed"
+    },
+    "art_style_consistent": {
+      "type": "ai_judgment",
+      "description": "Verify art assets match visual style guide"
+    }
+  },
   "roles": [
     {
       "id": "game-designer",

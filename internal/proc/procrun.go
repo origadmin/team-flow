@@ -9,7 +9,10 @@ import (
 	"strings"
 
 	"github.com/origadmin/team-flow/internal/bd"
+	"github.com/origadmin/team-flow/internal/config"
 	"github.com/origadmin/team-flow/internal/flow"
+	"github.com/origadmin/team-flow/internal/skill"
+	"github.com/origadmin/team-flow/internal/state"
 )
 
 type ProcRunRequest struct {
@@ -17,16 +20,50 @@ type ProcRunRequest struct {
 	NodeID      string
 	TaskID      string
 	ProjectRoot string
+	TeamRoot    string
+	Workspace   string
 	Format      string
+	RunGate     bool
 }
 
 type ProcRunResult struct {
-	Flow        FlowMeta     `json:"flow"`
-	Current     CurrentNode  `json:"current"`
-	NextOptions []NextOption `json:"next_options"`
-	StatusLine  string       `json:"status_line"`
-	Task        *TaskInfo    `json:"task,omitempty"`
-	TeamIntro   *TeamIntroData `json:"team_intro,omitempty"`
+	Flow            FlowMeta          `json:"flow"`
+	Current         CurrentNode       `json:"current"`
+	NextOptions     []NextOption      `json:"next_options"`
+	StatusLine      string            `json:"status_line"`
+	Task            *TaskInfo         `json:"task,omitempty"`
+	TeamIntro       *TeamIntroData    `json:"team_intro,omitempty"`
+	ProjectRoot     string            `json:"project_root,omitempty"`
+	TeamRoot        string            `json:"team_root,omitempty"`
+	Workspace       string            `json:"workspace,omitempty"`
+	PathValidation  *PathValidation   `json:"path_validation,omitempty"`
+	Skills          *SkillContext      `json:"skills,omitempty"`
+	GateCheckResults []GateCheckResult `json:"gate_check_results,omitempty"`
+}
+
+type PathValidation struct {
+	ProjectRoot    string `json:"project_root"`
+	CurrentCwd    string `json:"current_cwd"`
+	IsMatch       bool   `json:"is_match"`
+	EnforceLevel  string `json:"enforce_level"`
+	Warning       string `json:"warning,omitempty"`
+	RequiredAction string `json:"required_action,omitempty"`
+}
+
+type SkillContext struct {
+	ProjectRoot    string                `json:"project_root"`
+	TeamID         string                `json:"team_id,omitempty"`
+	RoleID         string                `json:"role_id,omitempty"`
+	ResolvedSkills []ResolvedSkillOutput `json:"resolved_skills"`
+	CacheFile      string                `json:"cache_file,omitempty"`
+}
+
+type ResolvedSkillOutput struct {
+	ID      string `json:"id"`
+	Source  string `json:"source"`
+	Trigger string `json:"trigger,omitempty"`
+	Path    string `json:"path,omitempty"`
+	Enabled bool   `json:"enabled"`
 }
 
 type TeamIntroData struct {
@@ -54,10 +91,10 @@ type TeamIntroFlow struct {
 }
 
 type TaskInfo struct {
-	BeadsID string `json:"beads_id,omitempty"`
-	Phase   string `json:"phase,omitempty"`
-	Status  string `json:"status,omitempty"`
-	URL     string `json:"url,omitempty"`
+	TaskID string `json:"task_id,omitempty"`
+	Phase  string `json:"phase,omitempty"`
+	Status string `json:"status,omitempty"`
+	URL    string `json:"url,omitempty"`
 }
 
 type FlowMeta struct {
@@ -99,6 +136,7 @@ type CurrentNode struct {
 	ParallelBranches  []ParallelBranchOutput  `json:"parallel_branches,omitempty"`
 	ParallelStrategy  string                  `json:"parallel_strategy,omitempty"`
 	MergeStrategy     string                  `json:"merge_strategy,omitempty"`
+	SubflowRef        string                  `json:"subflow_ref,omitempty"`
 	IsTerminal        bool                    `json:"is_terminal"`
 	TerminalStatus    string                  `json:"terminal_status,omitempty"`
 	TerminalMessage   string                  `json:"terminal_message,omitempty"`
@@ -149,11 +187,12 @@ type OnEnterAction struct {
 }
 
 type GateCondOutput struct {
-	Type      string `json:"type"`
-	Threshold string `json:"threshold,omitempty"`
-	Required  bool   `json:"required"`
-	Check     string `json:"check,omitempty"`
-	Expected  string `json:"expected,omitempty"`
+	Type         string   `json:"type"`
+	Threshold    string   `json:"threshold,omitempty"`
+	Required     bool     `json:"required"`
+	Check        string   `json:"check,omitempty"`
+	Expected     string   `json:"expected,omitempty"`
+	Deliverables []string `json:"deliverables,omitempty"`
 }
 
 type NextOption struct {
@@ -200,6 +239,17 @@ func (e *ProcRunEngine) Run(ctx context.Context, req ProcRunRequest) (*ProcRunRe
 		return nil, fmt.Errorf("resolve node: %w", err)
 	}
 
+	flowName := fl.Metadata.Name
+
+	if req.NodeID != "" && node.Type != flow.NodeTypeGate {
+		prereqGates := findPrerequisiteGates(fl, req.NodeID)
+		for _, gateID := range prereqGates {
+			if !state.IsGatePassed(req.ProjectRoot, flowName, gateID) {
+				return nil, fmt.Errorf("GATE BLOCKED: prerequisite gate %s has not been passed in flow '%s' — run 'flow proc run %s' first to pass the gate", gateID, flowName, gateID)
+			}
+		}
+	}
+
 	vars := e.VarSubstitutor.CollectVars(ctx, fl, req, node.ID)
 
 	var team *flow.TeamDefinition
@@ -220,37 +270,28 @@ func (e *ProcRunEngine) Run(ctx context.Context, req ProcRunRequest) (*ProcRunRe
 		}
 	}
 
-	result := generateResult(fl, node, vars, team, req.NodeID == "", req.ProjectRoot)
+	result := generateResult(fl, node, vars, team, req.NodeID == "", req.ProjectRoot, req.TeamRoot, req.Workspace, req.RunGate)
 
-	_ = req.ProjectRoot
+	if req.RunGate && node.Type == flow.NodeTypeGate && len(result.Current.GateConditions) > 0 {
+		substitutedConds := SubstituteGateConditions(result.Current.GateConditions, vars)
+		docsInternal := config.ResolveInternalDocs(req.ProjectRoot)
+		gateResults := RunGateCheck(req.ProjectRoot, substitutedConds, team, docsInternal)
+		result.GateCheckResults = gateResults
 
-	// Integrate beads task state if available
+		passed, summary := GateOverallResult(gateResults)
+		_ = state.RecordGateResult(req.ProjectRoot, flowName, node.ID, passed, summary)
+
+		if passed {
+			_ = state.RecordVisitedNode(req.ProjectRoot, flowName, node.ID)
+		}
+	} else if node.Type != flow.NodeTypeGate {
+		_ = state.RecordVisitedNode(req.ProjectRoot, flowName, node.ID)
+	}
+
 	if taskInfo := resolveTaskInfo(req.TaskID); taskInfo != nil {
 		result.Task = taskInfo
-		// Override StatusLine with beads data when available
-		if taskInfo.BeadsID != "" {
-			phase := taskInfo.Phase
-			if phase == "" {
-				for _, a := range result.Current.OnEnter {
-					if a.Action == "update_task_phase" && a.Phase != "" {
-						phase = a.Phase
-						break
-					}
-				}
-			}
-			role := result.Current.Role
-			if role == "" {
-				role = "System"
-			}
-			domain := string(fl.Config.TaskType)
-			if domain == "" {
-				domain = fl.Metadata.Name
-			}
-			asset := ""
-			if len(result.Current.Docs) > 0 {
-				asset = result.Current.Docs[0].Name
-			}
-			result.StatusLine = fmt.Sprintf("[%s|%s|%s|%s]", role, taskInfo.BeadsID, phase, asset)
+		if taskInfo.TaskID != "" {
+			result.StatusLine = buildStatusLineWithRef(fl, node, result.Current, taskInfo.TaskID)
 		}
 	}
 
@@ -282,7 +323,7 @@ func resolveTaskInfo(taskID string) *TaskInfo {
 
 	info := &TaskInfo{}
 	if id, ok := raw["id"].(string); ok {
-		info.BeadsID = id
+		info.TaskID = id
 	}
 	if status, ok := raw["status"].(string); ok {
 		info.Status = status
@@ -301,14 +342,14 @@ func resolveTaskInfo(taskID string) *TaskInfo {
 		}
 	}
 
-	if info.BeadsID == "" && info.Phase == "" {
+	if info.TaskID == "" && info.Phase == "" {
 		return nil
 	}
 
 	return info
 }
 
-func generateResult(fl *flow.Flow, node *flow.FlowNode, vars map[string]string, team *flow.TeamDefinition, isFirstNode bool, projectRoot string) *ProcRunResult {
+func generateResult(fl *flow.Flow, node *flow.FlowNode, vars map[string]string, team *flow.TeamDefinition, isFirstNode bool, projectRoot string, teamRoot string, workspace string, runGate bool) *ProcRunResult {
 	domain := ""
 	if fl.Config != nil {
 		domain = fl.Config.Domain
@@ -319,14 +360,28 @@ func generateResult(fl *flow.Flow, node *flow.FlowNode, vars map[string]string, 
 
 	current := buildCurrentNode(node, fl, vars, team)
 
+	configRoot := teamRoot
+	if configRoot == "" {
+		configRoot = projectRoot
+	}
+
 	result := &ProcRunResult{
 		Flow: FlowMeta{
 			Name:    fl.Metadata.Name,
 			Version: fl.Version,
 			Domain:  domain,
 		},
-		Current:    current,
-		StatusLine: buildStatusLine(fl, node, current, vars),
+		Current:     current,
+		StatusLine:  buildStatusLine(fl, node, current, vars),
+		ProjectRoot: projectRoot,
+		TeamRoot:    configRoot,
+		Workspace:   workspace,
+	}
+
+	if runGate && node.Type == flow.NodeTypeGate && len(current.GateConditions) > 0 {
+		substitutedConds := SubstituteGateConditions(current.GateConditions, vars)
+		docsInternal := config.ResolveInternalDocs(projectRoot)
+		result.GateCheckResults = RunGateCheck(projectRoot, substitutedConds, team, docsInternal)
 	}
 
 	result.NextOptions = buildNextOptions(fl, node.ID)
@@ -339,7 +394,61 @@ func generateResult(fl *flow.Flow, node *flow.FlowNode, vars map[string]string, 
 		result.NextOptions = []NextOption{}
 	}
 
+	result.PathValidation = validatePath(projectRoot, teamRoot)
+
+	// Load skills for the current role
+	if projectRoot != "" {
+		skillMgr := skill.NewSkillManager(projectRoot, "", "")
+		roleID := current.Role
+		if skillsFile, err := skillMgr.Resolve(roleID); err == nil {
+			skillCtx := &SkillContext{
+				ProjectRoot: projectRoot,
+				TeamID:      skillsFile.Team,
+				RoleID:      skillsFile.Role,
+				CacheFile:   skillMgr.CachePath(),
+			}
+			for _, s := range skillsFile.Skills {
+				skillCtx.ResolvedSkills = append(skillCtx.ResolvedSkills, ResolvedSkillOutput{
+					ID:      s.ID,
+					Source:  s.Source,
+					Trigger: s.Trigger,
+					Path:    s.Path,
+					Enabled: s.Enabled,
+				})
+			}
+			result.Skills = skillCtx
+		}
+	}
+
 	return result
+}
+
+func validatePath(projectRoot string, teamRoot string) *PathValidation {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return nil
+	}
+
+	cwdAbs, _ := filepath.Abs(cwd)
+	projectAbs, _ := filepath.Abs(projectRoot)
+
+	isMatch := strings.HasPrefix(cwdAbs, projectAbs)
+
+	warning := ""
+	requiredAction := ""
+	if !isMatch {
+		warning = "AI is not in the project directory"
+		requiredAction = fmt.Sprintf("cd %s", projectRoot)
+	}
+
+	return &PathValidation{
+		ProjectRoot:     projectRoot,
+		CurrentCwd:     cwd,
+		IsMatch:        isMatch,
+		EnforceLevel:   "warn",
+		Warning:        warning,
+		RequiredAction: requiredAction,
+	}
 }
 
 func buildCurrentNode(node *flow.FlowNode, fl *flow.Flow, vars map[string]string, team *flow.TeamDefinition) CurrentNode {
@@ -376,6 +485,16 @@ func buildCurrentNode(node *flow.FlowNode, fl *flow.Flow, vars map[string]string
 	case flow.NodeTypeGate:
 		current.Role = ""
 		current.GateConditions = ExtractGateConditions(node)
+		current.OnEnter = extractOnEnter(node)
+
+	case flow.NodeTypeSubflow:
+		current.GateConditions = nil
+		if node.Config != nil {
+			var sfCfg flow.SubflowConfig
+			if err := json.Unmarshal(node.Config, &sfCfg); err == nil {
+				current.SubflowRef = sfCfg.FlowRef
+			}
+		}
 		current.OnEnter = extractOnEnter(node)
 
 	case flow.NodeTypeTerminal:
@@ -857,14 +976,23 @@ func loadAvailableFlows(defaultFlow, projectRoot string) []TeamIntroFlow {
 }
 
 func buildStatusLine(fl *flow.Flow, node *flow.FlowNode, current CurrentNode, vars map[string]string) string {
-	role := current.Role
-	if role == "" {
-		role = "System"
+	return buildStatusLineWithRef(fl, node, current, "")
+}
+
+func buildStatusLineWithRef(fl *flow.Flow, node *flow.FlowNode, current CurrentNode, ref string) string {
+	alias := current.Alias
+	if alias == "" {
+		alias = current.Role
+	}
+	if alias == "" {
+		alias = "System"
 	}
 
-	taskPool := string(fl.Config.TaskType)
-	if taskPool == "" {
-		taskPool = fl.Metadata.Name
+	nodePart := fmt.Sprintf("%s:%s", node.ID, current.Name)
+	flowPart := fl.Metadata.Name
+
+	if ref == "" {
+		ref = "-"
 	}
 
 	phase := ""
@@ -874,17 +1002,41 @@ func buildStatusLine(fl *flow.Flow, node *flow.FlowNode, current CurrentNode, va
 		}
 	}
 	if phase == "" {
-		phase = node.Name
+		phase = current.Name
 	}
 
-	asset := ""
-	if len(current.Docs) > 0 {
-		asset = current.Docs[0].Name
-	}
-
-	return fmt.Sprintf("[%s|%s|%s|%s]", role, taskPool, phase, asset)
+	return fmt.Sprintf("[%s | %s(%s) | %s | %s]", alias, nodePart, flowPart, ref, phase)
 }
 
 func substituteVars(path string, vars map[string]string) string {
 	return SubstituteVarsInPath(path, vars)
+}
+
+func findPrerequisiteGates(fl *flow.Flow, nodeID string) []string {
+	nodeMap := make(map[string]bool, len(fl.Nodes))
+	for _, n := range fl.Nodes {
+		if n.Type == flow.NodeTypeGate {
+			nodeMap[n.ID] = true
+		}
+	}
+
+	var gateIDs []string
+	visited := make(map[string]bool)
+	var walk func(current string)
+	walk = func(current string) {
+		if visited[current] {
+			return
+		}
+		visited[current] = true
+		for _, e := range fl.Edges {
+			if e.To == current {
+				if nodeMap[e.From] {
+					gateIDs = append(gateIDs, e.From)
+				}
+				walk(e.From)
+			}
+		}
+	}
+	walk(nodeID)
+	return gateIDs
 }

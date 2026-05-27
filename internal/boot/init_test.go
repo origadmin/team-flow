@@ -33,6 +33,7 @@ func TestDetectIDEsBridgePaths(t *testing.T) {
 		"Cursor":   {".cursor/rules/team-flow.mdc", "cursor", ".cursor/skills"},
 		"Claude":   {".claude/rules/team-flow.md", "claude", ".claude/skills"},
 		"OpenClaw": {".openclaw/rules/team-flow.md", "openclaw", ".openclaw/skills"},
+		"Gemini":   {".gemini/rules/team-flow.md", "gemini", ".gemini/skills"},
 	}
 
 	for _, ide := range ides {
@@ -116,11 +117,13 @@ func TestGenerateDevMD_GeneratesAllBridgeFiles(t *testing.T) {
 	cursorDir := filepath.Join(tmpDir, ".cursor")
 	claudeDir := filepath.Join(tmpDir, ".claude")
 	openclawDir := filepath.Join(tmpDir, ".openclaw")
+	geminiDir := filepath.Join(tmpDir, ".gemini")
 
 	os.MkdirAll(traeDir, 0755)
 	os.MkdirAll(cursorDir, 0755)
 	os.MkdirAll(claudeDir, 0755)
 	os.MkdirAll(openclawDir, 0755)
+	os.MkdirAll(geminiDir, 0755)
 
 	force = true
 	defer func() { force = false }()
@@ -133,6 +136,7 @@ func TestGenerateDevMD_GeneratesAllBridgeFiles(t *testing.T) {
 		filepath.Join(tmpDir, ".cursor", "rules", "team-flow.mdc"):     "cursor",
 		filepath.Join(tmpDir, ".claude", "rules", "team-flow.md"):     "claude",
 		filepath.Join(tmpDir, ".openclaw", "rules", "team-flow.md"):    "openclaw",
+		filepath.Join(tmpDir, ".gemini", "rules", "team-flow.md"):      "gemini",
 	}
 
 	for path, format := range expectedFiles {
@@ -160,6 +164,7 @@ func TestBridgeFilesAreMinimal(t *testing.T) {
 		{"cursor", ".cursor/skills/team-flow"},
 		{"claude", ".claude/skills/team-flow"},
 		{"openclaw", ".openclaw/skills/team-flow"},
+		{"gemini", ".gemini/skills/team-flow"},
 	}
 
 	for _, tc := range formats {

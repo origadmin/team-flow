@@ -11,6 +11,19 @@
     {"id": "trading-flow", "file": "trading-flow.json", "description": "Complete trading analysis flow", "default": true}
   ],
   "default_flow": "trading-flow",
+  "toolchain": {
+    "docs_internal": "_docs"
+  },
+  "gate_checkers": {
+    "backtest_passes": {
+      "type": "ai_judgment",
+      "description": "Verify trading strategy passes backtesting"
+    },
+    "risk_limits_met": {
+      "type": "ai_judgment",
+      "description": "Verify risk parameters are within acceptable limits"
+    }
+  },
   "roles": [
     {
       "id": "r3k7",

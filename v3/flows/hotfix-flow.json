@@ -163,7 +163,7 @@
           "description": "Hotfix triage record with severity assessment, impact scope, and dispatch decision",
           "format": "markdown",
           "name": "TRIAGE.md",
-          "path": "{DOCS_INTERNAL}/{task_id}/TRIAGE.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/TRIAGE.md",
           "required": true
         }
       ],
@@ -269,7 +269,7 @@
           "description": "Emergency RCA: incident timeline, root cause, fix description, post-incident actions",
           "format": "markdown",
           "name": "RCA.md",
-          "path": "{DOCS_INTERNAL}/{task_id}/RCA.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/RCA.md",
           "required": true,
           "template": "{TEAM_PATH}/templates/bug-test-template.md"
         }
@@ -389,7 +389,7 @@
           "description": "Test case document for the hotfix including smoke test results",
           "format": "markdown",
           "name": "TEST_CASE.md",
-          "path": "{DOCS_INTERNAL}/{task_id}/TEST_CASE.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/TEST_CASE.md",
           "required": true,
           "template": "{TEAM_PATH}/templates/bug-test-template.md"
         }

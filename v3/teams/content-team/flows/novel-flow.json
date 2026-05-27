@@ -1,0 +1,523 @@
+{
+  "version": "v3",
+  "metadata": {
+    "name": "novel-flow",
+    "description": "Novel writing flow: Concept → Outline → Characters & World → Gate → Chapter Writing → Gate → Editing → Terminal",
+    "author": "team-flow",
+    "tags": [
+      "novel",
+      "writing",
+      "creative"
+    ]
+  },
+  "config": {
+    "task_type": "development",
+    "domain": "writing",
+    "auto_dispatch": true,
+    "parallel_limit": 2,
+    "timeout_minutes": 600
+  },
+  "variables": {
+    "DOCS_INTERNAL": "",
+    "TEAM_PATH": "",
+    "task_id": "",
+    "SKILL_PATH": "",
+    "workspace": "",
+    "domain": "writing"
+  },
+  "components": {
+    "roles": [],
+    "rules": [],
+    "tools": [
+      {
+        "id": "task",
+        "name": "Task Manager",
+        "type": "builtin",
+        "commands": [
+          "show",
+          "update",
+          "append"
+        ],
+        "scope": "docs"
+      },
+      {
+        "id": "file-write",
+        "name": "File Writer",
+        "type": "builtin",
+        "scope": "docs"
+      },
+      {
+        "id": "search",
+        "name": "Codebase Search",
+        "type": "builtin",
+        "scope": "all"
+      }
+    ],
+    "gates": [
+      {
+        "id": "outline-review",
+        "name": "Outline Review Gate",
+        "type": "deliverable_check",
+        "source": "novel-flow"
+      },
+      {
+        "id": "manuscript-review",
+        "name": "Manuscript Review Gate",
+        "type": "deliverable_check",
+        "source": "novel-flow"
+      }
+    ]
+  },
+  "nodes": [
+    {
+      "id": "nc01",
+      "type": "phase",
+      "name": "Novel Concept",
+      "description": "Define the novel concept including genre, themes, target audience, and narrative vision",
+      "config": {
+        "role": "Writer"
+      },
+      "components": {
+        "roles": [
+          {
+            "ref": "writer",
+            "source": "team"
+          }
+        ],
+        "rules": [
+          {
+            "ref": "r3k7",
+            "source": "team"
+          },
+          {
+            "ref": "k9m2",
+            "source": "team"
+          },
+          {
+            "ref": "h1f8",
+            "source": "team"
+          },
+          {
+            "ref": "qg1",
+            "source": "team"
+          },
+          {
+            "ref": "qg4",
+            "source": "team"
+          }
+        ]
+      },
+      "docs": [
+        {
+          "name": "CONCEPT.md",
+          "format": "markdown",
+          "path": "{DOCS_INTERNAL}/{task_id}/CONCEPT.md",
+          "required": true,
+          "description": "Novel concept: genre, themes, target audience, narrative vision, tone, comparable works, unique angle"
+        }
+      ],
+      "on_enter": [
+        {
+          "action": "update_task_phase",
+          "phase": "analyze"
+        }
+      ]
+    },
+    {
+      "id": "nc02",
+      "type": "phase",
+      "name": "Story Outline",
+      "description": "Create the detailed story outline with narrative arc, chapter breakdown, and key plot points",
+      "config": {
+        "role": "Writer"
+      },
+      "components": {
+        "roles": [
+          {
+            "ref": "writer",
+            "source": "team"
+          }
+        ],
+        "rules": [
+          {
+            "ref": "r3k7",
+            "source": "team"
+          },
+          {
+            "ref": "k9m2",
+            "source": "team"
+          },
+          {
+            "ref": "h1f8",
+            "source": "team"
+          },
+          {
+            "ref": "o5t6",
+            "source": "team"
+          }
+        ]
+      },
+      "docs": [
+        {
+          "name": "OUTLINE.md",
+          "format": "markdown",
+          "path": "{DOCS_INTERNAL}/{task_id}/OUTLINE.md",
+          "required": true,
+          "description": "Story outline: three-act structure, chapter breakdown, key plot points, turning points, climax, resolution"
+        }
+      ],
+      "on_enter": [
+        {
+          "action": "update_task_phase",
+          "phase": "design"
+        }
+      ]
+    },
+    {
+      "id": "nc03",
+      "type": "phase",
+      "name": "Character & World Building",
+      "description": "Develop character profiles, relationships, world settings, and rules",
+      "config": {
+        "role": "Writer"
+      },
+      "components": {
+        "roles": [
+          {
+            "ref": "writer",
+            "source": "team"
+          }
+        ],
+        "rules": [
+          {
+            "ref": "r3k7",
+            "source": "team"
+          },
+          {
+            "ref": "c4p1",
+            "source": "team"
+          },
+          {
+            "ref": "w8n3",
+            "source": "team"
+          },
+          {
+            "ref": "h1f8",
+            "source": "team"
+          }
+        ]
+      },
+      "docs": [
+        {
+          "name": "CHARACTERS.md",
+          "format": "markdown",
+          "path": "{DOCS_INTERNAL}/{task_id}/CHARACTERS.md",
+          "required": true,
+          "description": "Character profiles: backstory, motivations, relationships, character arcs, voice, quirks"
+        },
+        {
+          "name": "WORLDBUILDING.md",
+          "format": "markdown",
+          "path": "{DOCS_INTERNAL}/{task_id}/WORLDBUILDING.md",
+          "required": true,
+          "description": "World settings: geography, culture, magic/technology system, social structure, history, rules"
+        }
+      ],
+      "on_enter": [
+        {
+          "action": "update_task_phase",
+          "phase": "design"
+        }
+      ]
+    },
+    {
+      "id": "ngo4",
+      "type": "gate",
+      "name": "Outline Review",
+      "description": "Evaluate if the story outline, characters, and world are coherent and complete enough to write",
+      "config": {
+        "conditions": [
+          {
+            "type": "deliverables_complete",
+            "required": true,
+            "deliverables": [
+              "OUTLINE.md",
+              "CHARACTERS.md",
+              "WORLDBUILDING.md"
+            ],
+            "check": "All three documents exist and contain substantive content"
+          },
+          {
+            "type": "custom",
+            "required": true,
+            "check": "Outline has chapter breakdown with key plot points, characters have defined arcs, world has consistent rules",
+            "expected": "outline_complete AND characters_complete AND world_complete"
+          }
+        ],
+        "on_pass": "nw05",
+        "on_fail": "nc02",
+        "auto_retry": {
+          "max_attempts": 2,
+          "delay_minutes": 5
+        }
+      }
+    },
+    {
+      "id": "nw05",
+      "type": "phase",
+      "name": "Chapter Writing",
+      "description": "Write the full manuscript following the outline, character profiles, and world settings",
+      "config": {
+        "role": "Writer"
+      },
+      "components": {
+        "roles": [
+          {
+            "ref": "writer",
+            "source": "team"
+          }
+        ],
+        "rules": [
+          {
+            "ref": "r3k7",
+            "source": "team"
+          },
+          {
+            "ref": "k9m2",
+            "source": "team"
+          },
+          {
+            "ref": "c4p1",
+            "source": "team"
+          },
+          {
+            "ref": "w8n3",
+            "source": "team"
+          },
+          {
+            "ref": "o5t6",
+            "source": "team"
+          },
+          {
+            "ref": "h1f8",
+            "source": "team"
+          },
+          {
+            "ref": "p7s4",
+            "source": "team"
+          }
+        ],
+        "tools": [
+          {
+            "ref": "task"
+          },
+          {
+            "ref": "file-write"
+          }
+        ],
+        "constraints": [
+          {
+            "type": "file_write",
+            "allowed_paths": [
+              "{DOCS_INTERNAL}/{task_id}/"
+            ]
+          }
+        ]
+      },
+      "docs": [
+        {
+          "name": "MANUSCRIPT.md",
+          "format": "markdown",
+          "path": "{DOCS_INTERNAL}/{task_id}/MANUSCRIPT.md",
+          "required": true,
+          "description": "Full manuscript: all chapters with narrative prose, dialogue, scene descriptions, following outline structure"
+        }
+      ],
+      "on_enter": [
+        {
+          "action": "update_task_phase",
+          "phase": "implement"
+        }
+      ]
+    },
+    {
+      "id": "ngl6",
+      "type": "gate",
+      "name": "Manuscript Review",
+      "description": "Verify manuscript completion: all chapters present, word count met, outline adherence, character consistency",
+      "config": {
+        "conditions": [
+          {
+            "type": "deliverables_complete",
+            "required": true,
+            "deliverables": [
+              "MANUSCRIPT.md"
+            ],
+            "check": "Manuscript exists with all chapters from the outline"
+          },
+          {
+            "type": "custom",
+            "required": true,
+            "check": "Word count meets chapter target (3000-5000 words per chapter), POV consistent, characters match CHARACTERS.md, follows OUTLINE.md",
+            "expected": "word_count_met AND pov_consistent AND character_consistent AND outline_adherence"
+          }
+        ],
+        "on_pass": "ne07",
+        "on_fail": "nw05",
+        "auto_retry": {
+          "max_attempts": 2,
+          "delay_minutes": 5
+        }
+      }
+    },
+    {
+      "id": "ne07",
+      "type": "phase",
+      "name": "Editing & Polish",
+      "description": "Edit for prose quality, grammar, style consistency, and produce final manuscript",
+      "config": {
+        "role": "Editor"
+      },
+      "components": {
+        "roles": [
+          {
+            "ref": "editor",
+            "source": "team"
+          }
+        ],
+        "rules": [
+          {
+            "ref": "r3k7",
+            "source": "team"
+          },
+          {
+            "ref": "e2d9",
+            "source": "team"
+          },
+          {
+            "ref": "c4p1",
+            "source": "team"
+          },
+          {
+            "ref": "w8n3",
+            "source": "team"
+          },
+          {
+            "ref": "h1f8",
+            "source": "team"
+          },
+          {
+            "ref": "qg4",
+            "source": "team"
+          }
+        ]
+      },
+      "docs": [
+        {
+          "name": "FINAL_MANUSCRIPT.md",
+          "format": "markdown",
+          "path": "{DOCS_INTERNAL}/{task_id}/FINAL_MANUSCRIPT.md",
+          "required": true,
+          "description": "Final edited manuscript: polished prose, corrected grammar, consistent style, ready for publication"
+        }
+      ],
+      "on_enter": [
+        {
+          "action": "update_task_phase",
+          "phase": "review"
+        }
+      ]
+    },
+    {
+      "id": "ns00",
+      "type": "terminal",
+      "name": "Novel Complete",
+      "description": "Novel manuscript completed and ready for publication",
+      "config": {
+        "status": "success",
+        "message": "Novel writing flow completed successfully"
+      }
+    },
+    {
+      "id": "nr08",
+      "type": "terminal",
+      "name": "Major Revision Needed",
+      "description": "Manuscript requires fundamental rework of story structure",
+      "config": {
+        "status": "rejected",
+        "message": "Story structure or world building needs fundamental revision"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-nc01-nc02",
+      "from": "nc01",
+      "to": "nc02"
+    },
+    {
+      "id": "e-nc02-nc03",
+      "from": "nc02",
+      "to": "nc03"
+    },
+    {
+      "id": "e-nc03-ngo4",
+      "from": "nc03",
+      "to": "ngo4"
+    },
+    {
+      "id": "e-ngo4-nw05",
+      "from": "ngo4",
+      "to": "nw05",
+      "type": "conditional",
+      "conditions": [
+        {
+          "expression": "gate.passed"
+        }
+      ]
+    },
+    {
+      "id": "e-ngo4-nr08",
+      "from": "ngo4",
+      "to": "nr08",
+      "type": "conditional",
+      "conditions": [
+        {
+          "expression": "!gate.passed"
+        }
+      ]
+    },
+    {
+      "id": "e-nw05-ngl6",
+      "from": "nw05",
+      "to": "ngl6"
+    },
+    {
+      "id": "e-ngl6-ne07",
+      "from": "ngl6",
+      "to": "ne07",
+      "type": "conditional",
+      "conditions": [
+        {
+          "expression": "gate.passed"
+        }
+      ]
+    },
+    {
+      "id": "e-ngl6-nr08",
+      "from": "ngl6",
+      "to": "nr08",
+      "type": "conditional",
+      "conditions": [
+        {
+          "expression": "!gate.passed"
+        }
+      ]
+    },
+    {
+      "id": "e-ne07-ns00",
+      "from": "ne07",
+      "to": "ns00"
+    }
+  ]
+}

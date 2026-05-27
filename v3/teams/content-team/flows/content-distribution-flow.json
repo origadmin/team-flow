@@ -1,0 +1,566 @@
+{
+  "version": "v3",
+  "metadata": {
+    "name": "content-distribution-flow",
+    "description": "Omnichannel content distribution: Strategy → Adaptation → Gate → Distribution → Gate → Data Analysis → Optimization → Terminal",
+    "author": "team-flow",
+    "tags": [
+      "content",
+      "distribution",
+      "omnichannel",
+      "marketing"
+    ]
+  },
+  "config": {
+    "task_type": "development",
+    "domain": "content-distribution",
+    "auto_dispatch": true,
+    "parallel_limit": 3,
+    "timeout_minutes": 360
+  },
+  "variables": {
+    "DOCS_INTERNAL": "",
+    "TEAM_PATH": "",
+    "task_id": "",
+    "SKILL_PATH": "",
+    "workspace": "",
+    "domain": "content-distribution"
+  },
+  "components": {
+    "roles": [],
+    "rules": [],
+    "tools": [
+      {
+        "id": "task",
+        "name": "Task Manager",
+        "type": "cli",
+        "commands": [
+          "create",
+          "update",
+          "close",
+          "show",
+          "list",
+          "ready",
+          "append"
+        ]
+      },
+      {
+        "id": "search",
+        "name": "Codebase Search",
+        "type": "builtin"
+      },
+      {
+        "id": "file-ops",
+        "name": "File Operations",
+        "type": "builtin"
+      }
+    ]
+  },
+  "nodes": [
+    {
+      "id": "cs01",
+      "type": "phase",
+      "name": "Content Strategy",
+      "description": "Define the content distribution strategy: target platforms, audience profiles, content forms, timing windows, and success metrics",
+      "config": {
+        "role": "Strategist"
+      },
+      "components": {
+        "roles": [
+          {
+            "ref": "strategist",
+            "source": "team"
+          }
+        ],
+        "rules": [
+          {
+            "ref": "c1x",
+            "source": "team"
+          },
+          {
+            "ref": "c2y",
+            "source": "team"
+          },
+          {
+            "ref": "c3z",
+            "source": "team"
+          },
+          {
+            "ref": "c6u",
+            "source": "team"
+          },
+          {
+            "ref": "qg1",
+            "source": "team"
+          },
+          {
+            "ref": "qg4",
+            "source": "team"
+          }
+        ],
+        "tools": [
+          {
+            "ref": "task",
+            "commands": [
+              "show",
+              "update",
+              "append"
+            ]
+          },
+          {
+            "ref": "search"
+          }
+        ]
+      },
+      "docs": [
+        {
+          "name": "STRATEGY.md",
+          "format": "markdown",
+          "path": "{DOCS_INTERNAL}/{task_id}/STRATEGY.md",
+          "required": true,
+          "description": "Distribution strategy: target platforms with audience profiles, content form per platform, timing windows, success metrics, and competitive landscape"
+        },
+        {
+          "name": "PLATFORMS.md",
+          "format": "markdown",
+          "path": "{DOCS_INTERNAL}/{task_id}/PLATFORMS.md",
+          "required": true,
+          "description": "Platform specifications: each target platform's format requirements, algorithm preferences, content policies, optimal posting windows, and audience demographics"
+        }
+      ],
+      "on_enter": [
+        {
+          "action": "update_task_phase",
+          "phase": "analyze"
+        }
+      ]
+    },
+    {
+      "id": "ca02",
+      "type": "phase",
+      "name": "Channel Adaptation",
+      "description": "Adapt content for each target platform: rewrite hooks, adjust format, resize visuals, craft platform-specific CTAs",
+      "config": {
+        "role": "Adapter"
+      },
+      "components": {
+        "roles": [
+          {
+            "ref": "adapter",
+            "source": "team"
+          }
+        ],
+        "rules": [
+          {
+            "ref": "c1x",
+            "source": "team"
+          },
+          {
+            "ref": "c2y",
+            "source": "team"
+          },
+          {
+            "ref": "c7t",
+            "source": "team"
+          },
+          {
+            "ref": "c5v",
+            "source": "team"
+          },
+          {
+            "ref": "c6u",
+            "source": "team"
+          },
+          {
+            "ref": "qg2",
+            "source": "team"
+          }
+        ],
+        "tools": [
+          {
+            "ref": "task",
+            "commands": [
+              "show",
+              "update",
+              "append"
+            ]
+          },
+          {
+            "ref": "search"
+          }
+        ],
+        "constraints": [
+          {
+            "type": "file_write",
+            "allowed_paths": [
+              "{DOCS_INTERNAL}/{task_id}/"
+            ]
+          }
+        ]
+      },
+      "docs": [
+        {
+          "name": "ADAPTATIONS.md",
+          "format": "markdown",
+          "path": "{DOCS_INTERNAL}/{task_id}/ADAPTATIONS.md",
+          "required": true,
+          "description": "Adapted content for each platform: platform-specific hooks, body content, CTAs, hashtags, visual briefs, and compliance notes"
+        }
+      ],
+      "on_enter": [
+        {
+          "action": "update_task_phase",
+          "phase": "design"
+        }
+      ]
+    },
+    {
+      "id": "cg03",
+      "type": "gate",
+      "name": "Strategy Review Gate",
+      "description": "Verify strategy and adaptations are complete, compliant, and platform-appropriate before distribution",
+      "config": {
+        "conditions": [
+          {
+            "type": "deliverables_complete",
+            "required": true,
+            "deliverables": [
+              "STRATEGY.md",
+              "PLATFORMS.md",
+              "ADAPTATIONS.md"
+            ],
+            "check": "All three documents exist and contain substantive content"
+          },
+          {
+            "type": "custom",
+            "required": true,
+            "check": "Each target platform has an independently adapted version",
+            "expected": "platform_count == adaptation_count"
+          }
+        ],
+        "on_pass": "dd04",
+        "on_fail": "cs01",
+        "auto_retry": {
+          "max_attempts": 2,
+          "delay_minutes": 5
+        }
+      }
+    },
+    {
+      "id": "dd04",
+      "type": "phase",
+      "name": "Distribution Execution",
+      "description": "Execute the distribution plan: schedule and publish content to each platform within optimal time windows",
+      "config": {
+        "role": "Dispatcher"
+      },
+      "components": {
+        "roles": [
+          {
+            "ref": "dispatcher",
+            "source": "team"
+          }
+        ],
+        "rules": [
+          {
+            "ref": "c3z",
+            "source": "team"
+          },
+          {
+            "ref": "c8s",
+            "source": "team"
+          },
+          {
+            "ref": "c5v",
+            "source": "team"
+          },
+          {
+            "ref": "c6u",
+            "source": "team"
+          },
+          {
+            "ref": "qg3",
+            "source": "team"
+          }
+        ],
+        "tools": [
+          {
+            "ref": "task"
+          },
+          {
+            "ref": "search"
+          },
+          {
+            "ref": "file-ops"
+          }
+        ],
+        "constraints": [
+          {
+            "type": "file_write",
+            "allowed_paths": [
+              "{DOCS_INTERNAL}/{task_id}/"
+            ]
+          }
+        ]
+      },
+      "docs": [
+        {
+          "name": "SCHEDULE.md",
+          "format": "markdown",
+          "path": "{DOCS_INTERNAL}/{task_id}/SCHEDULE.md",
+          "required": true,
+          "description": "Distribution schedule: each platform's publish time, content version, responsible party, and pre-publish checklist"
+        },
+        {
+          "name": "DISTRIBUTION_LOG.md",
+          "format": "markdown",
+          "path": "{DOCS_INTERNAL}/{task_id}/DISTRIBUTION_LOG.md",
+          "required": true,
+          "description": "Distribution log: actual publish time, URL, status per platform, any issues encountered and resolution"
+        }
+      ],
+      "on_enter": [
+        {
+          "action": "update_task_phase",
+          "phase": "implement"
+        }
+      ]
+    },
+    {
+      "id": "dg05",
+      "type": "gate",
+      "name": "Distribution Verification Gate",
+      "description": "Verify all platforms have been published successfully with correct content and within time windows",
+      "config": {
+        "conditions": [
+          {
+            "type": "deliverables_complete",
+            "required": true,
+            "deliverables": [
+              "SCHEDULE.md",
+              "DISTRIBUTION_LOG.md"
+            ],
+            "check": "Schedule and distribution log exist with all platforms accounted for"
+          },
+          {
+            "type": "custom",
+            "required": true,
+            "check": "Every platform in STRATEGY.md has a corresponding entry in DISTRIBUTION_LOG.md with success status",
+            "expected": "platform_count == published_count"
+          }
+        ],
+        "on_pass": "da06",
+        "on_fail": "dd04",
+        "auto_retry": {
+          "max_attempts": 2,
+          "delay_minutes": 5
+        }
+      }
+    },
+    {
+      "id": "da06",
+      "type": "phase",
+      "name": "Data Analysis",
+      "description": "Analyze performance metrics across all platforms: reach, engagement, conversion, and cross-platform comparison",
+      "config": {
+        "role": "Analyst"
+      },
+      "components": {
+        "roles": [
+          {
+            "ref": "analyst",
+            "source": "team"
+          }
+        ],
+        "rules": [
+          {
+            "ref": "c4w",
+            "source": "team"
+          },
+          {
+            "ref": "c6u",
+            "source": "team"
+          }
+        ],
+        "tools": [
+          {
+            "ref": "task",
+            "commands": [
+              "show",
+              "update",
+              "append"
+            ]
+          },
+          {
+            "ref": "search"
+          }
+        ]
+      },
+      "docs": [
+        {
+          "name": "METRICS.md",
+          "format": "markdown",
+          "path": "{DOCS_INTERNAL}/{task_id}/METRICS.md",
+          "required": true,
+          "description": "Performance metrics: per-platform reach, engagement rate, conversion rate, cross-platform normalized comparison, anomaly flags, and trend indicators"
+        }
+      ],
+      "on_enter": [
+        {
+          "action": "update_task_phase",
+          "phase": "verify"
+        }
+      ]
+    },
+    {
+      "id": "or07",
+      "type": "phase",
+      "name": "Optimization & Iteration",
+      "description": "Generate optimization recommendations based on data analysis and plan next iteration with measurable improvement targets",
+      "config": {
+        "role": "Optimizer"
+      },
+      "components": {
+        "roles": [
+          {
+            "ref": "optimizer",
+            "source": "team"
+          }
+        ],
+        "rules": [
+          {
+            "ref": "c4w",
+            "source": "team"
+          },
+          {
+            "ref": "c6u",
+            "source": "team"
+          },
+          {
+            "ref": "qg4",
+            "source": "team"
+          }
+        ],
+        "tools": [
+          {
+            "ref": "task",
+            "commands": [
+              "show",
+              "update",
+              "close"
+            ]
+          },
+          {
+            "ref": "search"
+          }
+        ]
+      },
+      "docs": [
+        {
+          "name": "OPTIMIZATION.md",
+          "format": "markdown",
+          "path": "{DOCS_INTERNAL}/{task_id}/OPTIMIZATION.md",
+          "required": true,
+          "description": "Optimization report: data-driven recommendations, A/B test proposals, measurable improvement targets, next iteration plan, and priority ranking"
+        }
+      ],
+      "on_enter": [
+        {
+          "action": "update_task_phase",
+          "phase": "review"
+        }
+      ]
+    },
+    {
+      "id": "ts00",
+      "type": "terminal",
+      "name": "Distribution Complete",
+      "description": "Content distribution cycle completed with data analysis and optimization plan",
+      "config": {
+        "status": "success",
+        "message": "Content distribution cycle completed successfully"
+      }
+    },
+    {
+      "id": "tr08",
+      "type": "terminal",
+      "name": "Strategy Revision Needed",
+      "description": "Strategy review failed — fundamental rework required",
+      "config": {
+        "status": "rejected",
+        "message": "Content strategy or adaptation needs fundamental revision"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-cs01-ca02",
+      "from": "cs01",
+      "to": "ca02"
+    },
+    {
+      "id": "e-ca02-cg03",
+      "from": "ca02",
+      "to": "cg03"
+    },
+    {
+      "id": "e-cg03-dd04",
+      "from": "cg03",
+      "to": "dd04",
+      "type": "conditional",
+      "conditions": [
+        {
+          "expression": "gate.passed"
+        }
+      ]
+    },
+    {
+      "id": "e-cg03-tr08",
+      "from": "cg03",
+      "to": "tr08",
+      "type": "conditional",
+      "conditions": [
+        {
+          "expression": "!gate.passed"
+        }
+      ]
+    },
+    {
+      "id": "e-dd04-dg05",
+      "from": "dd04",
+      "to": "dg05"
+    },
+    {
+      "id": "e-dg05-da06",
+      "from": "dg05",
+      "to": "da06",
+      "type": "conditional",
+      "conditions": [
+        {
+          "expression": "gate.passed"
+        }
+      ]
+    },
+    {
+      "id": "e-dg05-dd04",
+      "from": "dg05",
+      "to": "dd04",
+      "type": "conditional",
+      "conditions": [
+        {
+          "expression": "!gate.passed"
+        }
+      ]
+    },
+    {
+      "id": "e-da06-or07",
+      "from": "da06",
+      "to": "or07"
+    },
+    {
+      "id": "e-or07-ts00",
+      "from": "or07",
+      "to": "ts00"
+    }
+  ]
+}

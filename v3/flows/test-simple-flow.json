@@ -88,7 +88,7 @@
         {
           "name": "IMPL.md",
           "format": "markdown",
-          "path": "{DOCS_INTERNAL}/{task_id}/IMPL.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/IMPL.md",
           "required": true,
           "description": "Implementation notes"
         }

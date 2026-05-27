@@ -284,9 +284,14 @@
       "docs": [
         {
           "content_rules": [
-            "Must contain: overview, requirements, constraints, dependencies"
+            "Must contain: overview, requirements, constraints, dependencies",
+            "Must contain: user-facing pages with routes, layouts, and component specs (not admin-only)",
+            "Must contain: navigation entry points — how users reach each page from existing UI",
+            "Must contain: interaction flows for key scenarios with step-by-step UI transitions",
+            "Must contain: state-to-UI mapping — what users see for each business state",
+            "Must contain: empty/loading/error states for each user-facing page"
           ],
-          "description": "Feature specification document detailing requirements, scope, and constraints",
+          "description": "Feature specification document detailing requirements, scope, constraints, user journey, navigation, interaction flows",
           "format": "markdown",
           "name": "SPEC.md",
           "path": "{DOCS_INTERNAL}/{task_id}/SPEC.md",
@@ -296,9 +301,12 @@
         {
           "content_rules": [
             "Must contain: acceptance criteria as testable assertions",
-            "Each criterion must be verifiable (pass/fail)"
+            "Each criterion must be verifiable (pass/fail)",
+            "Must contain: UI-level acceptance criteria — what user sees and can interact with, not just API responses",
+            "Must contain: navigation reachability criteria — every page must be reachable from at least one navigation entry",
+            "Must contain: end-to-end user journey criteria — user can complete key flows without dead ends"
           ],
-          "description": "Acceptance criteria with measurable conditions for feature completion",
+          "description": "Acceptance criteria with measurable conditions for feature completion, including UI and navigation criteria",
           "format": "markdown",
           "name": "AC.md",
           "path": "{DOCS_INTERNAL}/{task_id}/AC.md",
@@ -390,6 +398,21 @@
           "path": "{DOCS_INTERNAL}/{task_id}/R3_API_CONTRACT.md",
           "required": true,
           "template": "{TEAM_PATH}/templates/api-issue-template.md"
+        },
+        {
+          "content_rules": [
+            "Must contain: frontend route definitions for ALL user-facing pages (not admin-only)",
+            "Must contain: navigation structure — sidebar/menu items, entry points, breadcrumbs",
+            "Must contain: component specs per page — which UI components, form fields, action buttons",
+            "Must contain: interaction flow diagrams — step-by-step UI transitions for key scenarios",
+            "Must contain: state-to-UI mapping table — business state → displayed UI elements",
+            "Must contain: empty state, loading state, error state for each page"
+          ],
+          "description": "UI specification: frontend routes, navigation, component specs, interaction flows, state-to-UI mapping",
+          "format": "markdown",
+          "name": "R4_UI_SPEC.md",
+          "path": "{DOCS_INTERNAL}/{task_id}/R4_UI_SPEC.md",
+          "required": true
         }
       ],
       "id": "phase-design",
@@ -622,6 +645,7 @@
               "R1_DATA_MODEL.md",
               "R2_STATE_MACHINE.md",
               "R3_API_CONTRACT.md",
+              "R4_UI_SPEC.md",
               "IMPL.md",
               "TEST_COVERAGE.md",
               "SCOPE.md"

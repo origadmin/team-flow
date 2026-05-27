@@ -9,7 +9,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/origadmin/team-flow/internal/config"
 	"github.com/origadmin/team-flow/internal/flow"
+	"github.com/origadmin/team-flow/internal/updater"
+	"github.com/origadmin/team-flow/internal/version"
 	"github.com/spf13/cobra"
 )
 
@@ -19,6 +22,7 @@ var (
 	procFlowName string
 	procFormat   string
 	procTaskID   string
+	procRunGate  bool
 )
 
 var Cmd = &cobra.Command{
@@ -76,6 +80,19 @@ var ruleCmd = &cobra.Command{
 	RunE:  runRule,
 }
 
+var gateCmd = &cobra.Command{
+	Use:   "gate [node-id]",
+	Short: "Run gate checks for a node",
+	Long: `Run automated gate checks for a specified node.
+Without node-id, checks the first gate node found in the flow.
+With node-id, checks the specified node's gate conditions.
+
+Automated checks (tests_pass, lint_pass, deliverables_complete, no_regressions)
+are executed by the engine. Custom checks require AI judgment and are reported as pending.`,
+	Args: cobra.MaximumNArgs(1),
+	RunE: runGate,
+}
+
 func init() {
 	Cmd.AddCommand(runCmd)
 	Cmd.AddCommand(listCmd)
@@ -83,13 +100,17 @@ func init() {
 	Cmd.AddCommand(validateCmd)
 	Cmd.AddCommand(createCmd)
 	Cmd.AddCommand(ruleCmd)
+	Cmd.AddCommand(gateCmd)
 
 	Cmd.PersistentFlags().StringVar(&procRootDir, "root", "", "Root directory for preset processes (default: current directory)")
 	runCmd.Flags().StringVar(&procFlowName, "flow", "", "Flow name (default: project's configured flow from .team/project.md)")
 	runCmd.Flags().StringVar(&procFormat, "format", "json", "Output format: json or text")
 	runCmd.Flags().StringVar(&procTaskID, "task", "", "Task ID for variable substitution")
+	runCmd.Flags().BoolVar(&procRunGate, "gate", true, "Run automated gate checks when encountering a gate node")
 	ruleCmd.Flags().StringVar(&procFlowName, "flow", "", "Flow name to look up the rule definition")
 	ruleCmd.Flags().StringVar(&procFormat, "format", "text", "Output format: json or text")
+	gateCmd.Flags().StringVar(&procFlowName, "flow", "", "Flow name (default: project's configured flow from .team/project.md)")
+	gateCmd.Flags().StringVar(&procFormat, "format", "text", "Output format: json or text")
 	createCmd.Flags().StringVar(&procTemplate, "template", "", "Template process name from v3/flows/ to base the new process on")
 }
 
@@ -98,11 +119,41 @@ func getRootDir() string {
 		return procRootDir
 	}
 	dir, _ := os.Getwd()
-	return dir
+	return config.FindTeamRoot(dir)
+}
+
+func getProjectRootDir() string {
+	dir, _ := os.Getwd()
+	return config.ResolveProjectRoot(dir)
+}
+
+// getWorkspaceRoot 获取 workspace 根目录
+func getWorkspaceRoot() string {
+	dir, _ := os.Getwd()
+	workspace := config.FindWorkspaceRoot(dir)
+	if workspace == "" {
+		workspace = dir
+	}
+	return workspace
 }
 
 func runRun(cmd *cobra.Command, args []string) error {
-	root := getRootDir()
+	teamRoot := getRootDir()
+	projectRoot := getProjectRootDir()
+	workspace := getWorkspaceRoot()
+
+	if projectRoot == "" {
+		projectRoot = teamRoot
+	}
+
+	// Check for updates (with cache, high performance)
+	if procFormat == "text" { // Only show for text format
+		updateCheck, _ := updater.CheckForUpdateWithCache(version.Version, projectRoot, false)
+		if updateCheck != nil && updateCheck.HasUpdate {
+			fmt.Fprintf(cmd.ErrOrStderr(), "  ⬆ flow CLI update available: %s → %s\n", updateCheck.CurrentVersion, updateCheck.LatestVersion)
+			fmt.Fprintf(cmd.ErrOrStderr(), "  Run 'flow update' to update\n\n")
+		}
+	}
 
 	nodeID := ""
 	if len(args) > 0 {
@@ -113,11 +164,14 @@ func runRun(cmd *cobra.Command, args []string) error {
 		FlowName:    procFlowName,
 		NodeID:      nodeID,
 		TaskID:      procTaskID,
-		ProjectRoot: root,
+		ProjectRoot: projectRoot,
+		TeamRoot:    teamRoot,
+		Workspace:   workspace,
 		Format:      procFormat,
+		RunGate:     procRunGate,
 	}
 
-	engine := NewProcRunEngine(root)
+	engine := NewProcRunEngine(teamRoot)
 	result, err := engine.Run(context.Background(), req)
 	if err != nil {
 		return err
@@ -503,17 +557,27 @@ func runRule(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("parse flow: %w", err)
 	}
 
-	if f.Components == nil {
-		return fmt.Errorf("rule %s not found: flow %s has no components", ruleID, flowName)
-	}
-
-	for _, r := range f.Components.Rules {
-		if r.ID == ruleID {
-			return printRule(cmd.OutOrStdout(), r, procFormat)
+	if f.Components != nil {
+		for _, r := range f.Components.Rules {
+			if r.ID == ruleID {
+				return printRule(cmd.OutOrStdout(), r, procFormat)
+			}
 		}
 	}
 
-	return fmt.Errorf("rule %s not found in flow %s", ruleID, flowName)
+	team, _ := LoadTeam(root)
+	if team == nil {
+		team, _ = LoadTeamFromFlowPath(procPath)
+	}
+	if team != nil {
+		for _, r := range team.Rules {
+			if r.ID == ruleID {
+				return printRule(cmd.OutOrStdout(), r, procFormat)
+			}
+		}
+	}
+
+	return fmt.Errorf("rule %s not found in flow %s or team", ruleID, flowName)
 }
 
 func printRule(w io.Writer, r flow.RuleDefinition, format string) error {
@@ -575,4 +639,129 @@ func resolveProcPath(root, id string) string {
 	}
 
 	return ""
+}
+
+func runGate(cmd *cobra.Command, args []string) error {
+	projectRoot := getRootDir()
+
+	nodeID := ""
+	if len(args) > 0 {
+		nodeID = args[0]
+	}
+
+	flowName := procFlowName
+	if flowName == "" {
+		var err error
+		flowName, err = ResolveDefaultFlowName(projectRoot)
+		if err != nil {
+			return fmt.Errorf("--flow is required when no default flow is configured: %w", err)
+		}
+	}
+
+	procPath := resolveProcPath(projectRoot, flowName)
+	if procPath == "" {
+		return fmt.Errorf("flow not found: %s", flowName)
+	}
+
+	fl, err := flow.ParseFlowFile(procPath)
+	if err != nil {
+		return fmt.Errorf("parse flow: %w", err)
+	}
+
+	var targetNode *flow.FlowNode
+	if nodeID != "" {
+		for i := range fl.Nodes {
+			if fl.Nodes[i].ID == nodeID {
+				targetNode = &fl.Nodes[i]
+				break
+			}
+		}
+		if targetNode == nil {
+			return fmt.Errorf("node not found: %s", nodeID)
+		}
+	} else {
+		for i := range fl.Nodes {
+			if fl.Nodes[i].Type == flow.NodeTypeGate {
+				targetNode = &fl.Nodes[i]
+				break
+			}
+		}
+		if targetNode == nil {
+			return fmt.Errorf("no gate node found in flow %s", flowName)
+		}
+	}
+
+	if targetNode.Type != flow.NodeTypeGate {
+		return fmt.Errorf("node %s is not a gate node (type: %s)", targetNode.ID, targetNode.Type)
+	}
+
+	conditions := ExtractGateConditions(targetNode)
+	if len(conditions) == 0 {
+		fmt.Fprintf(cmd.OutOrStdout(), "No gate conditions defined for node %s\n", targetNode.ID)
+		return nil
+	}
+
+	team, _ := LoadTeam(projectRoot)
+	docsInternal := config.ResolveInternalDocs(projectRoot)
+	results := RunGateCheck(projectRoot, conditions, team, docsInternal)
+	passed, summary := GateOverallResult(results)
+
+	switch procFormat {
+	case "json":
+		data, err := json.MarshalIndent(map[string]interface{}{
+			"node_id":  targetNode.ID,
+			"passed":   passed,
+			"summary":  summary,
+			"results":  results,
+		}, "", "  ")
+		if err != nil {
+			return fmt.Errorf("marshal results: %w", err)
+		}
+		cmd.OutOrStdout().Write(data)
+		cmd.OutOrStdout().Write([]byte("\n"))
+	default:
+		printGateResults(cmd.OutOrStdout(), targetNode.ID, passed, summary, results)
+	}
+
+	if !passed {
+		return fmt.Errorf("gate check failed: %s", summary)
+	}
+
+	return nil
+}
+
+func printGateResults(w io.Writer, nodeID string, passed bool, summary string, results []GateCheckResult) {
+	icon := "✓"
+	if !passed {
+		icon = "✗"
+	}
+
+	fmt.Fprintf(w, "\n")
+	fmt.Fprintf(w, "╔══════════════════════════════════════════════════════════════════════╗\n")
+	fmt.Fprintf(w, "║  %s GATE CHECK: %s\n", icon, padLine(nodeID, 58))
+	fmt.Fprintf(w, "║  %s\n", padLine(summary, 68))
+	fmt.Fprintf(w, "╠══════════════════════════════════════════════════════════════════════╣\n")
+
+	for _, r := range results {
+		statusIcon := "✓"
+		if !r.Passed {
+			statusIcon = "✗"
+		}
+		if r.Skipped {
+			statusIcon = "⊘"
+		}
+		autoLabel := "[AUTO]"
+		if !r.Auto {
+			autoLabel = "[AI]"
+		}
+		reqLabel := ""
+		if r.Required {
+			reqLabel = " REQUIRED"
+		}
+		fmt.Fprintf(w, "║  %s %s %s%s\n", statusIcon, autoLabel, padLine(r.Type+reqLabel, 30), padLine("", 30))
+		fmt.Fprintf(w, "║    %s\n", padLine(r.Message, 66))
+	}
+
+	fmt.Fprintf(w, "╚══════════════════════════════════════════════════════════════════════╝\n")
+	fmt.Fprintf(w, "\n")
 }

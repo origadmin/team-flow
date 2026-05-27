@@ -12,6 +12,12 @@
     {"id": "test-simple-flow", "file": "test-simple-flow.json", "description": "Simple test flow"}
   ],
   "default_flow": "skill-dev-flow",
+  "toolchain": {
+    "test_command": "go test ./...",
+    "lint_command": "golangci-lint run ./...",
+    "build_command": "go build ./...",
+    "docs_internal": "_docs"
+  },
   "roles": [
     {
       "id": "triage",

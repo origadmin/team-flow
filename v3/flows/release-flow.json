@@ -173,7 +173,7 @@
           "description": "Release triage record with version, scope, and dispatch decision",
           "format": "markdown",
           "name": "TRIAGE.md",
-          "path": "{DOCS_INTERNAL}/{task_id}/TRIAGE.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/TRIAGE.md",
           "required": true
         }
       ],
@@ -255,14 +255,14 @@
           "description": "Release notes documenting version, changes, and breaking changes",
           "format": "markdown",
           "name": "RELEASE_NOTES.md",
-          "path": "{DOCS_INTERNAL}/{task_id}/RELEASE_NOTES.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/RELEASE_NOTES.md",
           "required": true
         },
         {
           "description": "Changelog entry for this release version",
           "format": "markdown",
           "name": "CHANGELOG.md",
-          "path": "{DOCS_INTERNAL}/{task_id}/CHANGELOG.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/CHANGELOG.md",
           "required": true
         }
       ],
@@ -362,7 +362,7 @@
           "description": "Deployment record: environment, version, timestamp, rollback plan",
           "format": "markdown",
           "name": "DEPLOY.md",
-          "path": "{DOCS_INTERNAL}/{task_id}/DEPLOY.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/DEPLOY.md",
           "required": true
         }
       ],
@@ -411,7 +411,7 @@
           "description": "Smoke test results and deployment health check",
           "format": "markdown",
           "name": "SMOKE_TEST.md",
-          "path": "{DOCS_INTERNAL}/{task_id}/SMOKE_TEST.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/SMOKE_TEST.md",
           "required": true
         }
       ],
@@ -494,7 +494,7 @@
           "description": "Rollback record: reason, previous version, timestamp, verification",
           "format": "markdown",
           "name": "ROLLBACK.md",
-          "path": "{DOCS_INTERNAL}/{task_id}/ROLLBACK.md",
+          "path": "{DOCS_INTERNAL}/{DOC_CATEGORY}/{task_id}/ROLLBACK.md",
           "required": true
         }
       ],

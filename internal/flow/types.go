@@ -1,6 +1,8 @@
 package flow
 
-import "encoding/json"
+import (
+	"encoding/json"
+)
 
 type NodeType string
 
@@ -79,6 +81,7 @@ const (
 	GateCondNoRegressions       GateConditionType = "no_regressions"
 	GateCondTaskExists          GateConditionType = "task_exists"
 	GateCondTypeMatches         GateConditionType = "type_matches"
+	GateCondTraceUpdated        GateConditionType = "trace_updated"
 	GateCondCustom              GateConditionType = "custom"
 )
 
@@ -447,20 +450,22 @@ type ComponentRegistry struct {
 }
 
 type RoleDefinition struct {
-	ID               string   `json:"id"`
-	Name             string   `json:"name"`
-	Alias            string   `json:"alias,omitempty"`
-	AliasEn          string   `json:"alias_en,omitempty"`
-	Principal        *bool    `json:"principal,omitempty"`
-	Persona          string   `json:"persona,omitempty"`
-	Description      string   `json:"description,omitempty"`
-	Traits           []string `json:"traits,omitempty"`
-	Guidance         string   `json:"guidance,omitempty"`
-	PromptSource     string   `json:"prompt_source,omitempty"`
-	StandardsSource  string   `json:"standards_source,omitempty"`
-	Capabilities     []string `json:"capabilities,omitempty"`
-	PromptDirectives []string `json:"prompt_directives,omitempty"`
-	Rules            []string `json:"rules,omitempty"`
+	ID               string            `json:"id"`
+	Name             string            `json:"name"`
+	Alias            string            `json:"alias,omitempty"`
+	AliasEn          string            `json:"alias_en,omitempty"`
+	Principal        *bool             `json:"principal,omitempty"`
+	Persona          string            `json:"persona,omitempty"`
+	Description      string            `json:"description,omitempty"`
+	Traits           []string          `json:"traits,omitempty"`
+	Guidance         string            `json:"guidance,omitempty"`
+	PromptSource     string            `json:"prompt_source,omitempty"`
+	StandardsSource  string            `json:"standards_source,omitempty"`
+	Capabilities     []string          `json:"capabilities,omitempty"`
+	PromptDirectives []string          `json:"prompt_directives,omitempty"`
+	Rules            []string          `json:"rules,omitempty"`
+	SkillTags        []string          `json:"skill_tags,omitempty"`
+	SkillRequirements []SkillRequirement `json:"skill_requirements,omitempty"`
 }
 
 type RuleDefinition struct {
@@ -520,6 +525,21 @@ type TeamDefinition struct {
 	DefaultFlow      string            `json:"default_flow,omitempty"`
 	SkillTags        []string          `json:"skill_tags,omitempty"`
 	SkillRequirements []SkillRequirement `json:"skill_requirements,omitempty"`
+	Toolchain        *TeamToolchain    `json:"toolchain,omitempty"`
+	GateCheckers     map[string]TeamGateChecker `json:"gate_checkers,omitempty"`
+}
+
+type TeamToolchain struct {
+	TestCommand  string `json:"test_command,omitempty"`
+	LintCommand  string `json:"lint_command,omitempty"`
+	BuildCommand string `json:"build_command,omitempty"`
+	DocsInternal string `json:"docs_internal,omitempty"`
+}
+
+type TeamGateChecker struct {
+	Type        string `json:"type"`
+	Command     string `json:"command,omitempty"`
+	Description string `json:"description,omitempty"`
 }
 
 type SkillRequirement struct {

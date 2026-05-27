@@ -15,10 +15,12 @@ import (
 	"github.com/origadmin/team-flow/internal/migrate"
 	projectpkg "github.com/origadmin/team-flow/internal/project"
 	"github.com/origadmin/team-flow/internal/proc"
+	"github.com/origadmin/team-flow/internal/skill"
 	"github.com/origadmin/team-flow/internal/status"
 	"github.com/origadmin/team-flow/internal/task"
 	"github.com/origadmin/team-flow/internal/toolrunner"
 	"github.com/origadmin/team-flow/internal/tools"
+	"github.com/origadmin/team-flow/internal/update"
 	"github.com/origadmin/team-flow/internal/ver"
 	"github.com/origadmin/team-flow/internal/version"
 	"github.com/spf13/cobra"
@@ -86,6 +88,8 @@ func main() {
 	rootCmd.AddCommand(ver.Cmd)
 	rootCmd.AddCommand(proc.Cmd)
 	rootCmd.AddCommand(projectpkg.Cmd)
+	rootCmd.AddCommand(update.Cmd)
+	rootCmd.AddCommand(skill.Cmd)
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)

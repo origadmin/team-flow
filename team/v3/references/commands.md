@@ -7,8 +7,8 @@
 | Stage | .team/version | `flow task create` routes to | `flow task list` reads from |
 |-------|---------------|------------------------------|----------------------------|
 | v1 | 1 | task-pool.md (docs) | task-pool.md |
-| v2 | 2 | beads (.beads/) | beads (.beads/) |
-| v3 | 3 | configurable (beads/git/other) | configurable |
+| v2 | 2 | flow task database | flow task database |
+| v3 | 3 | configurable | configurable |
 
 ## Command List
 
@@ -69,5 +69,5 @@ flow task close <id> --reason "Done" --json
 
 ## ID Mapping
 
-- task ID (F001, B061, etc.) lives in the `external-ref` field of the beads issue
+- task ID (F001, B061, etc.) lives in the `external-ref` field
 - Use `flow task list --json | ConvertFrom-Json | Where-Object { $_.externalRef -match 'F001' }` to find by task ID

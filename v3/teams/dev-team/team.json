@@ -27,6 +27,12 @@
     {"tag": "bun", "description": "Package manager", "required": true},
     {"tag": "rsbuild", "description": "Build tool", "required": true}
   ],
+  "toolchain": {
+    "test_command": "go test ./...",
+    "lint_command": "golangci-lint run ./...",
+    "build_command": "go build ./...",
+    "docs_internal": "_docs"
+  },
   "roles": [
     {
       "id": "triage",

@@ -68,7 +68,14 @@ func runTask(cmd *cobra.Command, args []string) error {
 		args[0] = alias
 	}
 
-	output, err := bd.Run(args...)
+	// Get current working directory
+	startDir, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+
+	// Run in workspace root
+	output, err := bd.RunInWorkspace(startDir, args...)
 	if err != nil {
 		fmt.Print(output)
 		return err
