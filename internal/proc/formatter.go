@@ -199,6 +199,22 @@ func FormatText(w io.Writer, result *ProcRunResult) error {
 		fmt.Fprintf(w, "║  You MUST classify input and dispatch to sub-roles%-13s║\n", "")
 		fmt.Fprintf(w, "║  NEVER write code or modify files yourself%-19s║\n", "")
 		fmt.Fprintf(w, "║  Use Task tool to dispatch, then verify deliverables%-10s║\n", "")
+		fmt.Fprintf(w, "║%-60s║\n", "")
+		fmt.Fprintf(w, "║  ═══ SUB-AGENT CONTEXT (include in EVERY task description) ═══%-9s║\n", "")
+		fmt.Fprintf(w, "║    flow:     %-45s║\n", result.Flow.Name)
+		fmt.Fprintf(w, "║    node:     %-45s║\n", current.Name)
+		if len(current.Rules) > 0 {
+			fmt.Fprintf(w, "║    rules for sub-agents to enforce:%-22s║\n", "")
+			for _, r := range current.Rules {
+				label := r.Name
+				if label == "" {
+					label = r.Ref
+				}
+				fmt.Fprintf(w, "║      - %-48s║\n", label)
+			}
+		}
+		fmt.Fprintf(w, "║  Sub-agents MUST obey flow gates and rules above%-16s║\n", "")
+		fmt.Fprintf(w, "║  GATE BREACH = task rejected, return to Triage%-21s║\n", "")
 	}
 
 	if len(current.Rules) > 0 {
@@ -379,7 +395,11 @@ func FormatText(w io.Writer, result *ProcRunResult) error {
 
 	if current.SubflowRef != "" {
 		fmt.Fprintf(w, "║  SUBFLOW:%-51s║\n", "")
-		fmt.Fprintf(w, "║    → %-54s║\n", current.SubflowRef)
+		displayName := current.SubflowRef
+		if current.SubflowName != "" {
+			displayName = fmt.Sprintf("%s (%s)", current.SubflowName, current.SubflowRef)
+		}
+		fmt.Fprintf(w, "║    → %-54s║\n", displayName)
 		fmt.Fprintf(w, "║%-60s║\n", "")
 		fmt.Fprintf(w, "║  AI BEHAVIOR RULES:%-40s║\n", "")
 		fmt.Fprintf(w, "║    1. Run 'flow proc run --flow %s' to enter subflow%-8s║\n", current.SubflowRef, "")

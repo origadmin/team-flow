@@ -470,8 +470,16 @@ func runHistory(cmd *cobra.Command, args []string) error {
 			to, _ := evt["to"].(string)
 			details = fmt.Sprintf("%s: %s → %s", task, from, to)
 		case eventlog.EventFlowNode:
-			node, _ := evt["node"].(string)
-			details = node
+			nodeName, _ := evt["node_name"].(string)
+			if nodeName == "" {
+				nodeName, _ = evt["node"].(string)
+			}
+			flow, _ := evt["flow"].(string)
+			if flow != "" {
+				details = fmt.Sprintf("%s (%s)", nodeName, flow)
+			} else {
+				details = nodeName
+			}
 		case eventlog.EventFlowEnded:
 			status, _ := evt["status"].(string)
 			details = fmt.Sprintf("status=%s", status)

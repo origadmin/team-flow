@@ -21,6 +21,7 @@ import (
 	"github.com/origadmin/team-flow/internal/task"
 	"github.com/origadmin/team-flow/internal/toolrunner"
 	"github.com/origadmin/team-flow/internal/tools"
+	"github.com/origadmin/team-flow/internal/tracecmd"
 	"github.com/origadmin/team-flow/internal/update"
 	"github.com/origadmin/team-flow/internal/ver"
 	"github.com/origadmin/team-flow/internal/version"
@@ -91,6 +92,7 @@ func main() {
 	rootCmd.AddCommand(update.Cmd)
 	rootCmd.AddCommand(skill.Cmd)
 	rootCmd.AddCommand(session.Cmd)
+	rootCmd.AddCommand(tracecmd.Cmd)
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)

@@ -482,7 +482,7 @@ func runRun(cmd *cobra.Command, args []string) error {
 	}
 
 	req := ProcRunRequest{
-		FlowName:    "",
+		FlowName:    procFlowName,
 		NodeID:      nodeID,
 		TaskID:      procTaskID,
 		ProjectRoot: projectRoot,
@@ -536,7 +536,7 @@ func runNext(cmd *cobra.Command, args []string) error {
 	}
 
 	req := ProcRunRequest{
-		FlowName:    "",
+		FlowName:    procFlowName,
 		NodeID:      nodeID,
 		TaskID:      procTaskID,
 		ProjectRoot: projectRoot,
@@ -752,8 +752,12 @@ func readDefaultFlow(root string) string {
 	if err != nil {
 		return ""
 	}
+	// Prefer active_flow over default_flow (v4#17: rename)
 	for _, line := range strings.Split(string(data), "\n") {
 		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "active_flow:") {
+			return strings.TrimSpace(strings.TrimPrefix(trimmed, "active_flow:"))
+		}
 		if strings.HasPrefix(trimmed, "default_flow:") {
 			return strings.TrimSpace(strings.TrimPrefix(trimmed, "default_flow:"))
 		}
@@ -767,7 +771,7 @@ func printProcs(w io.Writer, entries []ProcEntry) {
 		return
 	}
 
-	fmt.Fprintf(w, "%-25s %-8s %-10s %-6s %-10s %s\n", "NAME", "ID", "SOURCE", "REG", "DEFAULT", "DESCRIPTION")
+	fmt.Fprintf(w, "%-25s %-8s %-10s %-6s %-10s %s\n", "NAME", "ID", "SOURCE", "REG", "CURRENT", "DESCRIPTION")
 	fmt.Fprintf(w, "%-25s %-8s %-10s %-6s %-10s %s\n", strings.Repeat("-", 25), strings.Repeat("-", 8), strings.Repeat("-", 10), strings.Repeat("-", 6), strings.Repeat("-", 10), strings.Repeat("-", 30))
 	for _, e := range entries {
 		regMark := "  "

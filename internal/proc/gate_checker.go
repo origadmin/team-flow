@@ -383,6 +383,42 @@ func (gc *GateChecker) checkTaskExists(cond GateCondOutput) GateCheckResult {
 	return result
 }
 
+// typeCompatMap defines which types are compatible for type_matches gate.
+// Key is the expected flow type; values are all types that should pass the gate.
+// Example: feature-flow gate with expected="feature" also accepts epic and bugfix.
+var typeCompatMap = map[string][]string{
+	"feature": {"feature", "epic", "bugfix", "hotfix", "change"},
+	"bugfix":  {"bugfix", "hotfix", "feature"},
+	"hotfix":  {"hotfix", "bugfix"},
+	"release": {"release", "feature"},
+	"epic":    {"epic", "feature"},
+	"change":  {"change", "feature"},
+}
+
+// typeMatches checks if actualType is compatible with expectedType.
+// Uses typeCompatMap for hierarchy-aware matching, falls back to exact match.
+func typeMatches(actualType, expectedType string) bool {
+	if strings.EqualFold(actualType, expectedType) {
+		return true
+	}
+	// Check comma-separated expected values
+	for _, exp := range strings.Split(expectedType, ",") {
+		exp = strings.TrimSpace(exp)
+		if strings.EqualFold(actualType, exp) {
+			return true
+		}
+		compat, ok := typeCompatMap[strings.ToLower(exp)]
+		if ok {
+			for _, c := range compat {
+				if strings.EqualFold(actualType, c) {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
 func (gc *GateChecker) checkTypeMatches(cond GateCondOutput) GateCheckResult {
 	result := GateCheckResult{
 		Type:     "type_matches",
@@ -396,23 +432,23 @@ func (gc *GateChecker) checkTypeMatches(cond GateCondOutput) GateCheckResult {
 		// Try task lookup first: check if Check is a valid task ID
 		taskInfo := resolveTaskInfo(cond.Check)
 		if taskInfo != nil && taskInfo.Type != "" {
-			if strings.EqualFold(taskInfo.Type, cond.Expected) {
+			if typeMatches(taskInfo.Type, cond.Expected) {
 				result.Passed = true
-				result.Message = fmt.Sprintf("PASS: task %s type %q matches expected %q", taskInfo.TaskID, taskInfo.Type, cond.Expected)
+				result.Message = fmt.Sprintf("PASS: task %s type %q is compatible with %q", taskInfo.TaskID, taskInfo.Type, cond.Expected)
 			} else {
 				result.Passed = false
-				result.Message = fmt.Sprintf("FAIL: task %s type %q does not match expected %q", taskInfo.TaskID, taskInfo.Type, cond.Expected)
+				result.Message = fmt.Sprintf("FAIL: task %s type %q is not compatible with %q", taskInfo.TaskID, taskInfo.Type, cond.Expected)
 			}
 			return result
 		}
 
 		// Fallback: direct string comparison (for literal type values in check)
-		if cond.Check == cond.Expected {
+		if typeMatches(cond.Check, cond.Expected) {
 			result.Passed = true
-			result.Message = fmt.Sprintf("PASS: type %q matches expected %q", cond.Check, cond.Expected)
+			result.Message = fmt.Sprintf("PASS: type %q is compatible with %q", cond.Check, cond.Expected)
 		} else {
 			result.Passed = false
-			result.Message = fmt.Sprintf("FAIL: type %q does not match expected %q", cond.Check, cond.Expected)
+			result.Message = fmt.Sprintf("FAIL: type %q is not compatible with %q", cond.Check, cond.Expected)
 		}
 		return result
 	}
@@ -421,12 +457,12 @@ func (gc *GateChecker) checkTypeMatches(cond GateCondOutput) GateCheckResult {
 	if cond.Check == "" && cond.Expected != "" {
 		taskInfo := resolveTaskInfo("")
 		if taskInfo != nil && taskInfo.Type != "" {
-			if strings.EqualFold(taskInfo.Type, cond.Expected) {
+			if typeMatches(taskInfo.Type, cond.Expected) {
 				result.Passed = true
-				result.Message = fmt.Sprintf("PASS: current task %s type %q matches expected %q", taskInfo.TaskID, taskInfo.Type, cond.Expected)
+				result.Message = fmt.Sprintf("PASS: current task %s type %q is compatible with %q", taskInfo.TaskID, taskInfo.Type, cond.Expected)
 			} else {
 				result.Passed = false
-				result.Message = fmt.Sprintf("FAIL: current task %s type %q does not match expected %q", taskInfo.TaskID, taskInfo.Type, cond.Expected)
+				result.Message = fmt.Sprintf("FAIL: current task %s type %q is not compatible with %q", taskInfo.TaskID, taskInfo.Type, cond.Expected)
 			}
 			return result
 		}

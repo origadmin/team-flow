@@ -39,6 +39,9 @@ func ValidateFlow(flow *Flow) *ValidationResult {
 		return result
 	}
 
+	// Add cycle detection
+	validateCycles(flow, result)
+
 	validateSyntax(flow, result)
 	validateSemantics(flow, result)
 
@@ -599,6 +602,80 @@ func validateComponents(flow *Flow, result *ValidationResult) {
 					Message:  fmt.Sprintf("node %s references undefined role: %s", node.ID, roleRef.Ref),
 					Field:    "nodes[].components.roles",
 				})
+			}
+		}
+	}
+}
+
+// validateCycles detects cycles in the flow graph using DFS with 3-color marking.
+// Subflow edges are excluded since they point to an external flow, not a loop within this flow.
+func validateCycles(flow *Flow, result *ValidationResult) {
+	if len(flow.Edges) == 0 {
+		return
+	}
+
+	// Build adjacency list (only sequential and conditional edges)
+	adj := make(map[string][]string, len(flow.Nodes))
+	for _, edge := range flow.Edges {
+		if edge.Type == EdgeTypeSubflow {
+			continue
+		}
+		adj[edge.From] = append(adj[edge.From], edge.To)
+	}
+
+	// 0 = white (unvisited), 1 = gray (in current path), 2 = black (fully processed)
+	color := make(map[string]int, len(flow.Nodes))
+	var path []string
+	var foundCycle bool
+
+	var dfs func(nodeID string)
+	dfs = func(nodeID string) {
+		if foundCycle {
+			return
+		}
+		color[nodeID] = 1
+		path = append(path, nodeID)
+
+		for _, next := range adj[nodeID] {
+			c := color[next]
+			if c == 1 {
+				// Back edge found — build cycle description
+				var cycleNodes []string
+				inCycle := false
+				for _, n := range path {
+					if n == next {
+						inCycle = true
+					}
+					if inCycle {
+						cycleNodes = append(cycleNodes, n)
+					}
+				}
+				cycleNodes = append(cycleNodes, next)
+				result.Errors = append(result.Errors, ValidationIssue{
+					Severity: SeverityError,
+					Message:  fmt.Sprintf("cycle detected: %s", strings.Join(cycleNodes, " \u2192 ")),
+					Field:    "edges",
+				})
+				foundCycle = true
+				return
+			}
+			if c == 0 {
+				dfs(next)
+				if foundCycle {
+					return
+				}
+			}
+		}
+
+		color[nodeID] = 2
+		path = path[:len(path)-1]
+	}
+
+	for _, node := range flow.Nodes {
+		if color[node.ID] == 0 {
+			dfs(node.ID)
+			if foundCycle {
+				break
 			}
 		}
 	}

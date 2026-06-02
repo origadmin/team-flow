@@ -113,13 +113,14 @@ type FlowStarted struct {
 }
 
 type FlowNode struct {
-	Event   string `json:"event"`
-	TS      string `json:"ts"`
-	Task    string `json:"task,omitempty"`
-	Node    string `json:"node"`
-	Phase   string `json:"phase,omitempty"`
-	Flow    string `json:"flow,omitempty"`
-	Session string `json:"session,omitempty"`
+	Event    string `json:"event"`
+	TS       string `json:"ts"`
+	Task     string `json:"task,omitempty"`
+	Node     string `json:"node"`
+	NodeName string `json:"node_name,omitempty"`
+	Phase    string `json:"phase,omitempty"`
+	Flow     string `json:"flow,omitempty"`
+	Session  string `json:"session,omitempty"`
 }
 
 type FlowEnded struct {
@@ -295,15 +296,16 @@ func (l *Logger) FlowStarted(sessionName, taskID, flowName, nodeID string) error
 }
 
 // FlowNodeAdvance writes a flow.node event to the global events.mdl.
-func (l *Logger) FlowNodeAdvance(sessionName, taskID, nodeID, phase, flowName string) error {
+func (l *Logger) FlowNodeAdvance(sessionName, taskID, nodeID, nodeName, phase, flowName string) error {
 	return l.writeEvent(FlowNode{
-		Event:   EventFlowNode,
-		TS:      now(),
-		Task:    taskID,
-		Node:    nodeID,
-		Phase:   phase,
-		Flow:    flowName,
-		Session: sessionName,
+		Event:    EventFlowNode,
+		TS:       now(),
+		Task:     taskID,
+		Node:     nodeID,
+		NodeName: nodeName,
+		Phase:    phase,
+		Flow:     flowName,
+		Session:  sessionName,
 	})
 }
 

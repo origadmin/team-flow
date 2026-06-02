@@ -144,6 +144,7 @@ type CurrentNode struct {
 	ParallelStrategy string                 `json:"parallel_strategy,omitempty"`
 	MergeStrategy    string                 `json:"merge_strategy,omitempty"`
 	SubflowRef       string                 `json:"subflow_ref,omitempty"`
+	SubflowName      string                 `json:"subflow_name,omitempty"`
 	IsTerminal       bool                   `json:"is_terminal"`
 	TerminalStatus   string                 `json:"terminal_status,omitempty"`
 	TerminalMessage  string                 `json:"terminal_message,omitempty"`
@@ -316,7 +317,7 @@ func (e *ProcRunEngine) Run(ctx context.Context, req ProcRunRequest) (*ProcRunRe
 
 	if lgrErr == nil && node.Type != flow.NodeTypeStart {
 		phase := resolvePhaseFromNode(node)
-		_ = lgr.FlowNodeAdvance(sessionName, req.TaskID, node.ID, phase, fl.Metadata.Name)
+		_ = lgr.FlowNodeAdvance(sessionName, req.TaskID, node.ID, node.Name, phase, fl.Metadata.Name)
 	}
 
 	if req.RunGate && node.Type == flow.NodeTypeGate && len(result.Current.GateConditions) > 0 {
@@ -635,6 +636,10 @@ func buildCurrentNode(node *flow.FlowNode, fl *flow.Flow, vars map[string]string
 			var sfCfg flow.SubflowConfig
 			if err := json.Unmarshal(node.Config, &sfCfg); err == nil {
 				current.SubflowRef = sfCfg.FlowRef
+				// Resolve subflow name for display
+				if sf, err := LoadFlow(root, sfCfg.FlowRef); err == nil {
+					current.SubflowName = sf.Metadata.Name
+				}
 			}
 		}
 		current.OnEnter = extractOnEnter(node)

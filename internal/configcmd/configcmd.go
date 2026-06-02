@@ -383,7 +383,8 @@ func runSet(cmd *cobra.Command, args []string) error {
 		if err := validateFlowName(projectRoot, value); err != nil {
 			return err
 		}
-		cfg.DefaultFlow = value
+		cfg.ActiveFlow = value
+		cfg.DefaultFlow = value // Backward compat
 	}
 
 	// Suppress unused var warning

@@ -19,6 +19,7 @@ type ProjectConfig struct {
 	Name         string             `yaml:"name"`
 	Version      string             `yaml:"version"`
 	DefaultFlow  string             `yaml:"default_flow"`
+	ActiveFlow   string             `yaml:"active_flow"`
 	Paths        ProjectPaths       `yaml:"paths"`
 	Toolchain    ProjectToolchain   `yaml:"toolchain"`
 	Flows        []ProjectFlow      `yaml:"flows"`
@@ -87,6 +88,10 @@ func LoadProjectConfig(root string) (*ProjectConfig, error) {
 	var cfg ProjectConfig
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return nil, fmt.Errorf("parse project.yaml: %w", err)
+	}
+	// Normalize: active_flow takes priority, fallback to default_flow
+	if cfg.ActiveFlow != "" && cfg.DefaultFlow == "" {
+		cfg.DefaultFlow = cfg.ActiveFlow
 	}
 	return &cfg, nil
 }
