@@ -328,6 +328,10 @@ func (e *ProcRunEngine) Run(ctx context.Context, req ProcRunRequest) (*ProcRunRe
 
 	if req.RunGate && node.Type == flow.NodeTypeGate && len(result.Current.GateConditions) > 0 {
 		explicitlyTargeted := req.NodeID != ""
+		// Also treat as explicitly targeted if gate was confirmed via session state
+		if !explicitlyTargeted && state != nil && state.IsGateConfirmed(node.ID) {
+			explicitlyTargeted = true
+		}
 		substitutedConds := SubstituteGateConditions(result.Current.GateConditions, vars)
 		docsInternal := config.ResolveInternalDocs(req.ProjectRoot)
 		gateResults := RunGateCheckWithFlow(req.ProjectRoot, substitutedConds, team, docsInternal, fl.Metadata.Name, explicitlyTargeted)

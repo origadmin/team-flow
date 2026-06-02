@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/origadmin/team-flow/internal/config"
+	"github.com/origadmin/team-flow/internal/eventlog"
 	"github.com/origadmin/team-flow/internal/flow"
 	"github.com/origadmin/team-flow/internal/idgen"
 	"github.com/origadmin/team-flow/internal/updater"
@@ -1683,8 +1684,45 @@ func printGateResults(w io.Writer, nodeName string, passed bool, summary string,
 func runGatePass(cmd *cobra.Command, args []string) error {
 	nodeID := args[0]
 
-	fmt.Fprintf(cmd.OutOrStdout(), "ℹ Gate confirmations are now stateless.\n")
-	fmt.Fprintf(cmd.OutOrStdout(), "  AI judgment conditions are auto-confirmed when you explicitly target a gate node.\n")
+	projectRoot := getRootDir()
+
+	// Load session state to persist the gate confirmation
+	lgr, lgrErr := eventlog.NewLogger(projectRoot)
+	if lgrErr != nil {
+		fmt.Fprintf(cmd.OutOrStdout(), "⚠ Cannot access event log: %v\n", lgrErr)
+		fmt.Fprintf(cmd.OutOrStdout(), "  Falling back to stateless mode.\n")
+		fmt.Fprintf(cmd.OutOrStdout(), "  Gate conditions will be auto-confirmed when you explicitly target the node.\n")
+		fmt.Fprintf(cmd.OutOrStdout(), "  Run 'flow proc run %s' to evaluate the gate with AI confirmation.\n", nodeID)
+		return nil
+	}
+
+	sessionName, _ := lgr.LastSessionName()
+	if sessionName == "" {
+		sessionName = "auto"
+		var err error
+		sessionName, err = lgr.CreateSession(1, "", "auto")
+		if err != nil {
+			fmt.Fprintf(cmd.OutOrStdout(), "⚠ Cannot create session: %v\n", err)
+			fmt.Fprintf(cmd.OutOrStdout(), "  Falling back to stateless mode.\n")
+			fmt.Fprintf(cmd.OutOrStdout(), "  Run 'flow proc run %s' to evaluate the gate with AI confirmation.\n", nodeID)
+			return nil
+		}
+	}
+
+	state, _ := LoadSessionState(lgr.SessionsDir(), sessionName)
+	if state == nil {
+		state = &SessionState{}
+	}
+	state.ConfirmGate(nodeID)
+	if err := SaveSessionState(lgr.SessionsDir(), sessionName, state); err != nil {
+		fmt.Fprintf(cmd.OutOrStdout(), "⚠ Cannot persist gate confirmation: %v\n", err)
+		fmt.Fprintf(cmd.OutOrStdout(), "  Falling back to stateless mode.\n")
+		fmt.Fprintf(cmd.OutOrStdout(), "  Run 'flow proc run %s' to evaluate the gate with AI confirmation.\n", nodeID)
+		return nil
+	}
+
+	fmt.Fprintf(cmd.OutOrStdout(), "✓ Gate %s confirmed for AI judgment.\n", nodeID)
+	fmt.Fprintf(cmd.OutOrStdout(), "  Confirmation persisted in session state (%s/state.json).\n", sessionName)
 	fmt.Fprintf(cmd.OutOrStdout(), "  Run 'flow proc run %s' to evaluate the gate with AI confirmation.\n", nodeID)
 	return nil
 }

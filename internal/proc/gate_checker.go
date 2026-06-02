@@ -84,15 +84,13 @@ func RegisterGateChecker(condType flow.GateConditionType, fn GateCheckerFunc) {
 func (gc *GateChecker) CheckCondition(cond GateCondOutput) GateCheckResult {
 	condType := flow.GateConditionType(cond.Type)
 
+	var result GateCheckResult
+
 	if fn, ok := gateCheckerRegistry[condType]; ok {
-		return fn(gc, cond)
-	}
-
-	if checker, ok := gc.TeamCheckers[cond.Type]; ok {
-		return gc.checkTeamRegistered(cond, checker)
-	}
-
-	if gc.ExplicitlyTargeted {
+		result = fn(gc, cond)
+	} else if checker, ok := gc.TeamCheckers[cond.Type]; ok {
+		result = gc.checkTeamRegistered(cond, checker)
+	} else if gc.ExplicitlyTargeted {
 		return GateCheckResult{
 			Type:     cond.Type,
 			Passed:   true,
@@ -100,9 +98,7 @@ func (gc *GateChecker) CheckCondition(cond GateCondOutput) GateCheckResult {
 			Required: cond.Required,
 			Auto:     false,
 		}
-	}
-
-	if condType == flow.GateCondCustom {
+	} else if condType == flow.GateCondCustom {
 		nodeRef := cond.NodeName
 		if nodeRef == "" {
 			nodeRef = cond.NodeID
@@ -114,19 +110,33 @@ func (gc *GateChecker) CheckCondition(cond GateCondOutput) GateCheckResult {
 			Required: cond.Required,
 			Auto:     false,
 		}
+	} else {
+		nodeRef := cond.NodeName
+		if nodeRef == "" {
+			nodeRef = cond.NodeID
+		}
+		return GateCheckResult{
+			Type:     cond.Type,
+			Passed:   false,
+			Message:  fmt.Sprintf("requires AI judgment: %s (explicitly run 'flow proc run %s' to confirm)", cond.Check, nodeRef),
+			Required: cond.Required,
+			Auto:     false,
+		}
 	}
 
-	nodeRef := cond.NodeName
-	if nodeRef == "" {
-		nodeRef = cond.NodeID
+	// Auto-confirm SKIP results when explicitly targeted (AI has verified via direct targeting)
+	if gc.ExplicitlyTargeted && result.Skipped {
+		result.Passed = true
+		result.Skipped = false
+		result.Auto = false
+		if result.Message != "" {
+			result.Message = fmt.Sprintf("PASS (AI confirmed via explicit targeting): %s", result.Message)
+		} else {
+			result.Message = fmt.Sprintf("PASS: AI confirmed via explicit targeting for %s", cond.Type)
+		}
 	}
-	return GateCheckResult{
-		Type:     cond.Type,
-		Passed:   false,
-		Message:  fmt.Sprintf("requires AI judgment: %s (explicitly run 'flow proc run %s' to confirm)", cond.Check, nodeRef),
-		Required: cond.Required,
-		Auto:     false,
-	}
+
+	return result
 }
 
 func (gc *GateChecker) checkTeamRegistered(cond GateCondOutput, checker flow.TeamGateChecker) GateCheckResult {
