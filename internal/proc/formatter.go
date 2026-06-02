@@ -395,14 +395,15 @@ func FormatText(w io.Writer, result *ProcRunResult) error {
 
 	if current.SubflowRef != "" {
 		fmt.Fprintf(w, "║  SUBFLOW:%-51s║\n", "")
-		displayName := current.SubflowRef
+		cleanRef := strings.TrimPrefix(current.SubflowRef, "builtin:")
+		displayName := cleanRef
 		if current.SubflowName != "" {
-			displayName = fmt.Sprintf("%s (%s)", current.SubflowName, current.SubflowRef)
+			displayName = fmt.Sprintf("%s (%s)", current.SubflowName, cleanRef)
 		}
 		fmt.Fprintf(w, "║    → %-54s║\n", displayName)
 		fmt.Fprintf(w, "║%-60s║\n", "")
 		fmt.Fprintf(w, "║  AI BEHAVIOR RULES:%-40s║\n", "")
-		fmt.Fprintf(w, "║    1. Run 'flow proc run --flow %s' to enter subflow%-8s║\n", current.SubflowRef, "")
+		fmt.Fprintf(w, "║    1. Run 'flow proc run --flow %s' to enter subflow%-8s║\n", cleanRef, "")
 		fmt.Fprintf(w, "║    2. Complete subflow execution, then return to parent%-8s║\n", "")
 		fmt.Fprintf(w, "║    3. Use 'flow proc run' (no --flow) to resume parent%-7s║\n", "")
 	}
@@ -412,13 +413,11 @@ func FormatText(w io.Writer, result *ProcRunResult) error {
 	if len(result.NextOptions) > 0 {
 		fmt.Fprintf(w, "║  NEXT OPTIONS:%-45s║\n", "")
 		for i, opt := range result.NextOptions {
-			label := fmt.Sprintf("[%d] → %s", i+1, opt.Name)
-		if opt.Name == "" {
-			label = fmt.Sprintf("[%d] → %s", i+1, opt.NodeID)
-		}
-			if opt.Name != "" {
-				label += " " + opt.Name
+			displayName := opt.Name
+			if displayName == "" {
+				displayName = opt.NodeID
 			}
+			label := fmt.Sprintf("[%d] → %s", i+1, displayName)
 			if opt.Role != "" {
 				label += " (" + opt.Role + ")"
 			}
@@ -436,17 +435,24 @@ func FormatText(w io.Writer, result *ProcRunResult) error {
 
 	if len(result.NextOptions) > 0 {
 		defaultNodeID := ""
+		defaultNodeName := ""
 		for _, opt := range result.NextOptions {
 			if opt.IsDefault {
 				defaultNodeID = opt.NodeID
+				defaultNodeName = opt.Name
 				break
 			}
 		}
 		if defaultNodeID == "" && len(result.NextOptions) > 0 {
 			defaultNodeID = result.NextOptions[0].NodeID
+			defaultNodeName = result.NextOptions[0].Name
 		}
 		if defaultNodeID != "" {
-			fmt.Fprintf(w, "║  NEXT STEP: flow proc run %-31s║\n", defaultNodeID)
+			nextLabel := defaultNodeID
+			if defaultNodeName != "" {
+				nextLabel = defaultNodeName + " (" + defaultNodeID + ")"
+			}
+			fmt.Fprintf(w, "║  NEXT STEP: flow proc run %-31s║\n", nextLabel)
 		}
 	}
 

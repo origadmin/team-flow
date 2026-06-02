@@ -957,13 +957,13 @@ func showNode(w io.Writer, n flow.FlowNode) {
 func runShow(cmd *cobra.Command, args []string) error {
 	root := getRootDir()
 
-	procPath := resolveProcPath(root, args[0])
+	procPath := ResolveProcPath(root, args[0])
 	if procPath == "" {
-		defaultFlow, _ := ResolveDefaultFlowName(root)
+		defaultFlow, _ := ResolveActiveFlow(root)
 		if defaultFlow == "" {
 			return fmt.Errorf("process not found: %s", args[0])
 		}
-		procPath = resolveProcPath(root, defaultFlow)
+		procPath = ResolveProcPath(root, defaultFlow)
 		if procPath == "" {
 			return fmt.Errorf("process not found: %s", args[0])
 		}
@@ -1084,7 +1084,7 @@ func createProc(root, name, tmpl string) (string, error) {
 	}
 
 	if tmpl != "" {
-		templatePath := resolveProcPath(root, tmpl)
+		templatePath := ResolveProcPath(root, tmpl)
 		if templatePath == "" {
 			return "", fmt.Errorf("template not found: %s", tmpl)
 		}
@@ -1176,12 +1176,12 @@ func runRule(cmd *cobra.Command, args []string) error {
 	ruleID := args[0]
 	root := getRootDir()
 
-	flowName, err := ResolveDefaultFlowName(root)
+	flowName, err := ResolveActiveFlow(root)
 	if err != nil {
 		return fmt.Errorf("resolve default flow: %w", err)
 	}
 
-	procPath := resolveProcPath(root, flowName)
+	procPath := ResolveProcPath(root, flowName)
 	if procPath == "" {
 		return fmt.Errorf("flow not found: %s", flowName)
 	}
@@ -1357,7 +1357,7 @@ func resolveRuleTargetPath(root, target string) (string, error) {
 		flowName := procFlowName
 		if flowName == "" {
 			var err error
-			flowName, err = ResolveDefaultFlowName(root)
+			flowName, err = ResolveActiveFlow(root)
 			if err != nil {
 				return "", fmt.Errorf("--flow is required when --target=flow: %w", err)
 			}
@@ -1515,7 +1515,7 @@ func removeRuleFromFlow(path string, ruleID string) error {
 	})
 }
 
-func resolveProcPath(root, id string) string {
+func ResolveProcPath(root, id string) string {
 	if filepath.IsAbs(id) {
 		if _, err := os.Stat(id); err == nil {
 			return id
@@ -1567,12 +1567,12 @@ func runGate(cmd *cobra.Command, args []string) error {
 		nodeID = args[0]
 	}
 
-	flowName, err := ResolveDefaultFlowName(projectRoot)
+	flowName, err := ResolveActiveFlow(projectRoot)
 	if err != nil {
 		return fmt.Errorf("resolve default flow: %w", err)
 	}
 
-	procPath := resolveProcPath(projectRoot, flowName)
+	procPath := ResolveProcPath(projectRoot, flowName)
 	if procPath == "" {
 		return fmt.Errorf("flow not found: %s", flowName)
 	}
@@ -1693,12 +1693,12 @@ func runGatePass(cmd *cobra.Command, args []string) error {
 func resolveFlowPath(root, name string) (string, error) {
 	if name == "" {
 		var err error
-		name, err = ResolveDefaultFlowName(root)
+		name, err = ResolveActiveFlow(root)
 		if err != nil {
 			return "", fmt.Errorf("resolve default flow: %w", err)
 		}
 	}
-	p := resolveProcPath(root, name)
+	p := ResolveProcPath(root, name)
 	if p == "" {
 		return "", fmt.Errorf("flow not found: %s", name)
 	}

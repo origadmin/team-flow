@@ -103,19 +103,27 @@ func (gc *GateChecker) CheckCondition(cond GateCondOutput) GateCheckResult {
 	}
 
 	if condType == flow.GateCondCustom {
+		nodeRef := cond.NodeName
+		if nodeRef == "" {
+			nodeRef = cond.NodeID
+		}
 		return GateCheckResult{
 			Type:     cond.Type,
 			Passed:   false,
-			Message:  fmt.Sprintf("custom check requires AI judgment: %s (explicitly run 'flow proc run %s' to confirm)", cond.Check, cond.NodeID),
+			Message:  fmt.Sprintf("custom check requires AI judgment: %s (explicitly run 'flow proc run %s' to confirm)", cond.Check, nodeRef),
 			Required: cond.Required,
 			Auto:     false,
 		}
 	}
 
+	nodeRef := cond.NodeName
+	if nodeRef == "" {
+		nodeRef = cond.NodeID
+	}
 	return GateCheckResult{
 		Type:     cond.Type,
 		Passed:   false,
-		Message:  fmt.Sprintf("requires AI judgment: %s (explicitly run 'flow proc run %s' to confirm)", cond.Check, cond.NodeID),
+		Message:  fmt.Sprintf("requires AI judgment: %s (explicitly run 'flow proc run %s' to confirm)", cond.Check, nodeRef),
 		Required: cond.Required,
 		Auto:     false,
 	}
@@ -135,10 +143,14 @@ func (gc *GateChecker) checkTeamRegistered(cond GateCondOutput, checker flow.Tea
 				Auto:     false,
 			}
 		}
+		nodeRef := cond.NodeName
+		if nodeRef == "" {
+			nodeRef = cond.NodeID
+		}
 		return GateCheckResult{
 			Type:     cond.Type,
 			Passed:   false,
-			Message:  fmt.Sprintf("requires AI judgment: %s (explicitly run 'flow proc run %s' to confirm)", checker.Description, cond.NodeID),
+			Message:  fmt.Sprintf("requires AI judgment: %s (explicitly run 'flow proc run %s' to confirm)", checker.Description, nodeRef),
 			Required: cond.Required,
 			Auto:     false,
 		}

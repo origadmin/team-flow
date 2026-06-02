@@ -203,6 +203,7 @@ type GateCondOutput struct {
 	Expected     string   `json:"expected,omitempty"`
 	Deliverables []string `json:"deliverables,omitempty"`
 	NodeID       string   `json:"node_id,omitempty"`
+	NodeName     string   `json:"node_name,omitempty"`
 }
 
 type NextOption struct {
@@ -243,11 +244,6 @@ func NewProcRunEngine(root string) *ProcRunEngine {
 }
 
 func (e *ProcRunEngine) Run(ctx context.Context, req ProcRunRequest) (*ProcRunResult, error) {
-	fl, err := e.FlowResolver.Resolve(ctx, req.FlowName, req.ProjectRoot)
-	if err != nil {
-		return nil, fmt.Errorf("resolve flow: %w", err)
-	}
-
 	// --- Load session state for node progress tracking (v4#24) ---
 	lgr, lgrErr := eventlog.NewLogger(req.ProjectRoot)
 	var sessionName string
@@ -262,6 +258,16 @@ func (e *ProcRunEngine) Run(ctx context.Context, req ProcRunRequest) (*ProcRunRe
 		if sessionName == "" {
 			sessionName = "unknown"
 		}
+	}
+
+	// v1#2: --flow context persistence — restore from session state if not explicitly provided
+	if req.FlowName == "" && state != nil && state.FlowName != "" {
+		req.FlowName = state.FlowName
+	}
+
+	fl, err := e.FlowResolver.Resolve(ctx, req.FlowName, req.ProjectRoot)
+	if err != nil {
+		return nil, fmt.Errorf("resolve flow: %w", err)
 	}
 
 	// Node resolution with session state awareness (v4#24)
@@ -1218,7 +1224,7 @@ func buildStatusLineWithRef(fl *flow.Flow, node *flow.FlowNode, current CurrentN
 		phase = current.Name
 	}
 
-	return fmt.Sprintf("[%s | %s(:%s) | %s | %s]", alias, current.Name, flowPart, ref, phase)
+	return fmt.Sprintf("[%s | (%s:%s) | %s | %s]", alias, current.Name, flowPart, ref, phase)
 }
 
 func substituteVars(path string, vars map[string]string) string {

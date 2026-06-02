@@ -430,7 +430,11 @@ func ResolvePaths(workspaceDir string, projectRoot string, teamRoot string) Path
 	if cfgErr == nil {
 		vars.DOCS_INTERNAL = resolvePathWithAnchor(configRoot, workspaceDir, cfg.Paths.DocsInternal)
 		vars.DOCS_EXTERNAL = resolvePathWithAnchor(configRoot, workspaceDir, cfg.Paths.DocsExternal)
-		vars.DEFAULT_FLOW = cfg.DefaultFlow
+		if cfg.ActiveFlow != "" {
+			vars.DEFAULT_FLOW = cfg.ActiveFlow
+		} else {
+			vars.DEFAULT_FLOW = cfg.DefaultFlow
+		}
 	} else {
 		vars.DOCS_INTERNAL = resolvePathWithAnchor(configRoot, workspaceDir, resolveDocsPathFromMD(configRoot))
 		vars.DOCS_EXTERNAL = resolvePathWithAnchor(configRoot, workspaceDir, resolveDocsExternalPathFromMD(configRoot))
@@ -469,7 +473,11 @@ func resolvePaths(workspaceDir string) PathVars {
 	if cfgErr == nil {
 		vars.DOCS_INTERNAL = resolvePathWithAnchor(configRoot, workspaceDir, cfg.Paths.DocsInternal)
 		vars.DOCS_EXTERNAL = resolvePathWithAnchor(configRoot, workspaceDir, cfg.Paths.DocsExternal)
-		vars.DEFAULT_FLOW = cfg.DefaultFlow
+		if cfg.ActiveFlow != "" {
+			vars.DEFAULT_FLOW = cfg.ActiveFlow
+		} else {
+			vars.DEFAULT_FLOW = cfg.DefaultFlow
+		}
 	} else {
 		vars.DOCS_INTERNAL = resolvePathWithAnchor(configRoot, workspaceDir, resolveDocsPathFromMD(configRoot))
 		vars.DOCS_EXTERNAL = resolvePathWithAnchor(configRoot, workspaceDir, resolveDocsExternalPathFromMD(configRoot))
@@ -671,7 +679,20 @@ func resolveDefaultFlowFromMD(root string) (string, error) {
 	projectMD := filepath.Join(root, ".team", "project.md")
 	data, err := os.ReadFile(projectMD)
 	if err != nil {
-		return "", fmt.Errorf("no default flow configured")
+		return "", fmt.Errorf("no active flow configured")
+	}
+	// Prefer active_flow over default_flow
+	for _, line := range strings.Split(string(data), "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.Contains(trimmed, "active_flow:") {
+			parts := strings.SplitN(trimmed, ":", 2)
+			if len(parts) == 2 {
+				val := strings.Trim(strings.TrimSpace(parts[1]), "\"' ")
+				if val != "" {
+					return val, nil
+				}
+			}
+		}
 	}
 	for _, line := range strings.Split(string(data), "\n") {
 		trimmed := strings.TrimSpace(line)
@@ -685,5 +706,5 @@ func resolveDefaultFlowFromMD(root string) (string, error) {
 			}
 		}
 	}
-	return "", fmt.Errorf("no default flow configured")
+	return "", fmt.Errorf("no active flow configured")
 }

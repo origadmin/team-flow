@@ -3,6 +3,7 @@ package proc
 import (
 	"context"
 	"path/filepath"
+	"strings"
 
 	"github.com/origadmin/team-flow/internal/eventlog"
 	"github.com/origadmin/team-flow/internal/flow"
@@ -31,9 +32,11 @@ func (r *DefaultFlowResolver) Resolve(ctx context.Context, name string, projectR
 	}
 
 	flowName := name
+	// Strip builtin: namespace prefix (v1#1: builtin namespace resolution)
+	flowName = strings.TrimPrefix(flowName, "builtin:")
 	if flowName == "" {
 		var err error
-		flowName, err = ResolveDefaultFlowName(root)
+		flowName, err = ResolveActiveFlow(root)
 		if err != nil {
 			return nil, err
 		}

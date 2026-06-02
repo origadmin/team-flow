@@ -15,7 +15,7 @@ import (
 )
 
 func LoadFlow(root, flowID string) (*flow.Flow, error) {
-	procPath := resolveProcPath(root, flowID)
+	procPath := ResolveProcPath(root, flowID)
 	if procPath != "" {
 		f, err := flow.ParseFlowFile(procPath)
 		if err != nil {
@@ -26,7 +26,8 @@ func LoadFlow(root, flowID string) (*flow.Flow, error) {
 
 	org := discoverOrg(root)
 	if org != "" {
-		data, err := skillfs.FS.ReadFile("assets/orgs/" + org + "/flows/" + flowID + ".json")
+		targetFile := "assets/orgs/" + org + "/flows/" + flowID + ".json"
+		data, err := skillfs.FS.ReadFile(targetFile)
 		if err == nil {
 			f, err := flow.ParseFlow(data)
 			if err != nil {
@@ -40,7 +41,7 @@ func LoadFlow(root, flowID string) (*flow.Flow, error) {
 }
 
 func ComputeFlowRevision(root, flowID string) string {
-	procPath := resolveProcPath(root, flowID)
+	procPath := ResolveProcPath(root, flowID)
 	if procPath == "" {
 		return ""
 	}
@@ -69,15 +70,23 @@ func FindNode(f *flow.Flow, nodeID string) (*flow.FlowNode, error) {
 		return FindRootNode(f)
 	}
 
+	// Try exact ID match first
 	for i := range f.Nodes {
 		if f.Nodes[i].ID == nodeID {
 			return &f.Nodes[i], nil
 		}
 	}
 
+	// Fallback: try name match (case-insensitive)
+	for i := range f.Nodes {
+		if strings.EqualFold(f.Nodes[i].Name, nodeID) {
+			return &f.Nodes[i], nil
+		}
+	}
+
 	available := make([]string, 0, len(f.Nodes))
 	for _, n := range f.Nodes {
-		available = append(available, n.ID)
+		available = append(available, n.ID+"("+n.Name+")")
 	}
 
 	return nil, fmt.Errorf("node not found: %s. Available: %s", nodeID, strings.Join(available, ", "))
@@ -118,13 +127,18 @@ func GetNodeRole(node *flow.FlowNode) string {
 	return ""
 }
 
-func ResolveDefaultFlowName(root string) (string, error) {
+func ResolveActiveFlow(root string) (string, error) {
 	cfg, err := loadProjectConfig(root)
-	if err == nil && cfg.DefaultFlow != "" {
-		return cfg.DefaultFlow, nil
+	if err == nil {
+		if cfg.ActiveFlow != "" {
+			return cfg.ActiveFlow, nil
+		}
+		if cfg.DefaultFlow != "" {
+			return cfg.DefaultFlow, nil
+		}
 	}
 
-	return "", fmt.Errorf("no default flow configured. Use --flow flag")
+	return "", fmt.Errorf("no active flow configured. Use --flow flag")
 }
 
 func ResolveDocsPath(root string) string {
@@ -169,6 +183,7 @@ func loadProjectConfig(root string) (*projectYAML, error) {
 }
 
 type projectYAML struct {
+	ActiveFlow  string `yaml:"active_flow"`
 	DefaultFlow string `yaml:"default_flow"`
 	Paths       struct {
 		DocsInternal string `yaml:"docs_internal"`
@@ -302,4 +317,8 @@ func LoadTeamFromFlowPath(flowPath string) (*flow.TeamDefinition, error) {
 	}
 
 	return nil, nil
+}
+
+func ResolveDefaultFlowName(root string) (string, error) {
+	return ResolveActiveFlow(root)
 }

@@ -269,7 +269,7 @@ func TestPrintValidation_WithWarnings(t *testing.T) {
 func TestResolveProcPath_ByProjectID(t *testing.T) {
 	dir := setupTestDir(t)
 
-	result := resolveProcPath(dir, "custom")
+	result := ResolveProcPath(dir, "custom")
 	expected := filepath.Join(dir, ".team", "flows", "custom.json")
 	if result != expected {
 		t.Errorf("expected %s, got %s", expected, result)
@@ -279,7 +279,7 @@ func TestResolveProcPath_ByProjectID(t *testing.T) {
 func TestResolveProcPath_ByPresetID(t *testing.T) {
 	dir := setupTestDir(t)
 
-	result := resolveProcPath(dir, "standard")
+	result := ResolveProcPath(dir, "standard")
 	expected := filepath.Join(dir, "v3", "flows", "standard.json")
 	if result != expected {
 		t.Errorf("expected %s, got %s", expected, result)
@@ -290,7 +290,7 @@ func TestResolveProcPath_AbsolutePath(t *testing.T) {
 	dir := setupTestDir(t)
 	absPath := filepath.Join(dir, ".team", "flows", "custom.json")
 
-	result := resolveProcPath(dir, absPath)
+	result := ResolveProcPath(dir, absPath)
 	if result != absPath {
 		t.Errorf("expected %s, got %s", absPath, result)
 	}
@@ -299,7 +299,7 @@ func TestResolveProcPath_AbsolutePath(t *testing.T) {
 func TestResolveProcPath_NotFound(t *testing.T) {
 	dir := setupTestDir(t)
 
-	result := resolveProcPath(dir, "nonexistent")
+	result := ResolveProcPath(dir, "nonexistent")
 	if result != "" {
 		t.Errorf("expected empty string for nonexistent process, got %s", result)
 	}

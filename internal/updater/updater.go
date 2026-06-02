@@ -255,3 +255,11 @@ func max(a, b int) int {
 	}
 	return b
 }
+
+// is404Error checks if the error is a 404 Not Found from GitHub API.
+func is404Error(err error) bool {
+	if err == nil {
+		return false
+	}
+	return strings.Contains(err.Error(), "404")
+}

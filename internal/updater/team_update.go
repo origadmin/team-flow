@@ -119,7 +119,12 @@ func CheckForUpdatesInVerCommand(currentCLIVersion string, projectRoot string, f
 	if err == nil {
 		ShowUpdateCheck(updateCheck)
 	} else {
-		fmt.Printf("  ⚠ CLI update check failed: %v\n", err)
+		// v4#20: Gracefully skip update check on 404 or network errors
+		if is404Error(err) {
+			fmt.Println("  ⚠ Update check skipped (release not found)")
+		} else {
+			fmt.Println("  ⚠ Update check skipped (network unavailable)")
+		}
 	}
 
 	fmt.Println()
@@ -129,8 +134,6 @@ func CheckForUpdatesInVerCommand(currentCLIVersion string, projectRoot string, f
 	teamResult, err := updater.CheckForTeamUpdate(projectRoot)
 	if err == nil {
 		ShowTeamUpdateInfo(teamResult)
-	} else {
-		fmt.Printf("  ⚠ team-flow framework update check failed: %v\n", err)
 	}
 }
 

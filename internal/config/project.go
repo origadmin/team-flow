@@ -150,6 +150,11 @@ func parseProjectMD(data []byte) (*ProjectConfig, error) {
 			cfg.Paths.DocsExternal = extractValue(trimmed)
 		} else if contains(trimmed, "default_flow:") {
 			cfg.DefaultFlow = extractValue(trimmed)
+		} else if contains(trimmed, "active_flow:") {
+			cfg.ActiveFlow = extractValue(trimmed)
+			if cfg.DefaultFlow == "" {
+				cfg.DefaultFlow = cfg.ActiveFlow
+			}
 		}
 	}
 

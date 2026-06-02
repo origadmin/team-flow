@@ -8,7 +8,8 @@
       "development",
       "main-flow",
       "software"
-    ]
+    ],
+    "notes": "Node IDs use short keys (tri3, ent7, etc.) for internal routing uniqueness. Node names are the human-readable display labels. sf-* subflow nodes route to: feature-flow, bugfix-flow, hotfix-flow, analysis-flow, change-flow. batch-flow and release-flow are independent flows and are NOT routed through dev-flow sf-* subflows."
   },
   "config": {
     "task_type": "development",

@@ -20,9 +20,51 @@
     },
     {
       "id": "2ef533",
+      "type": "gate",
+      "name": "Triage Gate",
+      "description": "Validation gate: verify task context and determine dispatch",
+      "config": {
+        "conditions": [
+          {
+            "type": "task_exists",
+            "required": true,
+            "check": "Verify a task exists or intent is clear enough to proceed"
+          },
+          {
+            "type": "custom",
+            "required": false,
+            "check": "Determine if this is a skill-dev task (analysis/design/implement) rather than a generic dispatch"
+          }
+        ]
+      },
+      "components": {
+        "roles": [
+          {
+            "ref": "triage",
+            "source": "builtin"
+          }
+        ],
+        "rules": [
+          {
+            "ref": "s1a",
+            "source": "builtin"
+          },
+          {
+            "ref": "qg2",
+            "source": "builtin"
+          },
+          {
+            "ref": "qg4",
+            "source": "builtin"
+          }
+        ]
+      }
+    },
+    {
+      "id": "c3d4e5",
       "type": "phase",
-      "name": "Triage",
-      "description": "Classify incoming task",
+      "name": "Triage Analysis",
+      "description": "Classify incoming task and execute analysis if applicable (no dispatch-only guard)",
       "config": {
         "role": "triage"
       },
@@ -352,8 +394,30 @@
       ]
     },
     {
-      "id": "e_eff98a",
+      "id": "e_gate_to_triage",
       "from": "2ef533",
+      "to": "c3d4e5",
+      "type": "conditional",
+      "conditions": [
+        {
+          "expression": "gate.passed"
+        }
+      ]
+    },
+    {
+      "id": "e_gate_to_reject",
+      "from": "2ef533",
+      "to": "931a06",
+      "type": "conditional",
+      "conditions": [
+        {
+          "expression": "!gate.passed"
+        }
+      ]
+    },
+    {
+      "id": "e_eff98a",
+      "from": "c3d4e5",
       "to": "19267a",
       "type": "conditional",
       "conditions": [
@@ -364,7 +428,7 @@
     },
     {
       "id": "e_4c250c",
-      "from": "2ef533",
+      "from": "c3d4e5",
       "to": "f0204b",
       "type": "conditional",
       "conditions": [
@@ -375,7 +439,7 @@
     },
     {
       "id": "e_62ce8e",
-      "from": "2ef533",
+      "from": "c3d4e5",
       "to": "403d83",
       "type": "conditional",
       "conditions": [
@@ -386,7 +450,7 @@
     },
     {
       "id": "e_ff7b70",
-      "from": "2ef533",
+      "from": "c3d4e5",
       "to": "b4a98b",
       "type": "conditional",
       "conditions": [
@@ -397,7 +461,7 @@
     },
     {
       "id": "e_768cc1",
-      "from": "2ef533",
+      "from": "c3d4e5",
       "to": "931a06",
       "type": "conditional",
       "conditions": [
@@ -420,7 +484,7 @@
     {
       "id": "e_6c04a6",
       "from": "19267a",
-      "to": "2ef533",
+      "to": "c3d4e5",
       "type": "conditional",
       "conditions": [
         {
@@ -442,7 +506,7 @@
     {
       "id": "e_961939",
       "from": "b94383",
-      "to": "2ef533",
+      "to": "c3d4e5",
       "type": "conditional",
       "conditions": [
         {
@@ -464,7 +528,7 @@
     {
       "id": "e_fdd68f",
       "from": "f0204b",
-      "to": "2ef533",
+      "to": "c3d4e5",
       "type": "conditional",
       "conditions": [
         {
@@ -486,7 +550,7 @@
     {
       "id": "e_75b7a8",
       "from": "403d83",
-      "to": "2ef533",
+      "to": "c3d4e5",
       "type": "conditional",
       "conditions": [
         {
@@ -508,7 +572,7 @@
     {
       "id": "e_2e747f",
       "from": "b4a98b",
-      "to": "2ef533",
+      "to": "c3d4e5",
       "type": "conditional",
       "conditions": [
         {
@@ -530,7 +594,7 @@
     {
       "id": "e_60d69b",
       "from": "865675",
-      "to": "2ef533",
+      "to": "c3d4e5",
       "type": "conditional",
       "conditions": [
         {

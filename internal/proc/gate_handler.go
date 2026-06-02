@@ -31,6 +31,7 @@ func ExtractGateConditions(node *flow.FlowNode) []GateCondOutput {
 			Expected:     c.Expected,
 			Deliverables: c.Deliverables,
 			NodeID:       node.ID,
+			NodeName:     node.Name,
 		})
 	}
 	return conditions

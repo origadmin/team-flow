@@ -180,6 +180,7 @@ func (l *Logger) SessionsDir() string {
 // CreateSession creates a new session directory and writes session.start event
 // to the global events.mdl.
 // Returns the session directory name (e.g. "2026-05-29-2230-a1b2c3").
+// v4#11: input is truncated to 50 chars for the event log; full text is in context.md.
 func (l *Logger) CreateSession(round int, topic, input string) (string, error) {
 	name := sessionDirName()
 	dir := filepath.Join(l.sessionsDir, name)
@@ -189,12 +190,18 @@ func (l *Logger) CreateSession(round int, topic, input string) (string, error) {
 
 	ts := now()
 
+	// v4#11: truncate input to short keyword summary for events.mdl
+	shortInput := input
+	if len([]rune(shortInput)) > 50 {
+		shortInput = string([]rune(shortInput)[:50]) + "..."
+	}
+
 	if err := l.writeEvent(SessionStart{
 		Event:   EventSessionStart,
 		TS:      ts,
 		Round:   round,
 		Topic:   topic,
-		Input:   input,
+		Input:   shortInput,
 		Session: name,
 	}); err != nil {
 		return "", fmt.Errorf("eventlog: write session.start: %w", err)

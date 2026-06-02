@@ -1,6 +1,7 @@
 package session
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -36,6 +37,7 @@ func init() {
 	Cmd.AddCommand(lastCmd)
 	Cmd.AddCommand(listCmd)
 	Cmd.AddCommand(historyCmd)
+	Cmd.AddCommand(searchCmd)
 }
 
 // ─── start ───────────────────────────────────────────────────────────────────
@@ -355,43 +357,73 @@ func runList(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	fmt.Println("=== Sessions ===")
+	// v4#22: improved output with TOPIC, STATUS, ROUND, UPDATED columns
+	w := tabwriter.NewWriter(os.Stdout, 0, 8, 2, '\t', 0)
+	fmt.Fprintln(w, "SESSION-ID\tTOPIC\tSTATUS\tROUND\tUPDATED")
+
 	for i, name := range names {
 		if i >= listLimit {
 			break
 		}
-		// Read context for topic
-		ctx, _ := lgr.ReadContext(name)
+
 		topic := ""
-		if ctx != "" {
-			// Extract first line (topic)
-			lines := splitLines(ctx, 2)
-			if len(lines) > 0 {
-				topic = lines[0]
-				if len(topic) > 60 {
-					topic = topic[:60] + "..."
+		status := "active"
+		round := ""
+		updated := ""
+
+		// Read events to extract metadata
+		events, _ := lgr.ReadEvents(name)
+		for _, evt := range events {
+			switch evt["event"] {
+			case eventlog.EventSessionStart:
+				if r, ok := evt["round"].(float64); ok {
+					round = fmt.Sprintf("R%d", int(r))
+				}
+				if inp, ok := evt["input"].(string); ok && inp != "" {
+					topic = inp
+				}
+				if t, ok := evt["topic"].(string); ok && t != "" && topic == "" {
+					topic = t
+				}
+				if ts, ok := evt["ts"].(string); ok {
+					updated = ts
+				}
+			case eventlog.EventSessionAnalysis:
+				if s, ok := evt["status"].(string); ok {
+					status = s
+				}
+				if ts, ok := evt["ts"].(string); ok {
+					updated = ts
+				}
+			case eventlog.EventFlowNode:
+				if ts, ok := evt["ts"].(string); ok {
+					updated = ts
 				}
 			}
-		} else {
-			// Fallback: read session.start input
-			events, _ := lgr.ReadEvents(name)
-			for _, evt := range events {
-				if evt["event"] == eventlog.EventSessionStart {
-					if input, ok := evt["input"].(string); ok {
-						if len(input) > 60 {
-							input = input[:60] + "..."
-						}
-						topic = input
-					}
-					break
+		}
+
+		// Fallback: read context.md for topic
+		if topic == "" {
+			ctx, _ := lgr.ReadContext(name)
+			if ctx != "" {
+				lines := splitLines(ctx, 2)
+				if len(lines) > 0 {
+					topic = lines[0]
 				}
 			}
+		}
+
+		// Truncate long fields
+		if len(topic) > 50 {
+			topic = topic[:50] + "..."
 		}
 		if topic == "" {
-			topic = "(no input recorded)"
+			topic = "(no input)"
 		}
-		fmt.Printf("%s  %s\n", name, topic)
+
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", name, topic, status, round, updated)
 	}
+	w.Flush()
 
 	return nil
 }
@@ -486,6 +518,125 @@ func runHistory(cmd *cobra.Command, args []string) error {
 		}
 
 		fmt.Fprintf(w, "%s\t%s\t%s\n", ts, eventType, details)
+	}
+	w.Flush()
+
+	return nil
+}
+
+// ─── search ─────────────────────────────────────────────────────────────────
+
+var searchCmd = &cobra.Command{
+	Use:   "search",
+	Short: "Search sessions by keyword",
+	Long: `Search all sessions in events.mdl for events containing the keyword.
+Outputs matching session IDs, rounds, and topics.
+
+  flow session search --keyword "login"`,
+	RunE: runSearch,
+}
+
+var searchKeyword string
+
+func init() {
+	searchCmd.Flags().StringVar(&searchKeyword, "keyword", "", "Keyword to search for in session events (required)")
+	_ = searchCmd.MarkFlagRequired("keyword")
+}
+
+func runSearch(cmd *cobra.Command, args []string) error {
+	projectRoot, err := resolveProjectRoot()
+	if err != nil {
+		return err
+	}
+
+	lgr, err := eventlog.NewLogger(projectRoot)
+	if err != nil {
+		return err
+	}
+
+	// Read all events across all sessions
+	events, err := lgr.ReadEvents("")
+	if err != nil || len(events) == 0 {
+		fmt.Println("No events found.")
+		return nil
+	}
+
+	keyword := strings.ToLower(searchKeyword)
+
+	// Map session -> matched event info
+	type matchInfo struct {
+		session string
+		round   string
+		topic   string
+	}
+	seen := make(map[string]matchInfo)
+
+	for _, evt := range events {
+		// Serialize event to string for keyword matching
+		data, _ := json.Marshal(evt)
+		if !strings.Contains(strings.ToLower(string(data)), keyword) {
+			continue
+		}
+
+		session, _ := evt["session"].(string)
+		if session == "" {
+			continue
+		}
+		if _, exists := seen[session]; exists {
+			continue
+		}
+
+		info := matchInfo{session: session}
+		if r, ok := evt["round"].(float64); ok {
+			info.round = fmt.Sprintf("R%d", int(r))
+		}
+		if inp, ok := evt["input"].(string); ok && inp != "" {
+			info.topic = inp
+		} else if t, ok := evt["topic"].(string); ok && t != "" {
+			info.topic = t
+		}
+		seen[session] = info
+	}
+
+	// Also search through context.md for each session as fallback
+	names, _ := lgr.ListSessions()
+	for _, name := range names {
+		if _, exists := seen[name]; exists {
+			continue
+		}
+		ctx, _ := lgr.ReadContext(name)
+		if ctx != "" && strings.Contains(strings.ToLower(ctx), keyword) {
+			seen[name] = matchInfo{session: name, topic: "(matched in context.md)"}
+		}
+	}
+
+	if len(seen) == 0 {
+		fmt.Printf("No sessions found matching keyword: %s\n", searchKeyword)
+		return nil
+	}
+
+	fmt.Printf("=== Sessions matching \"%s\" (%d found) ===\n\n", searchKeyword, len(seen))
+	w := tabwriter.NewWriter(os.Stdout, 0, 8, 2, '\t', 0)
+	fmt.Fprintln(w, "SESSION-ID\tROUND\tTOPIC")
+
+	// Sort by session name (descending, newest first)
+	sorted := make([]matchInfo, 0, len(seen))
+	for _, v := range seen {
+		sorted = append(sorted, v)
+	}
+	sort.Slice(sorted, func(i, j int) bool {
+		return sorted[i].session > sorted[j].session
+	})
+
+	for _, info := range sorted {
+		topic := info.topic
+		if len(topic) > 60 {
+			topic = topic[:60] + "..."
+		}
+		if topic == "" {
+			topic = "(no topic)"
+		}
+		fmt.Fprintf(w, "%s\t%s\t%s\n", info.session, info.round, topic)
 	}
 	w.Flush()
 

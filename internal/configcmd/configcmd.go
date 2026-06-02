@@ -123,7 +123,7 @@ func runGet(cmd *cobra.Command, args []string) error {
 type Config struct {
 	ProjectName         string `json:"project_name,omitempty"`
 	TeamVersion         string `json:"team_version,omitempty"`
-	DefaultFlow         string `json:"default_flow,omitempty"`
+	ActiveFlow          string `json:"active_flow,omitempty"`
 	FlowPath            string `json:"flow_path,omitempty"`
 	FlowPathResolved    string `json:"flow_path_resolved,omitempty"`
 	BackupPath          string `json:"backup_path,omitempty"`
@@ -145,8 +145,8 @@ func (c *Config) GetResolved(key string, projectRoot string) string {
 		return c.ProjectName
 	case "team_version":
 		return c.TeamVersion
-	case "default_flow":
-		return c.DefaultFlow
+	case "default_flow", "active_flow":
+		return c.ActiveFlow
 	case "flow_path":
 		// Return resolved flow path (relative → absolute)
 		return c.resolveFlowPath(projectRoot)
@@ -237,7 +237,11 @@ func loadConfig(projectRoot string) (*Config, error) {
 	if err == nil {
 		// Successfully loaded from YAML
 		cfg.ProjectName = projectCfg.Name
-		cfg.DefaultFlow = projectCfg.DefaultFlow
+		if projectCfg.ActiveFlow != "" {
+			cfg.ActiveFlow = projectCfg.ActiveFlow
+		} else {
+			cfg.ActiveFlow = projectCfg.DefaultFlow
+		}
 		cfg.DocsInternal = projectCfg.Paths.DocsInternal
 		cfg.DocsExternal = projectCfg.Paths.DocsExternal
 		cfg.ProjectsPath = projectCfg.Paths.ProjectsPath
@@ -300,7 +304,7 @@ func printConfig(cfg *Config, projectRoot string) {
 	fmt.Printf("  Name:          %s\n", cfg.ProjectName)
 	fmt.Printf("  Root:          %s\n", projectRoot)
 	fmt.Printf("  Team Version:  %s\n", cfg.TeamVersion)
-	fmt.Printf("  Default Flow:  %s\n", cfg.DefaultFlow)
+	fmt.Printf("  Active Flow:   %s\n", cfg.ActiveFlow)
 	if cfg.ProjectsPath != "" {
 		fmt.Printf("  Projects Path: %s\n", cfg.resolvePath(cfg.ProjectsPath, projectRoot))
 	}
@@ -350,7 +354,7 @@ func getFlowExePath() string {
 
 // allowedConfigKeys lists the keys that can be set via flow config set
 var allowedConfigKeys = map[string]string{
-	"active_flow": "DefaultFlow",
+	"active_flow": "ActiveFlow",
 }
 
 func runSet(cmd *cobra.Command, args []string) error {
