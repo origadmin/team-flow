@@ -88,7 +88,7 @@ func TestReadContext_MissingSession(t *testing.T) {
 	}
 }
 
-func TestCreateSession_EventsJSONL(t *testing.T) {
+func TestCreateSession_EventsMDL(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	lgr, err := NewLogger(tmpDir)
@@ -100,17 +100,18 @@ func TestCreateSession_EventsJSONL(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateSession failed: %v", err)
 	}
+	_ = name // session name is captured but events go to global events.mdl
 
-	eventsPath := filepath.Join(lgr.SessionsDir(), name, "events.jsonl")
+	eventsPath := filepath.Join(tmpDir, ".team", "state", "events.mdl")
 	data, err := os.ReadFile(eventsPath)
 	if err != nil {
-		t.Fatalf("events.jsonl not found: %v", err)
+		t.Fatalf("events.mdl not found: %v", err)
 	}
 
 	if len(data) == 0 {
-		t.Fatal("events.jsonl is empty")
+		t.Fatal("events.mdl is empty")
 	}
 	if !strings.Contains(string(data), "session.start") {
-		t.Error("events.jsonl missing session.start event")
+		t.Error("events.mdl missing session.start event")
 	}
 }
