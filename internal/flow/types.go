@@ -24,6 +24,7 @@ type EdgeType string
 const (
 	EdgeTypeSequential  EdgeType = "sequential"
 	EdgeTypeConditional EdgeType = "conditional"
+	EdgeTypeSubflow     EdgeType = "subflow"
 )
 
 type TaskType string
@@ -82,6 +83,8 @@ const (
 	GateCondTaskExists          GateConditionType = "task_exists"
 	GateCondTypeMatches         GateConditionType = "type_matches"
 	GateCondTraceUpdated        GateConditionType = "trace_updated"
+	GateCondHasActiveTasks      GateConditionType = "has_active_tasks"
+	GateCondHasSessionHistory   GateConditionType = "has_session_history"
 	GateCondCustom              GateConditionType = "custom"
 )
 
@@ -216,6 +219,7 @@ type Flow struct {
 }
 
 type FlowMetadata struct {
+	ID          string   `json:"id,omitempty"`
 	Name        string   `json:"name"`
 	Description string   `json:"description,omitempty"`
 	Author      string   `json:"author,omitempty"`
@@ -238,6 +242,8 @@ type FlowNode struct {
 	Type        NodeType        `json:"type"`
 	Name        string          `json:"name"`
 	Description string          `json:"description,omitempty"`
+	Entry       bool            `json:"entry,omitempty"`
+	Status      string          `json:"status,omitempty"`
 	Config      json.RawMessage `json:"config,omitempty"`
 	Components  *NodeComponents `json:"components,omitempty"`
 	Docs        []DocSpec       `json:"docs,omitempty"`
@@ -248,11 +254,21 @@ type FlowNode struct {
 }
 
 type FlowEdge struct {
-	ID         string           `json:"id,omitempty"`
-	From       string           `json:"from"`
-	To         string           `json:"to"`
-	Type       EdgeType         `json:"type,omitempty"`
-	Conditions []EdgeCondition  `json:"conditions,omitempty"`
+	ID         string          `json:"id,omitempty"`
+	From       string          `json:"from"`
+	To         string          `json:"to"`
+	Type       EdgeType        `json:"type,omitempty"`
+	Condition  string          `json:"condition,omitempty"`
+	Conditions []EdgeCondition `json:"conditions,omitempty"`
+	SubflowRef string          `json:"subflow_ref,omitempty"`
+}
+
+func (e *FlowEdge) Normalize() {
+	if len(e.Conditions) > 0 || e.Condition == "" {
+		return
+	}
+	e.Conditions = []EdgeCondition{{Expression: e.Condition}}
+	e.Condition = ""
 }
 
 type EdgeCondition struct {
@@ -519,6 +535,7 @@ type TeamDefinition struct {
 	Version          string            `json:"version,omitempty"`
 	Author           string            `json:"author,omitempty"`
 	Tags             []string          `json:"tags,omitempty"`
+	Org              string            `json:"org,omitempty"`
 	Roles            []RoleDefinition  `json:"roles,omitempty"`
 	Rules            []RuleDefinition  `json:"rules,omitempty"`
 	Flows            []TeamFlowRef     `json:"flows,omitempty"`

@@ -103,12 +103,12 @@ func runList(cmd *cobra.Command, args []string) error {
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	fmt.Fprintln(w, "NAME\tPATH\tTEAM\tFLOW\tLAST NODE\tLAST ACTIVE")
 	for _, p := range reg.Projects {
-		nodeDisplay := ""
+		nodeDisplay := p.LastNode
 		s, _ := state.LoadFlowState(p.Path)
-		if s != nil {
-			nodeDisplay = s.Node
-			if s.Suspended {
-				nodeDisplay = "suspended:" + s.Node
+		if s != nil && s.Suspended {
+			nodeDisplay = "suspended"
+			if p.LastNode != "" {
+				nodeDisplay = "suspended:" + p.LastNode
 			}
 		}
 		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",
@@ -179,11 +179,10 @@ func runSwitch(cmd *cobra.Command, args []string) error {
 	}
 
 	cwd, _ := os.Getwd()
-	var fromName, fromNode string
+	var fromName string
 	currentState, _ := state.LoadFlowState(cwd)
 	if currentState != nil {
 		fromName = resolveProjectName(cwd, reg)
-		fromNode = currentState.Node
 		if err := state.SuspendState(cwd, "switch to "+targetName); err != nil {
 			fmt.Printf("⚠ Failed to suspend current project: %v\n", err)
 		}
@@ -193,10 +192,9 @@ func runSwitch(cmd *cobra.Command, args []string) error {
 		fmt.Printf("⚠ Failed to resume target project state: %v\n", err)
 	}
 
-	targetState, _ := state.LoadFlowState(target.Path)
 	targetNode := "tri3"
-	if targetState != nil && targetState.Node != "" {
-		targetNode = targetState.Node
+	if target.LastNode != "" {
+		targetNode = target.LastNode
 	}
 
 	reg.Update(targetName, func(e *ProjectEntry) {
@@ -204,13 +202,18 @@ func runSwitch(cmd *cobra.Command, args []string) error {
 		e.LastActive = time.Now()
 	})
 	if fromName != "" {
+		fromEntry := reg.Find(fromName)
+		fromNode := ""
+		if fromEntry != nil {
+			fromNode = fromEntry.LastNode
+		}
 		reg.Update(fromName, func(e *ProjectEntry) {
 			e.LastNode = fromNode
 		})
 	}
 	_ = SaveRegistry(regPath, reg)
 
-	printSwitchOutput(fromName, fromNode, targetName, targetNode, target.Path)
+	printSwitchOutput(fromName, targetName, targetNode, target.Path)
 	return nil
 }
 
@@ -230,7 +233,7 @@ func runStatus(cmd *cobra.Command, args []string) error {
 		if currentState.Suspended {
 			s = "suspended"
 		}
-		fmt.Printf("CURRENT: %s (node: %s, flow: %s, status: %s)\n\n", currentName, currentState.Node, currentState.Flow, s)
+		fmt.Printf("CURRENT: %s (status: %s)\n\n", currentName, s)
 	} else {
 		fmt.Printf("CURRENT: %s (no flow state)\n\n", currentName)
 	}
@@ -243,8 +246,12 @@ func runStatus(cmd *cobra.Command, args []string) error {
 				fmt.Println("SUSPENDED:")
 				hasSuspended = true
 			}
-			fmt.Printf("  %s  (node: %s, suspended: %s, reason: %s)\n",
-				p.Name, s.Node, s.SuspendedAt.Format("2006-01-02 15:04"), s.SuspendReason)
+			nodeInfo := ""
+			if p.LastNode != "" {
+				nodeInfo = fmt.Sprintf(", node: %s", p.LastNode)
+			}
+			fmt.Printf("  %s  (suspended: %s, reason: %s%s)\n",
+				p.Name, s.SuspendedAt.Format("2006-01-02 15:04"), s.SuspendReason, nodeInfo)
 		}
 	}
 
@@ -260,14 +267,14 @@ func runDeps(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func printSwitchOutput(fromName, fromNode, toName, toNode, toPath string) {
+func printSwitchOutput(fromName, toName, toNode, toPath string) {
 	fmt.Println()
 	fmt.Println("╔════════════════════════════════════════════════════════════╗")
 	fmt.Println("║  Project Switched                                          ║")
 	fmt.Println("╠════════════════════════════════════════════════════════════╣")
 
 	if fromName != "" {
-		fmt.Printf("║  FROM: %-10s (suspended at node %-20s)║\n", fromName, fromNode)
+		fmt.Printf("║  FROM: %-10s (suspended)                               ║\n", fromName)
 	}
 
 	fmt.Printf("║  TO:   %-10s (resuming at node %-22s)║\n", toName, toNode)
@@ -287,7 +294,6 @@ func printSwitchOutput(fromName, fromNode, toName, toNode, toPath string) {
 	type switchOutput struct {
 		Action            string `json:"action"`
 		FromName          string `json:"from_name,omitempty"`
-		FromNode          string `json:"from_node,omitempty"`
 		ToName            string `json:"to_name"`
 		ToNode            string `json:"to_node"`
 		ToPath            string `json:"to_path"`
@@ -298,7 +304,6 @@ func printSwitchOutput(fromName, fromNode, toName, toNode, toPath string) {
 	out := switchOutput{
 		Action:            "project_switch",
 		FromName:          fromName,
-		FromNode:          fromNode,
 		ToName:            toName,
 		ToNode:            toNode,
 		ToPath:            toPath,

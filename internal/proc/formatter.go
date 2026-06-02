@@ -140,8 +140,18 @@ func FormatText(w io.Writer, result *ProcRunResult) error {
 	fmt.Fprintf(w, "║  %-58s║\n", current.Name)
 	fmt.Fprintf(w, "%s\n", boxMid(width))
 
-	fmt.Fprintf(w, "║  NODE: %-52s║\n", current.NodeID)
+	fmt.Fprintf(w, "║  NODE: %-52s║\n", current.Name)
 	fmt.Fprintf(w, "║  TYPE: %-52s║\n", current.NodeType)
+	if result.ResumedFrom != "" {
+		switch result.ResumedFrom {
+		case "gate-auto-advance":
+			fmt.Fprintf(w, "║  📌 AUTO-ADVANCED: Passed gate, moved to next node%-14s║\n", "")
+		case "auto-advance":
+			fmt.Fprintf(w, "║  📌 AUTO-ADVANCED: Moved to next node%-22s║\n", "")
+		default:
+			fmt.Fprintf(w, "║  📌 RESUMED: Auto-resumed from last session%-18s║\n", "")
+		}
+	}
 	if result.Workspace != "" {
 		fmt.Fprintf(w, "║  WORKSPACE: %-46s║\n", result.Workspace)
 	}
@@ -181,6 +191,14 @@ func FormatText(w io.Writer, result *ProcRunResult) error {
 	}
 	if current.Guidance != "" {
 		fmt.Fprintf(w, "║  GUIDANCE: %-48s║\n", current.Guidance)
+	}
+
+	if current.Principal {
+		fmt.Fprintf(w, "║%-60s║\n", "")
+		fmt.Fprintf(w, "║  ⛔ DISPATCH ONLY — DO NOT execute tasks directly%-12s║\n", "")
+		fmt.Fprintf(w, "║  You MUST classify input and dispatch to sub-roles%-13s║\n", "")
+		fmt.Fprintf(w, "║  NEVER write code or modify files yourself%-19s║\n", "")
+		fmt.Fprintf(w, "║  Use Task tool to dispatch, then verify deliverables%-10s║\n", "")
 	}
 
 	if len(current.Rules) > 0 {
@@ -333,7 +351,10 @@ func FormatText(w io.Writer, result *ProcRunResult) error {
 		fmt.Fprintf(w, "║    strategy: %-46s║\n", strategy)
 		fmt.Fprintf(w, "║    merge: %-49s║\n", merge)
 		for i, b := range current.ParallelBranches {
-			label := fmt.Sprintf("[%d] %s", i+1, b.NodeID)
+			label := fmt.Sprintf("[%d] %s", i+1, b.Name)
+		if b.Name == "" {
+			label = fmt.Sprintf("[%d] %s", i+1, b.NodeID)
+		}
 			if b.Alias != "" {
 				label += " (" + b.Alias
 				if b.RoleName != "" {
@@ -371,7 +392,13 @@ func FormatText(w io.Writer, result *ProcRunResult) error {
 	if len(result.NextOptions) > 0 {
 		fmt.Fprintf(w, "║  NEXT OPTIONS:%-45s║\n", "")
 		for i, opt := range result.NextOptions {
-			label := fmt.Sprintf("[%d] → %s", i+1, opt.NodeID)
+			label := fmt.Sprintf("[%d] → %s", i+1, opt.Name)
+		if opt.Name == "" {
+			label = fmt.Sprintf("[%d] → %s", i+1, opt.NodeID)
+		}
+			if opt.Name != "" {
+				label += " " + opt.Name
+			}
 			if opt.Role != "" {
 				label += " (" + opt.Role + ")"
 			}

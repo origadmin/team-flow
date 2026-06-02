@@ -106,11 +106,11 @@ func ResolveInternalDocs(root string) string {
 		return filepath.Join(root, ".team", "docs")
 	}
 	if cfg.Paths.DocsInternal != "" {
-		p := cfg.Paths.DocsInternal
-		if !filepath.IsAbs(p) {
-			p = filepath.Join(root, p)
+		workspace := FindWorkspaceRoot(root)
+		if workspace == "" {
+			workspace = root
 		}
-		return p
+		return resolvePathWithAnchor(root, workspace, cfg.Paths.DocsInternal)
 	}
 	return filepath.Join(root, ".team", "docs")
 }
@@ -121,11 +121,11 @@ func ResolveExternalDocs(root string) string {
 		return ""
 	}
 	if cfg.Paths.DocsExternal != "" {
-		p := cfg.Paths.DocsExternal
-		if !filepath.IsAbs(p) {
-			p = filepath.Join(root, p)
+		workspace := FindWorkspaceRoot(root)
+		if workspace == "" {
+			workspace = root
 		}
-		return p
+		return resolvePathWithAnchor(root, workspace, cfg.Paths.DocsExternal)
 	}
 	return ""
 }

@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	skillfs "github.com/origadmin/team-flow"
 	"gopkg.in/yaml.v3"
 )
 
@@ -42,7 +43,7 @@ func LoadRegistry(fsys embed.FS) (*IDERegistry, error) {
 		return cachedRegistry, nil
 	}
 
-	data, err := fsys.ReadFile("team/ide-registry.yaml")
+	data, err := fsys.ReadFile(skillfs.SkillRoot + "/ide-registry.yaml")
 	if err != nil {
 		return nil, fmt.Errorf("read ide-registry.yaml: %w", err)
 	}

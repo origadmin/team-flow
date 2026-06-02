@@ -132,10 +132,23 @@ const (
 - `rule_ref`：引用路径，格式 `flow proc rule {id}`
 - `description`：完整英文描述（~200字/规则），AI 需要详情时执行 `flow proc rule {id}` 获取
 
-### 4.2 规则 ID
+### 4.2 实体 ID 规范
 
-- 随机短码（如 d5f, r3k7, c4p1），不是语义化名称
-- name 才是有意义的项
+所有实体 ID 统一使用随机短码（`idgen.RandHex(3)` 生成 6 字符十六进制）：
+
+| 实体类型 | ID 格式 | 示例 | 生成方式 |
+|----------|---------|------|----------|
+| 规则 (Rule) | 随机短码 | `d5f`, `r3k7` | `idgen.RandHex(3)` |
+| 节点 (Node) | 随机短码 | `a26c80` | `idgen.RandHex(3)` |
+| 边 (Edge) | `e_` + 随机短码 | `e_c2b046` | `"e_" + idgen.RandHex(3)` |
+| 角色 (Role) | 随机短码 | `triage`, `qa` | `idgen.RandHex(3)` |
+| 流程 (Flow) | 随机短码 | `dev-flow` | `idgen.RandHex(3)` |
+
+**核心原则**：
+- **ID 是 key，不是 name**：用户不应关注 key 叫什么名字，就像数据库主键
+- **name 才是有意义的项**：用户通过 `name` 字段识别实体
+- **创建 → 返回 ID → 按 ID 编辑**：用 `flow proc node add` 创建节点（自动生成 ID），返回的 ID 用于后续 `flow proc node edit --id <id>`
+- **禁止直接修改 JSON**：所有实体变更必须通过 `flow` CLI 完成
 
 ### 4.3 规则类型
 

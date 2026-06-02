@@ -299,3 +299,43 @@ func mustMarshal(v interface{}) json.RawMessage {
 	data, _ := json.Marshal(v)
 	return data
 }
+
+func TestParseFlow_ConditionNormalization(t *testing.T) {
+	input := []byte(`{
+		"version": "v3",
+		"metadata": {"name": "test"},
+		"nodes": [{"id": "a", "type": "phase", "name": "A"}, {"id": "b", "type": "terminal", "name": "B"}],
+		"edges": [
+			{"from": "a", "to": "b", "condition": "status=task_created"},
+			{"from": "b", "to": "a", "conditions": [{"expression": "!gate.passed"}]}
+		]
+	}`)
+
+	fl, err := ParseFlow(input)
+	if err != nil {
+		t.Fatalf("ParseFlow failed: %v", err)
+	}
+
+	if len(fl.Edges) != 2 {
+		t.Fatalf("expected 2 edges, got %d", len(fl.Edges))
+	}
+
+	// First edge: old format "condition" should be normalized to conditions array
+	edge1 := fl.Edges[0]
+	if len(edge1.Conditions) != 1 {
+		t.Errorf("edge1: expected 1 condition after normalization, got %d", len(edge1.Conditions))
+	} else if edge1.Conditions[0].Expression != "status=task_created" {
+		t.Errorf("edge1 expression mismatch: got %q, want %q", edge1.Conditions[0].Expression, "status=task_created")
+	}
+	if edge1.Condition != "" {
+		t.Errorf("edge1.Condition should be cleared after normalization, got %q", edge1.Condition)
+	}
+
+	// Second edge: already in array format should be unchanged
+	edge2 := fl.Edges[1]
+	if len(edge2.Conditions) != 1 {
+		t.Errorf("edge2: expected 1 condition, got %d", len(edge2.Conditions))
+	} else if edge2.Conditions[0].Expression != "!gate.passed" {
+		t.Errorf("edge2 expression mismatch: got %q, want %q", edge2.Conditions[0].Expression, "!gate.passed")
+	}
+}

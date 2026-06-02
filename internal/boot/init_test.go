@@ -56,14 +56,14 @@ func TestDetectIDEsBridgePaths(t *testing.T) {
 
 func TestGenerateBridgeFileContent_Trae(t *testing.T) {
 	content := generateBridgeFileContent("trae", ".trae/skills/team-flow", "v3")
-	if !strings.Contains(content, ".team/version") {
-		t.Error("Trae bridge should mention .team/version")
+	if !strings.Contains(content, "flow proc run") {
+		t.Error("Trae bridge should mention flow proc run")
 	}
 	if !strings.Contains(content, ".trae/skills/team-flow/SKILL.md") {
 		t.Error("Trae bridge should point to SKILL.md")
 	}
-	if !strings.Contains(content, "flow proc run") {
-		t.Error("Trae bridge should mention flow proc run")
+	if !strings.Contains(content, "Session Startup") {
+		t.Error("Trae bridge should mention Session Startup Protocol")
 	}
 	if strings.Contains(content, "### Rule") {
 		t.Error("Bridge file should NOT contain full rule definitions (### Rule headings)")

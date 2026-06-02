@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/origadmin/team-flow/internal/bd"
+	"github.com/origadmin/team-flow/internal/eventlog"
 	"github.com/origadmin/team-flow/internal/flow"
 )
 
@@ -21,10 +22,12 @@ type GateCheckResult struct {
 }
 
 type GateChecker struct {
-	ProjectRoot         string
-	Toolchain           ToolchainConfig
-	TeamCheckers        map[string]flow.TeamGateChecker
+	ProjectRoot          string
+	Toolchain            ToolchainConfig
+	TeamCheckers         map[string]flow.TeamGateChecker
 	DocsInternalResolved string
+	FlowName             string
+	ExplicitlyTargeted   bool
 }
 
 type ToolchainConfig struct {
@@ -70,6 +73,8 @@ var gateCheckerRegistry = map[flow.GateConditionType]GateCheckerFunc{
 	flow.GateCondTaskExists:           func(gc *GateChecker, cond GateCondOutput) GateCheckResult { return gc.checkTaskExists(cond) },
 	flow.GateCondTypeMatches:          func(gc *GateChecker, cond GateCondOutput) GateCheckResult { return gc.checkTypeMatches(cond) },
 	flow.GateCondTraceUpdated:         func(gc *GateChecker, cond GateCondOutput) GateCheckResult { return gc.checkTraceUpdated(cond) },
+	flow.GateCondHasActiveTasks:       func(gc *GateChecker, cond GateCondOutput) GateCheckResult { return gc.checkHasActiveTasks(cond) },
+	flow.GateCondHasSessionHistory:    func(gc *GateChecker, cond GateCondOutput) GateCheckResult { return gc.checkHasSessionHistory(cond) },
 }
 
 func RegisterGateChecker(condType flow.GateConditionType, fn GateCheckerFunc) {
@@ -87,11 +92,21 @@ func (gc *GateChecker) CheckCondition(cond GateCondOutput) GateCheckResult {
 		return gc.checkTeamRegistered(cond, checker)
 	}
 
+	if gc.ExplicitlyTargeted {
+		return GateCheckResult{
+			Type:     cond.Type,
+			Passed:   true,
+			Message:  fmt.Sprintf("AI confirmed (explicitly targeted): %s", cond.Check),
+			Required: cond.Required,
+			Auto:     false,
+		}
+	}
+
 	if condType == flow.GateCondCustom {
 		return GateCheckResult{
 			Type:     cond.Type,
 			Passed:   false,
-			Message:  fmt.Sprintf("custom check requires AI judgment: %s", cond.Check),
+			Message:  fmt.Sprintf("custom check requires AI judgment: %s (explicitly run 'flow proc run %s' to confirm)", cond.Check, cond.NodeID),
 			Required: cond.Required,
 			Auto:     false,
 		}
@@ -100,7 +115,7 @@ func (gc *GateChecker) CheckCondition(cond GateCondOutput) GateCheckResult {
 	return GateCheckResult{
 		Type:     cond.Type,
 		Passed:   false,
-		Message:  fmt.Sprintf("requires AI judgment: %s", cond.Check),
+		Message:  fmt.Sprintf("requires AI judgment: %s (explicitly run 'flow proc run %s' to confirm)", cond.Check, cond.NodeID),
 		Required: cond.Required,
 		Auto:     false,
 	}
@@ -111,10 +126,19 @@ func (gc *GateChecker) checkTeamRegistered(cond GateCondOutput, checker flow.Tea
 	case "script":
 		return gc.checkScriptCommand(cond, checker.Command)
 	case "ai_judgment":
+		if gc.ExplicitlyTargeted {
+			return GateCheckResult{
+				Type:     cond.Type,
+				Passed:   true,
+				Message:  fmt.Sprintf("AI confirmed (explicitly targeted): %s", checker.Description),
+				Required: cond.Required,
+				Auto:     false,
+			}
+		}
 		return GateCheckResult{
 			Type:     cond.Type,
 			Passed:   false,
-			Message:  fmt.Sprintf("requires AI judgment: %s", checker.Description),
+			Message:  fmt.Sprintf("requires AI judgment: %s (explicitly run 'flow proc run %s' to confirm)", checker.Description, cond.NodeID),
 			Required: cond.Required,
 			Auto:     false,
 		}
@@ -323,111 +347,40 @@ func (gc *GateChecker) checkTaskExists(cond GateCondOutput) GateCheckResult {
 		Auto:     true,
 	}
 
-	if bd.IsAvailable() {
-		args := []string{"show", "--current", "--json"}
-		output, err := bd.RunQuiet(args...)
-		if err != nil || output == "" {
-			result.Passed = false
-			result.Message = "FAIL: no active task found (bd unavailable or no current task)"
-			return result
-		}
-		result.Passed = true
-		result.Message = "PASS: active task found (beads)"
+	if !bd.IsAvailable() {
+		result.Passed = false
+		result.Message = "FAIL: beads (bd CLI) not available — run 'flow init' to install"
 		return result
 	}
 
+	args := []string{"show", "--current", "--json"}
 	taskID := cond.Check
 	if taskID == "" {
 		taskID = cond.Expected
 	}
-
 	if taskID != "" {
-		if gc.checkTaskDirExists(taskID) {
-			result.Passed = true
-			result.Message = fmt.Sprintf("PASS: task directory found for %s", taskID)
-			return result
-		}
+		args = []string{"show", taskID, "--json"}
+	}
 
-		if gc.checkTaskInPool(taskID) {
-			result.Passed = true
-			result.Message = fmt.Sprintf("PASS: task found in task-pool (%s)", taskID)
-			return result
+	output, err := bd.RunQuiet(args...)
+	if err != nil || output == "" {
+		if taskID != "" {
+			result.Passed = false
+			result.Message = fmt.Sprintf("FAIL: task %s not found", taskID)
+		} else {
+			result.Passed = false
+			result.Message = "FAIL: no active task found — run 'flow task create --title <name>'"
 		}
-
-		result.Passed = false
-		result.Message = fmt.Sprintf("FAIL: task %s not found — run 'flow task ready' or create task directory", taskID)
 		return result
 	}
 
-	if gc.hasAnyActiveTask() {
-		result.Passed = true
-		result.Message = "PASS: active task found (file-based)"
-		return result
+	result.Passed = true
+	if taskID != "" {
+		result.Message = fmt.Sprintf("PASS: task %s found", taskID)
+	} else {
+		result.Message = "PASS: active task found"
 	}
-
-	result.Passed = false
-	result.Message = "FAIL: no task found — create a task with 'flow task ready' or provide --task <id>"
 	return result
-}
-
-func (gc *GateChecker) checkTaskDirExists(taskID string) bool {
-	docsDir := gc.resolveDocsDir()
-	taskDir := filepath.Join(docsDir, "task", taskID)
-	if info, err := os.Stat(taskDir); err == nil && info.IsDir() {
-		return true
-	}
-	taskDirAlt := filepath.Join(docsDir, taskID)
-	if info, err := os.Stat(taskDirAlt); err == nil && info.IsDir() {
-		indexFile := filepath.Join(taskDirAlt, "INDEX.md")
-		if _, err := os.Stat(indexFile); err == nil {
-			return true
-		}
-		specFile := filepath.Join(taskDirAlt, "SPEC.md")
-		if _, err := os.Stat(specFile); err == nil {
-			return true
-		}
-	}
-	return false
-}
-
-func (gc *GateChecker) checkTaskInPool(taskID string) bool {
-	poolPath := filepath.Join(gc.ProjectRoot, ".team", "task-pool.md")
-	data, err := os.ReadFile(poolPath)
-	if err != nil {
-		return false
-	}
-	return strings.Contains(string(data), taskID)
-}
-
-func (gc *GateChecker) hasAnyActiveTask() bool {
-	docsDir := gc.resolveDocsDir()
-	taskBaseDir := filepath.Join(docsDir, "task")
-	if entries, err := os.ReadDir(taskBaseDir); err == nil {
-		for _, e := range entries {
-			if e.IsDir() {
-				return true
-			}
-		}
-	}
-
-	entries, err := os.ReadDir(docsDir)
-	if err != nil {
-		return false
-	}
-	for _, e := range entries {
-		if !e.IsDir() {
-			continue
-		}
-		indexPath := filepath.Join(docsDir, e.Name(), "INDEX.md")
-		specPath := filepath.Join(docsDir, e.Name(), "SPEC.md")
-		if _, err := os.Stat(indexPath); err == nil {
-			return true
-		}
-		if _, err := os.Stat(specPath); err == nil {
-			return true
-		}
-	}
-	return false
 }
 
 func (gc *GateChecker) checkTypeMatches(cond GateCondOutput) GateCheckResult {
@@ -437,7 +390,23 @@ func (gc *GateChecker) checkTypeMatches(cond GateCondOutput) GateCheckResult {
 		Auto:     true,
 	}
 
-	if cond.Expected != "" && cond.Check != "" {
+	// v4#26 fix: if check looks like a task ID (not a literal type value),
+	// look up the actual task and compare its type to expected.
+	if cond.Check != "" && cond.Expected != "" {
+		// Try task lookup first: check if Check is a valid task ID
+		taskInfo := resolveTaskInfo(cond.Check)
+		if taskInfo != nil && taskInfo.Type != "" {
+			if strings.EqualFold(taskInfo.Type, cond.Expected) {
+				result.Passed = true
+				result.Message = fmt.Sprintf("PASS: task %s type %q matches expected %q", taskInfo.TaskID, taskInfo.Type, cond.Expected)
+			} else {
+				result.Passed = false
+				result.Message = fmt.Sprintf("FAIL: task %s type %q does not match expected %q", taskInfo.TaskID, taskInfo.Type, cond.Expected)
+			}
+			return result
+		}
+
+		// Fallback: direct string comparison (for literal type values in check)
 		if cond.Check == cond.Expected {
 			result.Passed = true
 			result.Message = fmt.Sprintf("PASS: type %q matches expected %q", cond.Check, cond.Expected)
@@ -448,6 +417,22 @@ func (gc *GateChecker) checkTypeMatches(cond GateCondOutput) GateCheckResult {
 		return result
 	}
 
+	// v4#26: check is empty but expected is set — try current task
+	if cond.Check == "" && cond.Expected != "" {
+		taskInfo := resolveTaskInfo("")
+		if taskInfo != nil && taskInfo.Type != "" {
+			if strings.EqualFold(taskInfo.Type, cond.Expected) {
+				result.Passed = true
+				result.Message = fmt.Sprintf("PASS: current task %s type %q matches expected %q", taskInfo.TaskID, taskInfo.Type, cond.Expected)
+			} else {
+				result.Passed = false
+				result.Message = fmt.Sprintf("FAIL: current task %s type %q does not match expected %q", taskInfo.TaskID, taskInfo.Type, cond.Expected)
+			}
+			return result
+		}
+	}
+
+	// Missing check or expected — can't auto-verify
 	result.Passed = false
 	result.Message = "SKIP: type_matches requires both check and expected values — AI must verify"
 	result.Auto = false
@@ -476,9 +461,18 @@ func (gc *GateChecker) checkTraceUpdated(cond GateCondOutput) GateCheckResult {
 	if taskID == "" {
 		taskID = cond.Expected
 	}
-	if taskID == "" {
+	if taskID == "" || taskID == "{task_id}" {
+		lgr, lgrErr := eventlog.NewLogger(gc.ProjectRoot)
+		if lgrErr == nil {
+			activeTasks, _ := lgr.ActiveTasks()
+			if len(activeTasks) == 1 {
+				taskID = activeTasks[0]
+			}
+		}
+	}
+	if taskID == "" || taskID == "{task_id}" {
 		result.Passed = false
-		result.Message = "FAIL: trace_updated requires task_id (set in check or expected field)"
+		result.Message = "FAIL: trace_updated requires task_id (set in check or expected field, or use --task flag)"
 		return result
 	}
 
@@ -529,6 +523,10 @@ func (c GateCondOutput) resolveDeliverables() []string {
 }
 
 func RunGateCheck(projectRoot string, conditions []GateCondOutput, team *flow.TeamDefinition, docsInternalResolved string) []GateCheckResult {
+	return RunGateCheckWithFlow(projectRoot, conditions, team, docsInternalResolved, "", false)
+}
+
+func RunGateCheckWithFlow(projectRoot string, conditions []GateCondOutput, team *flow.TeamDefinition, docsInternalResolved string, flowName string, explicitlyTargeted bool) []GateCheckResult {
 	var tc ToolchainConfig
 	var teamCheckers map[string]flow.TeamGateChecker
 
@@ -548,6 +546,8 @@ func RunGateCheck(projectRoot string, conditions []GateCondOutput, team *flow.Te
 		Toolchain:            tc,
 		TeamCheckers:         teamCheckers,
 		DocsInternalResolved: docsInternalResolved,
+		FlowName:             flowName,
+		ExplicitlyTargeted:   explicitlyTargeted,
 	}
 
 	results := make([]GateCheckResult, 0, len(conditions))
@@ -603,4 +603,80 @@ func truncateOutput(s string, maxLen int) string {
 		return s
 	}
 	return s[:maxLen] + "...(truncated)"
+}
+
+func (gc *GateChecker) checkHasActiveTasks(cond GateCondOutput) GateCheckResult {
+	lgr, err := eventlog.NewLogger(gc.ProjectRoot)
+	if err != nil {
+		return GateCheckResult{
+			Type:     cond.Type,
+			Passed:   false,
+			Required: cond.Required,
+			Message:  fmt.Sprintf("cannot access event log: %v", err),
+		}
+	}
+
+	hasActive, err := lgr.HasActiveTasks()
+	if err != nil {
+		return GateCheckResult{
+			Type:     cond.Type,
+			Passed:   false,
+			Required: cond.Required,
+			Message:  fmt.Sprintf("error reading events: %v", err),
+		}
+	}
+
+	if hasActive {
+		return GateCheckResult{
+			Type:     cond.Type,
+			Passed:   true,
+			Required: cond.Required,
+			Message:  "active tasks exist",
+		}
+	}
+
+	return GateCheckResult{
+		Type:     cond.Type,
+		Passed:   false,
+		Required: cond.Required,
+		Message:  "no active tasks found",
+	}
+}
+
+func (gc *GateChecker) checkHasSessionHistory(cond GateCondOutput) GateCheckResult {
+	lgr, err := eventlog.NewLogger(gc.ProjectRoot)
+	if err != nil {
+		return GateCheckResult{
+			Type:     cond.Type,
+			Passed:   false,
+			Required: cond.Required,
+			Message:  fmt.Sprintf("cannot access event log: %v", err),
+		}
+	}
+
+	sessionName, err := lgr.LastSessionName()
+	if err != nil {
+		return GateCheckResult{
+			Type:     cond.Type,
+			Passed:   true,
+			Required: cond.Required,
+			Message:  "no sessions found (no history)",
+		}
+	}
+
+	if sessionName != "" {
+		return GateCheckResult{
+			Type:     cond.Type,
+			Passed:   true,
+			Required: cond.Required,
+			Message:  "session history exists",
+		}
+	}
+
+	return GateCheckResult{
+		Type:     cond.Type,
+		Passed:   false,
+		Required: cond.Required,
+		Message:  "no previous sessions",
+	}
 }

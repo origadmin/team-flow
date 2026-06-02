@@ -101,6 +101,25 @@ func FindWorkspaceRoot(startDir string) string {
 	return ""
 }
 
+func IsMonorepoWorkspace(root string) bool {
+	if root == "" {
+		return false
+	}
+	teamDir := filepath.Join(root, ".team")
+	if _, err := os.Stat(teamDir); err != nil {
+		return false
+	}
+	projectsDir := filepath.Join(root, "projects")
+	if _, err := os.Stat(projectsDir); err == nil {
+		return true
+	}
+	cfg, err := LoadProjectConfig(root)
+	if err != nil {
+		return false
+	}
+	return len(cfg.Projects) > 0
+}
+
 // GetProjectsDir 获取 projects 目录路径
 func GetProjectsDir(workspaceRoot string) string {
 	cfg, err := LoadProjectConfig(workspaceRoot)
@@ -462,12 +481,26 @@ func resolvePaths(workspaceDir string) PathVars {
 	return vars
 }
 
-func resolvePathWithAnchor(projectRoot, workspaceDir, path string) string {
+func ResolvePathWithAnchor(projectRoot, workspaceDir, path string) string {
 	if path == "" {
 		return ""
 	}
 	if filepath.IsAbs(path) {
 		return path
+	}
+	if strings.HasPrefix(path, "[@]/") || strings.HasPrefix(path, "[@]\\") {
+		relPath := path[3:]
+		if relPath == "" {
+			return workspaceDir
+		}
+		return filepath.Join(workspaceDir, relPath)
+	}
+	if strings.HasPrefix(path, "[#]/") || strings.HasPrefix(path, "[#]\\") {
+		relPath := path[3:]
+		if relPath == "" {
+			return projectRoot
+		}
+		return filepath.Join(projectRoot, relPath)
 	}
 	if strings.HasPrefix(path, "_/") || strings.HasPrefix(path, "_\\") {
 		relPath := path[2:]
@@ -477,6 +510,10 @@ func resolvePathWithAnchor(projectRoot, workspaceDir, path string) string {
 		return filepath.Join(workspaceDir, relPath)
 	}
 	return filepath.Join(projectRoot, path)
+}
+
+func resolvePathWithAnchor(projectRoot, workspaceDir, path string) string {
+	return ResolvePathWithAnchor(projectRoot, workspaceDir, path)
 }
 
 func findSkillPath(projectPath string) string {

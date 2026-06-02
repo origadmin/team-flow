@@ -386,11 +386,11 @@ func validateSyntax(flow *Flow, result *ValidationResult) {
 			})
 		}
 
-		if edge.To == "" {
+		if edge.To == "" && edge.SubflowRef == "" {
 			result.Errors = append(result.Errors, ValidationIssue{
 				Severity: SeverityError,
 				EdgeID:   edge.ID,
-				Message:  "edge to is required",
+				Message:  "edge to or subflow_ref is required",
 				Field:    "edges[].to",
 			})
 		}
@@ -442,6 +442,10 @@ func validateSemantics(flow *Flow, result *ValidationResult) {
 				Message:  fmt.Sprintf("edge from references non-existent node: %s", edge.From),
 				Field:    "edges[].from",
 			})
+		}
+		// Subflow edges use subflow_ref instead of to; skip to validation
+		if edge.SubflowRef != "" {
+			continue
 		}
 		if edge.To != "" && !nodeIDs[edge.To] {
 			result.Errors = append(result.Errors, ValidationIssue{

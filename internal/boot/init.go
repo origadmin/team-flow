@@ -6,6 +6,7 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -93,7 +94,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 		ensureBeads()
 	}
 	if version == "v3" {
-		ensureBeads()
+		ensureFlowBinary(projectPath)
 	}
 
 	fmt.Println("\n━━━ Step 2: Project Files ━━━")
@@ -636,8 +637,50 @@ func ensureBeads() {
 	}
 }
 
+func ensureFlowBinary(projectPath string) {
+	scriptsDir := filepath.Join(projectPath, "scripts")
+	flowExeName := "flow"
+	if runtime.GOOS == "windows" {
+		flowExeName = "flow.exe"
+	}
+	targetPath := filepath.Join(scriptsDir, flowExeName)
 
+	if _, err := os.Stat(targetPath); err == nil {
+		fmt.Printf("  ✓ Flow binary found: %s\n", targetPath)
+		return
+	}
 
+	if exePath, err := exec.LookPath("flow"); err == nil {
+		if err := os.MkdirAll(scriptsDir, 0755); err != nil {
+			fmt.Printf("  ⚠ Could not create scripts/ directory: %v\n", err)
+			return
+		}
+		src, err := os.Open(exePath)
+		if err != nil {
+			fmt.Printf("  ⚠ Could not read flow binary: %v\n", err)
+			return
+		}
+		defer src.Close()
+
+		dst, err := os.Create(targetPath)
+		if err != nil {
+			fmt.Printf("  ⚠ Could not create %s: %v\n", targetPath, err)
+			return
+		}
+		defer dst.Close()
+
+		if _, err := io.Copy(dst, src); err != nil {
+			fmt.Printf("  ⚠ Could not copy flow binary: %v\n", err)
+			return
+		}
+
+		fmt.Printf("  ✓ Flow binary copied to: %s\n", targetPath)
+		return
+	}
+
+	fmt.Println("  ⚠ Flow binary not found in PATH.")
+	fmt.Println("    Build from source: cd projects/team-flow && go build -o ../../scripts/flow.exe ./cmd/flow/")
+}
 func printVerify(projectPath, version string) {
 	checks := []struct {
 		label string
@@ -1053,199 +1096,59 @@ func generateDevMD(projectPath, skillPath, version string) {
 
 func generateBridgeFileContent(format, skillPath, version string) string {
 	if version == "v3" {
-		v3Content := `# team-flow v3 — BLOCKING RULES
+		v3Content := `# team-flow v3
 
-> ⛔ 这些规则是硬门控。在完成 Session Startup Protocol 之前，禁止响应任何用户请求。
-> 违反这些规则 = 绕过流程 = 产出不可验证 = 项目失控。
+> Load ` + "`" + skillPath + "/SKILL.md" + "`" + ` and follow ALL rules defined there.
+> This file is a bridge — the actual rules are in the SKILL.md and its references.
 
-## ⛔ BLOCKING: Session Startup Protocol (EVERY SESSION)
+## ⛔ MANDATORY: Session Startup Protocol (EVERY SESSION)
 
-**在回复用户任何请求之前，必须按顺序完成以下步骤。跳过任何一步 = 违规。**
-
-` + "```" + `
-Step 0: PATH 保障
-   Windows: $env:PATH = "D:\golang\windows\go\bin;D:\workspace\gopath\bin;" + $env:PATH
-   验证: flow --version (必须成功)
-
-Step 1: 启动流程引擎
-   Run: cd {PROJECT_ROOT}; flow proc run
-   → PROJECT_ROOT = 包含 .team/ 目录的路径（不是 IDE workspace 路径）
-   → 内部自动读取 .team/version, .team/project.yaml, team.json, flow JSON
-   → 接收第一个节点的结构化指令
-   → 输出中包含 PROJECT_ROOT 行 — 这是所有路径的基准
-   → 如果报错 "no default flow" → 进入 First-Time Setup（见下文）
-
-Step 2: 采用主理人角色
-   → 从 flow proc run 输出中读取 principal 角色的 alias, persona, traits
-   → 记住 PROJECT_ROOT — 所有文件操作都基于此路径
-   → 向用户宣布身份
-   → 等待用户输入
-` + "```" + `
-
-⛔ **禁止手动读取 .team/version 或 .team/project.md** — flow proc run 已内部处理，手动读取浪费 Token。
-⛔ v2 项目仍需手动读取（v2 不支持 flow proc run）。
-⛔ **不要假设 cwd == PROJECT_ROOT** — IDE workspace 可能不是项目根目录。PROJECT_ROOT 以 flow proc run 输出为准。
-
-**⛔ 在 Step 2 完成之前，禁止：**
-- 解析用户的问题
-- 搜索代码库
-- 编辑任何文件
-- 运行任何命令（除了上述步骤中的命令）
-- 使用 TodoWrite 或任何任务管理工具
-
-## ⛔ BLOCKING: Session Recovery Protocol
-
-**当对话上下文恢复/继续时，必须重新执行 Session Startup Protocol。前一会话状态不会自动继承。**
+Before responding to ANY user request, execute:
 
 ` + "```" + `
-Recovery Check (每次响应前必须确认):
-  1. 我在当前会话中是否已执行 flow proc run？
-  2. 如果否 → 立即执行 Session Startup Protocol Step 0-2
-  3. 如果是 → 正常继续
-
-Session Recovery Steps:
-  Step 0: PATH 保障 (同 Session Startup)
-  Step 1: flow proc run → 获取当前节点指令（内部自动处理 version + project config）
-  Step 2: 采用主理人角色 → 向用户确认恢复
+Step 1: flow project detect    → Lock the project
+Step 2: flow proc run          → Get work instructions (role, rules, tools, docs)
+Step 3: Adopt principal role   → Read alias, persona, traits from output
 ` + "```" + `
 
-⛔ **绝对禁止**：跳过 Session Recovery Protocol 直接继续之前的工作。
-⛔ **禁止手动读取 .team/ 文件** — flow proc run 已内部处理。
+Only AFTER Step 3, start working on user requests.
 
-## First-Time Setup (当 default_flow 为空时)
+## ⛔ CRITICAL: Flow-First Enforcement
+
+**When .team/ directory exists in the project, ALL work MUST go through the flow.**
 
 ` + "```" + `
-Step A: Run flow proc list → 查看可用流程
-Step B: 向用户展示选项:
-   "这个项目还没有绑定团队流程。可用选项：
-    1. [列出的流程名] — [描述]
-    2. 创建新团队流程
-    请选择最接近你需求的。"
-Step C: 用户选择后:
-   → 编辑 .team/project.md，设置 default_flow: {chosen-flow}
-   → 重新执行 Session Startup Protocol Step 3
+⛔ FORBIDDEN (when flow is active):
+- Starting to code/implement/modify files directly
+- Skipping flow proc run and working independently
+- Ignoring the principal role's dispatch-only rule
+- Creating files without flow proc run specifying them as deliverables
+
+✅ REQUIRED:
+- Run flow proc run FIRST to get your role and instructions
+- Follow the role's rules (especially Dispatch Guard for principal)
+- Pass through gates: flow gate pass <node> --condition <type>
+- Advance nodes: flow proc run <next-node-id>
 ` + "```" + `
+
+**If you find yourself about to write code or modify files without having run ` + "`flow proc run`" + ` first — STOP. Run ` + "`flow proc run`" + ` and follow the output.**
 
 ## Status Line (MANDATORY — Every Response)
 
-**每次回复必须以状态行开头。没有例外。**
+Format: ` + "`[{alias} | {node_name}({node_id}:{flow}) | {ref} | {phase}]`" + `
 
-格式: ` + "`[Role: {alias} | Flow: {flow-name} | Node: {node-id} ({node-name}) | Phase: {phase}]`" + `
-
-- 数据来源: ` + "`flow proc run`" + ` 输出，禁止硬编码
-- 如果还没有运行 flow proc run → 状态行为: ` + "`[Role: unassigned | Flow: none | Node: - | Phase: startup]`" + `
-
-## Core Constraints
-
-| Constraint | Rule | Enforcement |
-|------------|------|-------------|
-| One Project = One Flow | default_flow in project.md, 不需要 --flow 参数 | hard |
-| Principal = Sole UI | 只有 principal 角色和用户交流，其他角色静默执行 | hard |
-| Engine = Truth | 运行 ` + "`flow proc run`" + `，跟随结构化输出，不直接解读 flow JSON | hard |
-| No Ad-Hoc Work | 只做引擎指定的事：工具、文档、规则 | hard |
-| Required Docs Must Exist | 每个节点执行后，required: true 的文档必须存在且非空 | hard |
-| Gates Block Progress | Gate 未通过 → 禁止继续 | hard |
-
-## Execution Loop
-
-` + "```" + `
-1. flow proc run [{node-id}] → 接收当前节点指令
-2. 执行节点 (采用角色、遵循规则、产出文档)
-3. 从 next_options 选择下一节点
-4. flow proc run {next-node-id} → 回到步骤 2
-5. 到达 terminal → 执行 Node Complete Protocol (push) → Session Close
-` + "```" + `
-
-## Node Execution Checklist
-
-每个节点执行前确认：
-- [ ] on_enter actions 已执行
-- [ ] 角色已采用 (persona, traits, guidance)
-- [ ] 所有 hard-enforcement 规则已遵循
-- [ ] 所有 required docs 已在正确路径产出
-- [ ] 只使用了指定的工具
-- [ ] 下一节点从 next_options 正确选择
-
-## Node Complete Protocol
-
-**每个节点完成后执行 commit，session 结束时执行 push。**
-
-` + "```" + `
-After each node execution completes:
-1. Verify deliverables (required docs exist and non-empty)
-2. Git commit (if code/docs changed):
-   git add -A
-   git commit -m "node: {flow-name} {node-id} {date}"
-3. Update task status (if flow task):
-   flow task update {task-id} --notes "Node {node-id} completed"
-
-At session end (terminal node or user leaves):
-4. Git push:
-   git pull --rebase
-   git push
-5. Report to user: summary + deliverables + position + next steps
-` + "```" + `
-
-## Session Close Protocol
-
-` + "```" + `
-1. Verify all node deliverables are committed
-2. Git push:
-   git pull --rebase
-   git push
-3. Update task status (if flow task):
-   flow task update {task-id} --notes "Session closed at node {node-id}"
-4. Report to user: summary + deliverables + position + next steps
-` + "```" + `
-
-## Project Switching Protocol
-
-When you discover an issue in a dependency project while working:
-
-` + "```" + `
-1. Save current work (Node Complete Protocol — commit)
-2. Run: flow project switch <dep-name>
-3. Follow the RESUME INSTRUCTION from the switch output
-4. Work on the dependency project using its own flow and rules
-5. When done, run: flow project switch <original-project>
-6. Resume the original project's flow from where you left off
-` + "```" + `
-
-⛔ NEVER skip saving current work before switching.
-⛔ NEVER assume the target project uses the same flow as the current one.
-⛔ Each project has its own .team/ with its own team, flows, and rules.
-
-## Task Management
-
-统一入口: ` + "`flow task list|create|update|show|close`" + `
-
-## Key Commands
-
-` + "```bash" + `
-flow proc run                           # 启动/恢复流程
-flow proc run {node-id}                 # 运行指定节点
-flow proc rule {rule-id}                # 获取规则完整描述
-flow proc list                          # 列出可用流程
-flow proc show {flow-name}              # 展示流程结构
-flow proc validate {flow-name}          # 验证流程
-flow config paths                       # 显示路径变量
-flow project list                       # 列出注册项目
-flow project add <path>                 # 注册项目
-flow project switch <name>              # 切换项目
-flow project status                     # 查看项目状态
-` + "```" + `
+Data from ` + "`flow proc run`" + ` output only — never hardcode.
 
 ## Entry Point
 
-此文件是 v3 规则的入口。加载此文件后：
-1. 立即执行 Session Startup Protocol
-2. 加载 SKILL.md 获取详细执行协议: ` + "`" + skillPath + "/SKILL.md" + "`" + `
-3. 加载 exec skill 获取节点执行细节: ` + "`" + skillPath + "/skills/team-flow-v3-exec/SKILL.md" + "`" + `
+1. Load ` + "`" + skillPath + "/SKILL.md" + "`" + ` for full v3 protocol
+2. Run ` + "`flow proc run`" + ` to start the flow engine
+3. Follow engine output — it provides everything
 `
 		switch format {
 		case "cursor":
 			return "---\n" +
-				"description: team-flow v3 blocking rules — must complete startup before any work\n" +
+				"description: team-flow v3 — load SKILL.md and follow Session Startup Protocol before any work\n" +
 				"globs:\n" +
 				"  - \"**/*\"\n" +
 				"---\n\n" +
@@ -1423,18 +1326,18 @@ func installSkillFromFS(projectPath string, fsys embed.FS, version string, overw
 		srcDir = skillfs.SkillRoot + "/v1"
 	}
 
-	sharedDirs := []string{"team/v1/config", "team/v1/templates", "team/v1/lessons", "team/v1/scripts"}
+	sharedDirs := []string{skillfs.SkillRoot + "/v1/config", skillfs.SkillRoot + "/v1/templates", skillfs.SkillRoot + "/v1/lessons", skillfs.SkillRoot + "/v1/scripts"}
 
 	installIDESkills := func(ideEntry ide.IDEInfo) {
 		skillDir := filepath.Join(projectPath, ideEntry.Subdir, "skills", "team-flow")
 
 		skillEntry := filepath.Join(skillDir, "SKILL.md")
 		if _, err := os.Stat(skillEntry); err != nil || overwrite {
-			entryPath := "team/v1/SKILL.md"
+			entryPath := skillfs.SkillRoot + "/v1/SKILL.md"
 			if version == "v2" {
-				entryPath = "team/v2/SKILL.md"
+				entryPath = skillfs.SkillRoot + "/v2/SKILL.md"
 			} else if version == "v3" {
-				entryPath = "team/v3/SKILL.md"
+				entryPath = skillfs.SkillRoot + "/v3/SKILL.md"
 			}
 			entryData, readErr := fsys.ReadFile(entryPath)
 			if readErr != nil {
@@ -1503,13 +1406,13 @@ func installSkillFromFS(projectPath string, fsys embed.FS, version string, overw
 		skillDir := filepath.Join(projectPath, ".agents", "skills", "team-flow")
 
 		skillEntry := filepath.Join(skillDir, "SKILL.md")
-		entryPath := "team/v1/SKILL.md"
-		if version == "v2" {
-			entryPath = "team/v2/SKILL.md"
-		} else if version == "v3" {
-			entryPath = "team/v3/SKILL.md"
-		}
-		entryData, readErr := fsys.ReadFile(entryPath)
+		entryPath := skillfs.SkillRoot + "/v1/SKILL.md"
+	if version == "v2" {
+		entryPath = skillfs.SkillRoot + "/v2/SKILL.md"
+	} else if version == "v3" {
+		entryPath = skillfs.SkillRoot + "/v3/SKILL.md"
+	}
+	entryData, readErr := fsys.ReadFile(entryPath)
 		if readErr == nil {
 			os.MkdirAll(skillDir, 0755)
 			os.WriteFile(skillEntry, entryData, 0644)

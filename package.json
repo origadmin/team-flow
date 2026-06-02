@@ -12,7 +12,6 @@
     "bin/",
     "assets/",
     "scripts/",
-    "INSTALL.md",
     "README.md"
   ],
   "scripts": {

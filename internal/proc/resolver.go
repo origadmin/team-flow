@@ -3,8 +3,8 @@ package proc
 import (
 	"context"
 	"path/filepath"
-	"strings"
 
+	"github.com/origadmin/team-flow/internal/eventlog"
 	"github.com/origadmin/team-flow/internal/flow"
 )
 
@@ -71,6 +71,14 @@ func (s *DefaultVarSubstitutor) CollectVars(ctx context.Context, f *flow.Flow, r
 
 	if req.TaskID != "" {
 		vars["task_id"] = req.TaskID
+	} else if req.ProjectRoot != "" {
+		lgr, lgrErr := eventlog.NewLogger(req.ProjectRoot)
+		if lgrErr == nil {
+			activeTasks, _ := lgr.ActiveTasks()
+			if len(activeTasks) == 1 {
+				vars["task_id"] = activeTasks[0]
+			}
+		}
 	}
 
 	if f != nil {
@@ -112,33 +120,4 @@ func MapDocCategory(taskType string) string {
 	default:
 		return "requirements"
 	}
-}
-
-func extractFlowNameFromProjectMD(data []byte) string {
-	lines := strings.Split(string(data), "\n")
-	inFlowSection := false
-	for _, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
-			inFlowSection = false
-			continue
-		}
-		if strings.Contains(trimmed, "flow:") || strings.Contains(trimmed, "default_flow:") {
-			parts := strings.SplitN(trimmed, ":", 2)
-			if len(parts) == 2 {
-				val := strings.Trim(strings.TrimSpace(parts[1]), "\"' ")
-				if val != "" {
-					return val
-				}
-			}
-			inFlowSection = true
-		}
-		if inFlowSection && strings.HasPrefix(trimmed, "- ") {
-			val := strings.Trim(strings.TrimPrefix(trimmed, "- "), "\"' ")
-			if val != "" {
-				return val
-			}
-		}
-	}
-	return ""
 }

@@ -7,12 +7,15 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/origadmin/team-flow/internal/bd"
+	"github.com/origadmin/team-flow/internal/condition"
 	"github.com/origadmin/team-flow/internal/config"
+	"github.com/origadmin/team-flow/internal/eventlog"
 	"github.com/origadmin/team-flow/internal/flow"
 	"github.com/origadmin/team-flow/internal/skill"
-	"github.com/origadmin/team-flow/internal/state"
+	"github.com/origadmin/team-flow/internal/trace"
 )
 
 type ProcRunRequest struct {
@@ -27,18 +30,21 @@ type ProcRunRequest struct {
 }
 
 type ProcRunResult struct {
-	Flow            FlowMeta          `json:"flow"`
-	Current         CurrentNode       `json:"current"`
-	NextOptions     []NextOption      `json:"next_options"`
-	StatusLine      string            `json:"status_line"`
-	Task            *TaskInfo         `json:"task,omitempty"`
-	TeamIntro       *TeamIntroData    `json:"team_intro,omitempty"`
-	ProjectRoot     string            `json:"project_root,omitempty"`
-	TeamRoot        string            `json:"team_root,omitempty"`
-	Workspace       string            `json:"workspace,omitempty"`
-	PathValidation  *PathValidation   `json:"path_validation,omitempty"`
-	Skills          *SkillContext      `json:"skills,omitempty"`
+	Flow             FlowMeta          `json:"flow"`
+	Current          CurrentNode       `json:"current"`
+	NextOptions      []NextOption      `json:"next_options"`
+	StatusLine       string            `json:"status_line"`
+	Task             *TaskInfo         `json:"task,omitempty"`
+	TeamIntro        *TeamIntroData    `json:"team_intro,omitempty"`
+	ProjectRoot      string            `json:"project_root,omitempty"`
+	TeamRoot         string            `json:"team_root,omitempty"`
+	Workspace        string            `json:"workspace,omitempty"`
+	ResumedFrom      string            `json:"resumed_from,omitempty"`
+	FlowRevision     string            `json:"flow_revision,omitempty"`
+	PathValidation   *PathValidation   `json:"path_validation,omitempty"`
+	Skills           *SkillContext     `json:"skills,omitempty"`
 	GateCheckResults []GateCheckResult `json:"gate_check_results,omitempty"`
+	SessionName      string            `json:"-"`
 }
 
 type PathValidation struct {
@@ -67,21 +73,21 @@ type ResolvedSkillOutput struct {
 }
 
 type TeamIntroData struct {
-	TeamID          string              `json:"team_id"`
-	TeamName        string              `json:"team_name"`
-	TeamNameZh      string              `json:"team_name_zh,omitempty"`
-	TeamDescription string              `json:"team_description,omitempty"`
-	FlowName        string              `json:"flow_name"`
-	Roles           []TeamIntroRole     `json:"roles"`
-	Flows           []TeamIntroFlow     `json:"flows"`
-	HowItWorks      []string            `json:"how_it_works"`
+	TeamID          string          `json:"team_id"`
+	TeamName        string          `json:"team_name"`
+	TeamNameZh      string          `json:"team_name_zh,omitempty"`
+	TeamDescription string          `json:"team_description,omitempty"`
+	FlowName        string          `json:"flow_name"`
+	Roles           []TeamIntroRole `json:"roles"`
+	Flows           []TeamIntroFlow `json:"flows"`
+	HowItWorks      []string        `json:"how_it_works"`
 }
 
 type TeamIntroRole struct {
-	Alias    string `json:"alias"`
-	AliasEn  string `json:"alias_en"`
-	RoleName string `json:"role_name"`
-	Principal bool  `json:"principal,omitempty"`
+	Alias     string `json:"alias"`
+	AliasEn   string `json:"alias_en"`
+	RoleName  string `json:"role_name"`
+	Principal bool   `json:"principal,omitempty"`
 }
 
 type TeamIntroFlow struct {
@@ -92,6 +98,7 @@ type TeamIntroFlow struct {
 
 type TaskInfo struct {
 	TaskID string `json:"task_id,omitempty"`
+	Type   string `json:"type,omitempty"`
 	Phase  string `json:"phase,omitempty"`
 	Status string `json:"status,omitempty"`
 	URL    string `json:"url,omitempty"`
@@ -111,35 +118,35 @@ type ParallelBranchOutput struct {
 }
 
 type CurrentNode struct {
-	NodeID            string                  `json:"node_id"`
-	NodeType          string                  `json:"node_type"`
-	Name              string                  `json:"name"`
-	Description       string                  `json:"description"`
-	Role              string                  `json:"role"`
-	RoleName          string                  `json:"role_name,omitempty"`
-	Alias             string                  `json:"alias,omitempty"`
-	AliasEn           string                  `json:"alias_en,omitempty"`
-	Principal         bool                    `json:"principal,omitempty"`
-	Persona           string                  `json:"persona,omitempty"`
-	Traits            []string                `json:"traits,omitempty"`
-	Guidance          string                  `json:"guidance,omitempty"`
-	PromptSource      string                  `json:"prompt_source,omitempty"`
-	StandardsSource   string                  `json:"standards_source,omitempty"`
-	PromptDirectives  []string                `json:"prompt_directives,omitempty"`
-	Rules             []RuleOutput            `json:"rules"`
-	Tools             []ToolOutput            `json:"tools"`
-	Skills            []SkillOutput           `json:"skills"`
-	Prompts           []PromptOutput          `json:"prompts"`
-	Docs              []DocOutput             `json:"docs"`
-	OnEnter           []OnEnterAction         `json:"on_enter"`
-	GateConditions    []GateCondOutput        `json:"gate_conditions"`
-	ParallelBranches  []ParallelBranchOutput  `json:"parallel_branches,omitempty"`
-	ParallelStrategy  string                  `json:"parallel_strategy,omitempty"`
-	MergeStrategy     string                  `json:"merge_strategy,omitempty"`
-	SubflowRef        string                  `json:"subflow_ref,omitempty"`
-	IsTerminal        bool                    `json:"is_terminal"`
-	TerminalStatus    string                  `json:"terminal_status,omitempty"`
-	TerminalMessage   string                  `json:"terminal_message,omitempty"`
+	NodeID           string                 `json:"node_id"`
+	NodeType         string                 `json:"node_type"`
+	Name             string                 `json:"name"`
+	Description      string                 `json:"description"`
+	Role             string                 `json:"role"`
+	RoleName         string                 `json:"role_name,omitempty"`
+	Alias            string                 `json:"alias,omitempty"`
+	AliasEn          string                 `json:"alias_en,omitempty"`
+	Principal        bool                   `json:"principal,omitempty"`
+	Persona          string                 `json:"persona,omitempty"`
+	Traits           []string               `json:"traits,omitempty"`
+	Guidance         string                 `json:"guidance,omitempty"`
+	PromptSource     string                 `json:"prompt_source,omitempty"`
+	StandardsSource  string                 `json:"standards_source,omitempty"`
+	PromptDirectives []string               `json:"prompt_directives,omitempty"`
+	Rules            []RuleOutput           `json:"rules"`
+	Tools            []ToolOutput           `json:"tools"`
+	Skills           []SkillOutput          `json:"skills"`
+	Prompts          []PromptOutput         `json:"prompts"`
+	Docs             []DocOutput            `json:"docs"`
+	OnEnter          []OnEnterAction        `json:"on_enter"`
+	GateConditions   []GateCondOutput       `json:"gate_conditions"`
+	ParallelBranches []ParallelBranchOutput `json:"parallel_branches,omitempty"`
+	ParallelStrategy string                 `json:"parallel_strategy,omitempty"`
+	MergeStrategy    string                 `json:"merge_strategy,omitempty"`
+	SubflowRef       string                 `json:"subflow_ref,omitempty"`
+	IsTerminal       bool                   `json:"is_terminal"`
+	TerminalStatus   string                 `json:"terminal_status,omitempty"`
+	TerminalMessage  string                 `json:"terminal_message,omitempty"`
 }
 
 type RuleOutput struct {
@@ -182,8 +189,9 @@ type DocOutput struct {
 }
 
 type OnEnterAction struct {
-	Action string `json:"action"`
-	Phase  string `json:"phase,omitempty"`
+	Action  string `json:"action"`
+	Phase   string `json:"phase,omitempty"`
+	Command string `json:"command,omitempty"`
 }
 
 type GateCondOutput struct {
@@ -193,10 +201,12 @@ type GateCondOutput struct {
 	Check        string   `json:"check,omitempty"`
 	Expected     string   `json:"expected,omitempty"`
 	Deliverables []string `json:"deliverables,omitempty"`
+	NodeID       string   `json:"node_id,omitempty"`
 }
 
 type NextOption struct {
 	NodeID    string  `json:"node_id"`
+	Name      string  `json:"name"`
 	Role      string  `json:"role"`
 	Condition *string `json:"condition"`
 	IsDefault bool    `json:"is_default"`
@@ -217,14 +227,17 @@ type ProcRunEngine struct {
 	NodeResolver   NodeResolver
 	VarSubstitutor VarSubstitutor
 	TeamLoader     TeamLoader
+	Trace          *trace.Logger
 }
 
 func NewProcRunEngine(root string) *ProcRunEngine {
+	teamDir := filepath.Join(root, ".team")
 	return &ProcRunEngine{
 		FlowResolver:   &DefaultFlowResolver{Root: root},
 		NodeResolver:   &DefaultNodeResolver{},
 		VarSubstitutor: &DefaultVarSubstitutor{},
 		TeamLoader:     &DefaultTeamLoader{},
+		Trace:          trace.NewLogger(teamDir),
 	}
 }
 
@@ -234,20 +247,39 @@ func (e *ProcRunEngine) Run(ctx context.Context, req ProcRunRequest) (*ProcRunRe
 		return nil, fmt.Errorf("resolve flow: %w", err)
 	}
 
-	node, err := e.NodeResolver.Resolve(ctx, fl, req.NodeID)
-	if err != nil {
-		return nil, fmt.Errorf("resolve node: %w", err)
+	// --- Load session state for node progress tracking (v4#24) ---
+	lgr, lgrErr := eventlog.NewLogger(req.ProjectRoot)
+	var sessionName string
+	var state *SessionState
+	if lgrErr == nil {
+		sessionName = ensureSessionName(lgr)
+		state, _ = LoadSessionState(lgr.SessionsDir(), sessionName)
+	}
+	if sessionName == "" {
+		s, _ := lgr.LastSessionName()
+		sessionName = s
+		if sessionName == "" {
+			sessionName = "unknown"
+		}
 	}
 
-	flowName := fl.Metadata.Name
-
-	if req.NodeID != "" && node.Type != flow.NodeTypeGate {
-		prereqGates := findPrerequisiteGates(fl, req.NodeID)
-		for _, gateID := range prereqGates {
-			if !state.IsGatePassed(req.ProjectRoot, flowName, gateID) {
-				return nil, fmt.Errorf("GATE BLOCKED: prerequisite gate %s has not been passed in flow '%s' — run 'flow proc run %s' first to pass the gate", gateID, flowName, gateID)
+	// Node resolution with session state awareness (v4#24)
+	resolvedNodeID := req.NodeID
+	if resolvedNodeID == "" {
+		if state != nil && state.CurrentNodeID != "" {
+			// Resume from last saved position
+			resolvedNodeID = state.CurrentNodeID
+		} else {
+			// First run: find root node
+			if root, err := FindRootNode(fl); err == nil && root != nil {
+				resolvedNodeID = root.ID
 			}
 		}
+	}
+
+	node, err := e.NodeResolver.Resolve(ctx, fl, resolvedNodeID)
+	if err != nil {
+		return nil, fmt.Errorf("resolve node: %w", err)
 	}
 
 	vars := e.VarSubstitutor.CollectVars(ctx, fl, req, node.ID)
@@ -270,22 +302,41 @@ func (e *ProcRunEngine) Run(ctx context.Context, req ProcRunRequest) (*ProcRunRe
 		}
 	}
 
-	result := generateResult(fl, node, vars, team, req.NodeID == "", req.ProjectRoot, req.TeamRoot, req.Workspace, req.RunGate)
+	result := generateResult(fl, node, vars, team, resolvedNodeID == "", req.ProjectRoot, req.TeamRoot, req.Workspace, req.RunGate)
+	result.FlowRevision = ComputeFlowRevision(req.ProjectRoot, fl.Metadata.Name)
+
+	condCtx := buildConditionContext(fl, node, req, result)
+	result.NextOptions = buildNextOptions(fl, node.ID, condCtx)
+	result.SessionName = sessionName
+
+	// Trace: node entered
+	if e.Trace != nil && sessionName != "" && node.Type != flow.NodeTypeStart {
+		e.Trace.NodeEnter(sessionName, req.TaskID, node.ID, node.Name, fl.Metadata.Name)
+	}
+
+	if lgrErr == nil && node.Type != flow.NodeTypeStart {
+		phase := resolvePhaseFromNode(node)
+		_ = lgr.FlowNodeAdvance(sessionName, req.TaskID, node.ID, phase, fl.Metadata.Name)
+	}
 
 	if req.RunGate && node.Type == flow.NodeTypeGate && len(result.Current.GateConditions) > 0 {
+		explicitlyTargeted := req.NodeID != ""
 		substitutedConds := SubstituteGateConditions(result.Current.GateConditions, vars)
 		docsInternal := config.ResolveInternalDocs(req.ProjectRoot)
-		gateResults := RunGateCheck(req.ProjectRoot, substitutedConds, team, docsInternal)
+		gateResults := RunGateCheckWithFlow(req.ProjectRoot, substitutedConds, team, docsInternal, fl.Metadata.Name, explicitlyTargeted)
 		result.GateCheckResults = gateResults
 
-		passed, summary := GateOverallResult(gateResults)
-		_ = state.RecordGateResult(req.ProjectRoot, flowName, node.ID, passed, summary)
-
-		if passed {
-			_ = state.RecordVisitedNode(req.ProjectRoot, flowName, node.ID)
+		// Trace: each gate check result
+		if e.Trace != nil && sessionName != "" {
+			for _, gc := range gateResults {
+				e.Trace.GateCheck(sessionName, req.TaskID, node.ID, node.Name, gc.Type, gc.Passed, gc.Message)
+			}
 		}
-	} else if node.Type != flow.NodeTypeGate {
-		_ = state.RecordVisitedNode(req.ProjectRoot, flowName, node.ID)
+
+		if req.TaskID != "" {
+			passed, _ := GateOverallResult(gateResults)
+			appendSessionLog(req.ProjectRoot, req.TaskID, node, gateResults, passed)
+		}
 	}
 
 	if taskInfo := resolveTaskInfo(req.TaskID); taskInfo != nil {
@@ -295,14 +346,72 @@ func (e *ProcRunEngine) Run(ctx context.Context, req ProcRunRequest) (*ProcRunRe
 		}
 	}
 
+	// Write flow.ended event for terminal nodes
+	if node.Type == flow.NodeTypeTerminal && req.TaskID != "" {
+		status := "success"
+		if result.Current.TerminalStatus != "" {
+			status = result.Current.TerminalStatus
+		}
+		if lgrErr == nil {
+			_ = lgr.FlowEnded(sessionName, req.TaskID, fl.Metadata.Name, status)
+		}
+	}
+
+	// --- Persist session state for next call (v4#24) ---
+	if lgrErr == nil && sessionName != "" && sessionName != "unknown" {
+		nextNodeID := ""
+		nextNodeName := ""
+		if len(result.NextOptions) > 0 {
+			for _, opt := range result.NextOptions {
+				if opt.IsDefault {
+					nextNodeID = opt.NodeID
+					nextNodeName = opt.Name
+					break
+				}
+			}
+			if nextNodeID == "" {
+				nextNodeID = result.NextOptions[0].NodeID
+				nextNodeName = result.NextOptions[0].Name
+			}
+		}
+
+		if state == nil {
+			state = &SessionState{}
+		}
+		state.FlowName = fl.Metadata.Name
+		// Only persist TaskID when explicitly provided (v4#26: don't overwrite with empty)
+		if req.TaskID != "" {
+			state.TaskID = req.TaskID
+		}
+		state.CurrentNodeID = nextNodeID
+		state.CurrentNode = nextNodeName
+		state.VisitedNodes = append(state.VisitedNodes, node.ID)
+		// Deduplicate: keep only unique, preserving order
+		seen := make(map[string]bool, len(state.VisitedNodes))
+		unique := state.VisitedNodes[:0]
+		for _, id := range state.VisitedNodes {
+			if !seen[id] {
+				seen[id] = true
+				unique = append(unique, id)
+			}
+		}
+		state.VisitedNodes = unique
+		_ = SaveSessionState(lgr.SessionsDir(), sessionName, state)
+
+		// v4#23: auto-update context.md with current node/task snapshot
+		_ = lgr.UpdateContextSnapshot(sessionName, state.TaskID, fl.Metadata.Name,
+			nextNodeName, string(node.Type), result.StatusLine)
+	}
+
 	return result, nil
 }
 
-// resolveTaskInfo queries the beads backend via flow task CLI for current task state.
-// Returns nil if beads is not available or no current task exists.
 func resolveTaskInfo(taskID string) *TaskInfo {
 	if !bd.IsAvailable() {
-		return nil
+		return &TaskInfo{
+			Phase:  "unknown",
+			Status: "beads_unavailable",
+		}
 	}
 
 	args := []string{"show", "--current", "--json"}
@@ -315,7 +424,6 @@ func resolveTaskInfo(taskID string) *TaskInfo {
 		return nil
 	}
 
-	// Parse JSON output from bd CLI
 	var raw map[string]interface{}
 	if err := json.Unmarshal([]byte(output), &raw); err != nil {
 		return nil
@@ -325,6 +433,9 @@ func resolveTaskInfo(taskID string) *TaskInfo {
 	if id, ok := raw["id"].(string); ok {
 		info.TaskID = id
 	}
+	if t, ok := raw["type"].(string); ok {
+		info.Type = t
+	}
 	if status, ok := raw["status"].(string); ok {
 		info.Status = status
 	}
@@ -332,7 +443,6 @@ func resolveTaskInfo(taskID string) *TaskInfo {
 		info.URL = url
 	}
 
-	// Extract phase from labels (phase:xxx)
 	if labels, ok := raw["labels"].([]interface{}); ok {
 		for _, l := range labels {
 			if s, ok := l.(string); ok && len(s) > 6 && s[:6] == "phase:" {
@@ -358,7 +468,7 @@ func generateResult(fl *flow.Flow, node *flow.FlowNode, vars map[string]string, 
 		}
 	}
 
-	current := buildCurrentNode(node, fl, vars, team)
+	current := buildCurrentNode(node, fl, vars, team, projectRoot)
 
 	configRoot := teamRoot
 	if configRoot == "" {
@@ -384,8 +494,6 @@ func generateResult(fl *flow.Flow, node *flow.FlowNode, vars map[string]string, 
 		result.GateCheckResults = RunGateCheck(projectRoot, substitutedConds, team, docsInternal)
 	}
 
-	result.NextOptions = buildNextOptions(fl, node.ID)
-
 	if isFirstNode {
 		result.TeamIntro = buildTeamIntro(fl, team, projectRoot)
 	}
@@ -396,7 +504,6 @@ func generateResult(fl *flow.Flow, node *flow.FlowNode, vars map[string]string, 
 
 	result.PathValidation = validatePath(projectRoot, teamRoot)
 
-	// Load skills for the current role
 	if projectRoot != "" {
 		skillMgr := skill.NewSkillManager(projectRoot, "", "")
 		roleID := current.Role
@@ -445,24 +552,59 @@ func validatePath(projectRoot string, teamRoot string) *PathValidation {
 		ProjectRoot:     projectRoot,
 		CurrentCwd:     cwd,
 		IsMatch:        isMatch,
-		EnforceLevel:   "warn",
+		EnforceLevel:   "hard",
 		Warning:        warning,
 		RequiredAction: requiredAction,
 	}
 }
 
-func buildCurrentNode(node *flow.FlowNode, fl *flow.Flow, vars map[string]string, team *flow.TeamDefinition) CurrentNode {
+func buildCurrentNode(node *flow.FlowNode, fl *flow.Flow, vars map[string]string, team *flow.TeamDefinition, root string) CurrentNode {
 	current := CurrentNode{
-		NodeID:      node.ID,
-		NodeType:    string(node.Type),
-		Name:        node.Name,
+		NodeID:     node.ID,
+		NodeType:   string(node.Type),
+		Name:       node.Name,
 		Description: node.Description,
-		IsTerminal:  node.Type == flow.NodeTypeTerminal,
+		IsTerminal: node.Type == flow.NodeTypeTerminal,
 	}
 
 	switch node.Type {
-	case flow.NodeTypePhase, flow.NodeTypeStart:
-		ri := resolveRoleInfo(node, fl, team)
+	case flow.NodeTypeStart:
+		ri := resolveRoleInfo(node, fl, team, root)
+		if ri.alias == "" {
+			ri = findPrincipalRole(fl, team)
+		}
+		current.Role = extractRole(node)
+		if current.Role == "" {
+			current.Role = ri.roleID
+		}
+		current.RoleName = ri.roleName
+		current.Alias = ri.alias
+		current.AliasEn = ri.aliasEn
+		current.Principal = ri.principal
+		current.Persona = ri.persona
+		current.Traits = ri.traits
+		current.Guidance = ri.guidance
+		if ri.guidance == "" {
+			current.Guidance = "Record and analyze user intent. Determine if a task should be created or if this is a continuation of an existing conversation. For new requests, create a task via 'flow task create'. For continuations, identify the existing task and proceed."
+		}
+		current.PromptSource = substituteVars(ri.promptSource, vars)
+		current.StandardsSource = substituteVars(ri.standardsSource, vars)
+		current.PromptDirectives = ri.directives
+		current.Rules = extractRules(node, fl, team, ri.roleRules, root)
+		current.Tools = extractTools(node)
+		current.Skills = extractSkills(node, fl)
+		current.Prompts = extractPrompts(node, vars)
+		current.Docs = extractDocs(node, vars)
+		current.OnEnter = extractOnEnter(node)
+		if len(current.OnEnter) == 0 {
+			current.OnEnter = []OnEnterAction{
+				{Action: "record_context", Phase: "start"},
+				{Action: "analyze_intent", Phase: "start"},
+			}
+		}
+
+	case flow.NodeTypePhase:
+		ri := resolveRoleInfo(node, fl, team, root)
 		current.Role = extractRole(node)
 		current.RoleName = ri.roleName
 		current.Alias = ri.alias
@@ -474,7 +616,7 @@ func buildCurrentNode(node *flow.FlowNode, fl *flow.Flow, vars map[string]string
 		current.PromptSource = substituteVars(ri.promptSource, vars)
 		current.StandardsSource = substituteVars(ri.standardsSource, vars)
 		current.PromptDirectives = ri.directives
-		current.Rules = extractRules(node, fl, team, ri.roleRules)
+		current.Rules = extractRules(node, fl, team, ri.roleRules, root)
 		current.Tools = extractTools(node)
 		current.Skills = extractSkills(node, fl)
 		current.Prompts = extractPrompts(node, vars)
@@ -520,21 +662,21 @@ func buildCurrentNode(node *flow.FlowNode, fl *flow.Flow, vars map[string]string
 				for _, b := range parCfg.Branches {
 					pbo := ParallelBranchOutput{NodeID: b.Node}
 					for i := range fl.Nodes {
-					if fl.Nodes[i].ID == b.Node {
-						pbo.Name = fl.Nodes[i].Name
-						ri := resolveRoleInfo(&fl.Nodes[i], fl, team)
-						pbo.RoleName = ri.roleName
-						pbo.Alias = ri.alias
-						break
+						if fl.Nodes[i].ID == b.Node {
+							pbo.Name = fl.Nodes[i].Name
+							ri := resolveRoleInfo(&fl.Nodes[i], fl, team, root)
+							pbo.RoleName = ri.roleName
+							pbo.Alias = ri.alias
+							break
+						}
 					}
-				}
 					current.ParallelBranches = append(current.ParallelBranches, pbo)
 				}
 			}
 		}
 
 	default:
-		ri := resolveRoleInfo(node, fl, team)
+		ri := resolveRoleInfo(node, fl, team, root)
 		current.Role = extractRole(node)
 		current.RoleName = ri.roleName
 		current.Alias = ri.alias
@@ -546,7 +688,7 @@ func buildCurrentNode(node *flow.FlowNode, fl *flow.Flow, vars map[string]string
 		current.PromptSource = substituteVars(ri.promptSource, vars)
 		current.StandardsSource = substituteVars(ri.standardsSource, vars)
 		current.PromptDirectives = ri.directives
-		current.Rules = extractRules(node, fl, team, ri.roleRules)
+		current.Rules = extractRules(node, fl, team, ri.roleRules, root)
 		current.Tools = extractTools(node)
 		current.Skills = extractSkills(node, fl)
 		current.Prompts = extractPrompts(node, vars)
@@ -568,7 +710,44 @@ func extractRole(node *flow.FlowNode) string {
 	return ""
 }
 
+func buildConditionContext(fl *flow.Flow, node *flow.FlowNode, req ProcRunRequest, result *ProcRunResult) map[string]string {
+	ctx := make(map[string]string)
+
+	if req.TaskID != "" {
+		ctx["status"] = "task_created"
+		if result.Task != nil {
+			if result.Task.Status != "" {
+				ctx["task_type"] = result.Task.Status
+			}
+		}
+	} else {
+		ctx["status"] = "no_task"
+	}
+
+	if result.GateCheckResults != nil {
+		passed, _ := GateOverallResult(result.GateCheckResults)
+		if passed {
+			ctx["gate.passed"] = "true"
+			ctx["verified"] = "true"
+		} else {
+			ctx["gate.passed"] = ""
+		}
+	}
+
+	if result.Task != nil {
+		if result.Task.Phase != "" {
+			ctx["phase"] = result.Task.Phase
+		}
+		if result.Task.Status != "" {
+			ctx[result.Task.Status] = "true"
+		}
+	}
+
+	return ctx
+}
+
 type roleInfo struct {
+	roleID          string
 	promptSource    string
 	standardsSource string
 	directives      []string
@@ -582,7 +761,7 @@ type roleInfo struct {
 	roleRules       []string
 }
 
-func resolveRoleInfo(node *flow.FlowNode, fl *flow.Flow, team *flow.TeamDefinition) roleInfo {
+func resolveRoleInfo(node *flow.FlowNode, fl *flow.Flow, team *flow.TeamDefinition, root string) roleInfo {
 	info := roleInfo{}
 	if node.Config == nil {
 		return info
@@ -599,49 +778,52 @@ func resolveRoleInfo(node *flow.FlowNode, fl *flow.Flow, team *flow.TeamDefiniti
 	if team != nil {
 		for _, r := range team.Roles {
 			if r.ID == roleRef {
-				info.promptSource = r.PromptSource
-				info.standardsSource = r.StandardsSource
-				info.directives = r.PromptDirectives
-				info.persona = r.Persona
-				info.traits = r.Traits
-				info.guidance = r.Guidance
-				info.alias = r.Alias
-				info.aliasEn = r.AliasEn
-				info.roleName = r.Name
-				info.roleRules = r.Rules
-				if r.Principal != nil && *r.Principal {
-					info.principal = true
-				}
+				info = fillRoleInfo(r)
 				return info
 			}
 		}
 	}
 
-	if fl.Components == nil {
-		return info
-	}
-	for _, r := range fl.Components.Roles {
-		if r.ID == roleRef {
-			info.promptSource = r.PromptSource
-			info.standardsSource = r.StandardsSource
-			info.directives = r.PromptDirectives
-			info.persona = r.Persona
-			info.traits = r.Traits
-			info.guidance = r.Guidance
-			info.alias = r.Alias
-			info.aliasEn = r.AliasEn
-			info.roleName = r.Name
-			info.roleRules = r.Rules
-			if r.Principal != nil && *r.Principal {
-				info.principal = true
+	if fl.Components != nil {
+		for _, r := range fl.Components.Roles {
+			if r.ID == roleRef {
+				info = fillRoleInfo(r)
+				return info
 			}
-			break
 		}
+	}
+
+	if team != nil && team.Org != "" {
+		r, err := loadRole(roleRef, team.Org, root)
+		if err == nil && r != nil {
+			info = fillRoleInfo(*r)
+			return info
+		}
+	}
+
+	return info
+}
+
+func fillRoleInfo(r flow.RoleDefinition) roleInfo {
+	info := roleInfo{
+		roleID:          r.ID,
+		promptSource:    r.PromptSource,
+		standardsSource: r.StandardsSource,
+		directives:      r.PromptDirectives,
+		persona:         r.Persona,
+		traits:          r.Traits,
+		guidance:        r.Guidance,
+		alias:           r.Alias,
+		aliasEn:         r.AliasEn,
+		roleName:        r.Name,
+		roleRules:       r.Rules,
+	}
+	if r.Principal != nil && *r.Principal {
+		info.principal = true
 	}
 	return info
 }
 
-// extractPrompts returns prompt file references from node components.
 func extractPrompts(node *flow.FlowNode, vars map[string]string) []PromptOutput {
 	if node.Components == nil || len(node.Components.Prompts) == 0 {
 		return nil
@@ -657,7 +839,7 @@ func extractPrompts(node *flow.FlowNode, vars map[string]string) []PromptOutput 
 	return prompts
 }
 
-func extractRules(node *flow.FlowNode, fl *flow.Flow, team *flow.TeamDefinition, roleRules []string) []RuleOutput {
+func extractRules(node *flow.FlowNode, fl *flow.Flow, team *flow.TeamDefinition, roleRules []string, root string) []RuleOutput {
 	if node.Components == nil && len(roleRules) == 0 {
 		return nil
 	}
@@ -675,16 +857,7 @@ func extractRules(node *flow.FlowNode, fl *flow.Flow, team *flow.TeamDefinition,
 	rules := make([]RuleOutput, 0)
 	if node.Components != nil {
 		for _, r := range node.Components.Rules {
-			out := RuleOutput{
-				Ref:    r.Ref,
-				Source: string(r.Source),
-			}
-			if def, ok := ruleDefs[r.Ref]; ok {
-				out.Name = def.Name
-				out.Instruction = def.Instruction
-				out.Enforcement = string(def.Enforcement)
-				out.RuleRef = fmt.Sprintf("flow proc rule %s", def.ID)
-			}
+			out := buildRuleOutput(r.Ref, string(r.Source), ruleDefs, team, root)
 			rules = append(rules, out)
 		}
 	}
@@ -699,22 +872,37 @@ func extractRules(node *flow.FlowNode, fl *flow.Flow, team *flow.TeamDefinition,
 		if found {
 			continue
 		}
-		out := RuleOutput{
-			Ref:    ref,
-			Source: "role",
-		}
-		if def, ok := ruleDefs[ref]; ok {
-			out.Name = def.Name
-			out.Instruction = def.Instruction
-			out.Enforcement = string(def.Enforcement)
-			out.RuleRef = fmt.Sprintf("flow proc rule %s", def.ID)
-		}
+		out := buildRuleOutput(ref, "role", ruleDefs, team, root)
 		rules = append(rules, out)
 	}
 	if len(rules) == 0 {
 		return nil
 	}
 	return rules
+}
+
+func buildRuleOutput(ref string, source string, ruleDefs map[string]flow.RuleDefinition, team *flow.TeamDefinition, root string) RuleOutput {
+	out := RuleOutput{
+		Ref:    ref,
+		Source: source,
+	}
+	if def, ok := ruleDefs[ref]; ok {
+		out.Name = def.Name
+		out.Instruction = def.Instruction
+		out.Enforcement = string(def.Enforcement)
+		out.RuleRef = fmt.Sprintf("flow proc rule %s", def.ID)
+		return out
+	}
+	if team != nil && team.Org != "" {
+		r, err := loadRule(ref, team.Org, root)
+		if err == nil && r != nil {
+			out.Name = r.Name
+			out.Instruction = r.Instruction
+			out.Enforcement = string(r.Enforcement)
+			out.RuleRef = fmt.Sprintf("flow proc rule %s", r.ID)
+		}
+	}
+	return out
 }
 
 func extractTools(node *flow.FlowNode) []ToolOutput {
@@ -735,8 +923,6 @@ func extractTools(node *flow.FlowNode) []ToolOutput {
 	return tools
 }
 
-// extractSkills resolves skill references from node components and enriches them
-// with trigger, path, and description from the flow-level skill registry.
 func extractSkills(node *flow.FlowNode, fl *flow.Flow) []SkillOutput {
 	if node.Components == nil {
 		return nil
@@ -804,14 +990,15 @@ func extractOnEnter(node *flow.FlowNode) []OnEnterAction {
 	actions := make([]OnEnterAction, 0, len(node.OnEnter))
 	for _, a := range node.OnEnter {
 		actions = append(actions, OnEnterAction{
-			Action: string(a.Action),
-			Phase:  a.Phase,
+			Action:  string(a.Action),
+			Phase:   a.Phase,
+			Command: a.Command,
 		})
 	}
 	return actions
 }
 
-func buildNextOptions(fl *flow.Flow, currentNodeID string) []NextOption {
+func buildNextOptions(fl *flow.Flow, currentNodeID string, ctx map[string]string) []NextOption {
 	var outgoingEdges []flow.FlowEdge
 	for _, e := range fl.Edges {
 		if e.From == currentNodeID {
@@ -837,7 +1024,7 @@ func buildNextOptions(fl *flow.Flow, currentNodeID string) []NextOption {
 	}
 
 	if hasConditionalEdges {
-		return buildNextOptionsFromEdges(outgoingEdges, nodeMap)
+		return buildNextOptionsFromEdges(outgoingEdges, nodeMap, ctx)
 	}
 
 	currentNode := nodeMap[currentNodeID]
@@ -845,17 +1032,41 @@ func buildNextOptions(fl *flow.Flow, currentNodeID string) []NextOption {
 		return BuildNextOptionsFromGateFallback(currentNode, outgoingEdges, nodeMap)
 	}
 
-	return buildNextOptionsFromEdges(outgoingEdges, nodeMap)
+	return buildNextOptionsFromEdges(outgoingEdges, nodeMap, ctx)
 }
 
-func buildNextOptionsFromEdges(edges []flow.FlowEdge, nodeMap map[string]*flow.FlowNode) []NextOption {
-	options := make([]NextOption, 0, len(edges))
+func buildNextOptionsFromEdges(edges []flow.FlowEdge, nodeMap map[string]*flow.FlowNode, ctx map[string]string) []NextOption {
+	matchingEdges := make([]flow.FlowEdge, 0, len(edges))
+	for _, e := range edges {
+		if len(e.Conditions) == 0 || ctx == nil {
+			matchingEdges = append(matchingEdges, e)
+			continue
+		}
+		allMatch := true
+		for _, c := range e.Conditions {
+			if !condition.Eval(c.Expression, ctx) {
+				allMatch = false
+				break
+			}
+		}
+		if allMatch {
+			matchingEdges = append(matchingEdges, e)
+		}
+	}
+
+	if len(matchingEdges) == 0 {
+		matchingEdges = edges
+	}
+
+	options := make([]NextOption, 0, len(matchingEdges))
 	defaultSet := false
 
-	for _, e := range edges {
+	for _, e := range matchingEdges {
 		role := ""
+		name := ""
 		if target, ok := nodeMap[e.To]; ok {
 			role = extractRole(target)
+			name = target.Name
 		}
 
 		var condition *string
@@ -876,6 +1087,7 @@ func buildNextOptionsFromEdges(edges []flow.FlowEdge, nodeMap map[string]*flow.F
 
 		options = append(options, NextOption{
 			NodeID:    e.To,
+			Name:      name,
 			Role:      role,
 			Condition: condition,
 			IsDefault: isDefault,
@@ -889,9 +1101,6 @@ func buildNextOptionsFromEdges(edges []flow.FlowEdge, nodeMap map[string]*flow.F
 	return options
 }
 
-// buildStatusLine generates the v2-compatible status line: [Role|TaskPool|Phase|Asset]
-// This provides a consistent, machine-readable progress indicator that AI agents
-// should include in every response during flow execution.
 func buildTeamIntro(fl *flow.Flow, team *flow.TeamDefinition, projectRoot string) *TeamIntroData {
 	intro := &TeamIntroData{
 		FlowName: fl.Metadata.Name,
@@ -931,7 +1140,7 @@ func buildTeamIntro(fl *flow.Flow, team *flow.TeamDefinition, projectRoot string
 		seen := make(map[string]bool)
 		for i := range fl.Nodes {
 			n := &fl.Nodes[i]
-			ri := resolveRoleInfo(n, fl, team)
+			ri := resolveRoleInfo(n, fl, team, projectRoot)
 			if ri.alias != "" && !seen[ri.alias] {
 				seen[ri.alias] = true
 				intro.Roles = append(intro.Roles, TeamIntroRole{
@@ -1004,38 +1213,166 @@ func buildStatusLineWithRef(fl *flow.Flow, node *flow.FlowNode, current CurrentN
 		phase = current.Name
 	}
 
-	return fmt.Sprintf("[%s | %s(%s:%s) | %s | %s]", alias, current.Name, node.ID, flowPart, ref, phase)
+	return fmt.Sprintf("[%s | %s(:%s) | %s | %s]", alias, current.Name, flowPart, ref, phase)
 }
 
 func substituteVars(path string, vars map[string]string) string {
 	return SubstituteVarsInPath(path, vars)
 }
 
-func findPrerequisiteGates(fl *flow.Flow, nodeID string) []string {
-	nodeMap := make(map[string]bool, len(fl.Nodes))
+func findPrincipalNode(fl *flow.Flow) string {
 	for _, n := range fl.Nodes {
-		if n.Type == flow.NodeTypeGate {
-			nodeMap[n.ID] = true
-		}
-	}
-
-	var gateIDs []string
-	visited := make(map[string]bool)
-	var walk func(current string)
-	walk = func(current string) {
-		if visited[current] {
-			return
-		}
-		visited[current] = true
-		for _, e := range fl.Edges {
-			if e.To == current {
-				if nodeMap[e.From] {
-					gateIDs = append(gateIDs, e.From)
-				}
-				walk(e.From)
+		if n.Type == flow.NodeTypePhase {
+			var phaseCfg flow.PhaseConfig
+			if n.Config != nil {
+				_ = json.Unmarshal(n.Config, &phaseCfg)
+			}
+			if phaseCfg.Role != "" {
+				return n.ID
 			}
 		}
 	}
-	walk(nodeID)
-	return gateIDs
+	if len(fl.Nodes) > 0 {
+		return fl.Nodes[0].ID
+	}
+	return ""
+}
+
+type principalRoleInfo struct {
+	roleID          string
+	alias           string
+	aliasEn         string
+	roleName        string
+	persona         string
+	traits          []string
+	guidance        string
+	promptSource    string
+	standardsSource string
+	directives      []string
+	roleRules       []string
+}
+
+func findPrincipalRole(fl *flow.Flow, team *flow.TeamDefinition) roleInfo {
+	info := roleInfo{}
+
+	if team != nil {
+		for _, r := range team.Roles {
+			if r.Principal != nil && *r.Principal {
+				info.roleID = r.ID
+				info.alias = r.Alias
+				info.aliasEn = r.AliasEn
+				info.roleName = r.Name
+				info.persona = r.Persona
+				info.traits = r.Traits
+				info.guidance = r.Guidance
+				info.promptSource = r.PromptSource
+				info.standardsSource = r.StandardsSource
+				info.directives = r.PromptDirectives
+				info.roleRules = r.Rules
+				return info
+			}
+		}
+	}
+
+	if fl.Components != nil {
+		for _, r := range fl.Components.Roles {
+			if r.Principal != nil && *r.Principal {
+				info.roleID = r.ID
+				info.alias = r.Alias
+				info.aliasEn = r.AliasEn
+				info.roleName = r.Name
+				info.persona = r.Persona
+				info.traits = r.Traits
+				info.guidance = r.Guidance
+				info.promptSource = r.PromptSource
+				info.standardsSource = r.StandardsSource
+				info.directives = r.PromptDirectives
+				info.roleRules = r.Rules
+				return info
+			}
+		}
+	}
+
+	return info
+}
+
+func appendSessionLog(projectRoot string, taskID string, node *flow.FlowNode, gateResults []GateCheckResult, passed bool) {
+	docsInternal := config.ResolveInternalDocs(projectRoot)
+	logDir := filepath.Join(docsInternal, "task", taskID)
+	if err := os.MkdirAll(logDir, 0755); err != nil {
+		return
+	}
+
+	logPath := filepath.Join(logDir, "SESSION.md")
+
+	var sb strings.Builder
+
+	data, err := os.ReadFile(logPath)
+	if err != nil || len(data) == 0 {
+		sb.WriteString("# Session Log\n\n")
+	} else {
+		sb.Write(data)
+		if !strings.HasSuffix(string(data), "\n") {
+			sb.WriteString("\n")
+		}
+		sb.WriteString("\n")
+	}
+
+	now := time.Now().Format("2006-01-02 15:04")
+	status := "PASSED"
+	if !passed {
+		status = "FAILED"
+	}
+
+	sb.WriteString(fmt.Sprintf("## [%s] Gate: %s (%s) — %s\n\n", now, node.Name, node.ID, status))
+
+	for _, gr := range gateResults {
+		icon := "✅"
+		if !gr.Passed && !gr.Skipped {
+			if gr.Required {
+				icon = "❌"
+			} else {
+				icon = "⚠️"
+			}
+		} else if gr.Skipped {
+			icon = "⏭️"
+		}
+		reqLabel := "required"
+		if !gr.Required {
+			reqLabel = "advisory"
+		}
+		sb.WriteString(fmt.Sprintf("- %s **%s** (%s): %s\n", icon, gr.Type, reqLabel, gr.Message))
+	}
+
+	sb.WriteString("\n")
+
+	_ = os.WriteFile(logPath, []byte(sb.String()), 0644)
+}
+
+func resolvePhaseFromNode(node *flow.FlowNode) string {
+	if node.Config == nil {
+		return ""
+	}
+	var phaseCfg flow.PhaseConfig
+	if err := json.Unmarshal(node.Config, &phaseCfg); err != nil {
+		return ""
+	}
+	for _, a := range node.OnEnter {
+		if a.Action == flow.ActionUpdateTaskPhase && a.Phase != "" {
+			return a.Phase
+		}
+	}
+	return ""
+}
+
+func ensureSessionName(lgr *eventlog.Logger) string {
+	name, _ := lgr.LastSessionName()
+	if name != "" {
+		return name
+	}
+	name, err := lgr.CreateSession(1, "", "auto")
+	if err != nil {
+		return ""
+	}
+	return name
 }

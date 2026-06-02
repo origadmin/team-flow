@@ -4,15 +4,14 @@ version: 3.2
 description: |
   team-flow v3: Process-Centric AI Collaboration Framework.
   当用户提到以下任何关键词时必须触发此技能：team-flow, team-flow/v3, 团队流程, 流程管理,
-  软件开发流程, 项目管理流程, v3流程, dev-flow, bugfix-flow, feature-flow, hotfix-flow,
-  flow proc run, flow init, 齐活林, 匠思远, 铸灵手, 严过关, 合无间, 寇豆码, 溯源, 高见远.
+  软件开发流程, 项目管理流程, v3流程, flow proc run, flow init.
   当 .team/version = v3 时，此技能是所有工作的强制入口。
   做任何工作之前必须先运行 flow proc run 进入流程驱动执行协议。
 ---
 
 # team-flow — Entry Point
 
-> **Version**: v3.2 | **Date**: 2026-05-27
+> **Version**: v3.2 | **Date**: 2026-05-28
 
 ## Session Startup Protocol (EVERY SESSION)
 

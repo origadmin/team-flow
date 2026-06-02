@@ -23,25 +23,14 @@ Execute a validated v3 flow. The engine (`flow proc run`) produces structured in
 
 Every AI response MUST start with a status line. Data comes from `flow proc run` output — never hardcode.
 
-**Format**: `[Role: {alias} | Flow: {flow-name} | Node: {node-id} | Phase: {phase}]`
+**Format**: `[{alias} | {node_name}({node_id}:{flow}) | {ref} | {phase}]`
 
-| Field | Source | Example |
-|-------|--------|---------|
-| Role | `current.alias` (or `current.role` if no alias) | 齐活林 |
-| Flow | `flow.name` | dev-flow |
-| Node | `current.node_id` | fa01 |
-| Phase | `current.on_enter` → action `update_task_phase` → `phase` field | analyze |
-
-**When beads task is active** (engine returns `task.beads_id`):
-
-**Format**: `[Role: {alias} | Flow: {flow-name}#{beads-id} | Node: {node-id} | Phase: {phase}]`
-
-**Examples**:
-```
-[Role: 齐活林 | Flow: dev-flow | Node: fa01 | Phase: analyze]
-[Role: 齐活林 | Flow: dev-flow#team-flow-6x9 | Node: fa01 | Phase: analyze]
-[Role: 寇豆码 | Flow: dev-flow#team-flow-6x9 | Node: fd03 | Phase: implement]
-```
+| Field | Source | Description |
+|-------|--------|-------------|
+| alias | `flow proc run` → ROLE.alias | Dynamic per team |
+| node_name(node_id:flow) | `flow proc run` → current node | Node name + ID + flow name |
+| ref | task_id or `disc-{YYYYMMDD}-{seq}` | `-` if none |
+| Phase | `flow proc run` → current phase | on_enter/on_exit/analyze/design/implement/verify/review |
 
 **⛔ Forbidden**: Empty status line, hardcoded values, or skipping status line.
 
@@ -373,7 +362,7 @@ You are {alias}({alias_en}), {role_name}.
 - Follow ALL hard-enforcement rules
 - Use ONLY the specified tools
 - After completion, report: deliverables list + any issues
-- Status Line: [Role: {alias} | Flow: {flow-name} | Node: {current.node_id} | Phase: {phase}]
+- Status Line: [{alias} | {node_name}({node_id}:{flow}) | {ref} | {phase}]
 """
 )
 ```
@@ -862,5 +851,5 @@ For AI agents familiar with v2, here's how v3 maps to v2 concepts:
 | Shared workflows (shared.md) | `current.rules` — engine provides rules per node |
 | Three-layer gates | Gate nodes with `gate_conditions` |
 | Output Guard | Hard-enforcement rule in `current.rules` |
-| Status Line `[Role\|TaskPool\|Phase\|Asset]` | `[Role: {alias}\|Flow: {name}#{beads-id}\|Node: {id}\|Phase: {phase}]` |
+| Status Line `[{alias}\|{node}({id}:{flow})\|{ref}\|{phase}]` | Dynamic from `flow proc run` output |
 | Session End (git push) | Session Close Protocol |

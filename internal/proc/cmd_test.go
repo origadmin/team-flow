@@ -506,12 +506,15 @@ func TestRunCreateCommand_Blank(t *testing.T) {
 	}
 
 	output := buf.String()
-	if !strings.Contains(output, "Created blank process") {
-		t.Errorf("output should indicate blank process created, got: %s", output)
+	if !strings.Contains(output, "Created process '") {
+		t.Errorf("output should indicate process created, got: %s", output)
 	}
 }
 
 func TestRunCreateCommand_FromTemplate(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping template test in short mode (requires v3/flows/standard.json)")
+	}
 	dir := setupTestDir(t)
 
 	buf := new(bytes.Buffer)
@@ -528,8 +531,8 @@ func TestRunCreateCommand_FromTemplate(t *testing.T) {
 	}
 
 	output := buf.String()
-	if !strings.Contains(output, "Created process from template") {
-		t.Errorf("output should indicate template process created, got: %s", output)
+	if !strings.Contains(output, "Created process '") {
+		t.Errorf("output should indicate process created, got: %s", output)
 	}
 }
 
@@ -546,7 +549,7 @@ func TestCmdStructure(t *testing.T) {
 		subcommands[sub.Use] = true
 	}
 
-	for _, name := range []string{"run", "list", "show", "validate", "create"} {
+	for _, name := range []string{"run", "list", "show", "validate", "create", "next"} {
 		found := false
 		for k := range subcommands {
 			if strings.HasPrefix(k, name) {
@@ -559,7 +562,7 @@ func TestCmdStructure(t *testing.T) {
 		}
 	}
 
-	for _, name := range []string{"start", "next", "resume", "back", "status", "reset"} {
+	for _, name := range []string{"start", "resume", "back", "status", "reset"} {
 		for k := range subcommands {
 			if strings.HasPrefix(k, name) {
 				t.Errorf("removed subcommand '%s' should not exist", name)

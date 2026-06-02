@@ -16,6 +16,7 @@ import (
 var (
 	configFormat  string
 	configKey     string
+	configValue   string
 	configProject string
 )
 
@@ -39,6 +40,7 @@ Usage:
 func init() {
 	Cmd.AddCommand(showCmd)
 	Cmd.AddCommand(getCmd)
+	Cmd.AddCommand(setCmd)
 	Cmd.Flags().StringVar(&configFormat, "format", "text", "Output format: text or json")
 	Cmd.PersistentFlags().StringVar(&configProject, "project", "", "Project path (default: current directory)")
 }
@@ -57,6 +59,21 @@ var getCmd = &cobra.Command{
 	Long:  `Get a specific configuration value with all placeholders resolved.`,
 	Args:  cobra.ExactArgs(1),
 	RunE:  runGet,
+}
+
+var setCmd = &cobra.Command{
+	Use:   "set <key> <value>",
+	Short: "Set a configuration value in project.yaml",
+	Long: `Set a configuration value and write it to project.yaml.
+
+Supported keys:
+  active_flow    — Set the active flow name (must match a registered flow)
+
+Examples:
+  flow config set active_flow dev-flow
+  flow config set active_flow feature-flow`,
+	Args: cobra.ExactArgs(2),
+	RunE: runSet,
 }
 
 func runConfig(cmd *cobra.Command, args []string) error {
@@ -329,4 +346,68 @@ func getProjectRoot() string {
 func getFlowExePath() string {
 	exePath, _ := os.Executable()
 	return exePath
+}
+
+// allowedConfigKeys lists the keys that can be set via flow config set
+var allowedConfigKeys = map[string]string{
+	"active_flow": "DefaultFlow",
+}
+
+func runSet(cmd *cobra.Command, args []string) error {
+	key := args[0]
+	value := args[1]
+
+	projectRoot := getProjectRoot()
+	if projectRoot == "" {
+		return fmt.Errorf("project not found")
+	}
+
+	yamlField, ok := allowedConfigKeys[key]
+	if !ok {
+		var keys []string
+		for k := range allowedConfigKeys {
+			keys = append(keys, k)
+		}
+		return fmt.Errorf("unknown config key: %s (allowed: %s)", key, strings.Join(keys, ", "))
+	}
+
+	// Load existing config
+	cfg, err := config.LoadProjectConfig(projectRoot)
+	if err != nil {
+		cfg = &config.ProjectConfig{}
+	}
+
+	// Validate value based on key
+	switch key {
+	case "active_flow":
+		if err := validateFlowName(projectRoot, value); err != nil {
+			return err
+		}
+		cfg.DefaultFlow = value
+	}
+
+	// Suppress unused var warning
+	_ = yamlField
+
+	// Save config
+	if err := config.SaveProjectConfig(projectRoot, cfg); err != nil {
+		return fmt.Errorf("save config: %w", err)
+	}
+
+	fmt.Fprintf(cmd.OutOrStdout(), "✓ %s = %s\n", key, value)
+	return nil
+}
+
+// validateFlowName checks that the flow name exists in preset or project flows
+func validateFlowName(root, name string) error {
+	candidates := []string{
+		filepath.Join(root, "v3", "flows", name+".json"),
+		filepath.Join(root, ".team", "flows", name+".json"),
+	}
+	for _, c := range candidates {
+		if _, err := os.Stat(c); err == nil {
+			return nil
+		}
+	}
+	return fmt.Errorf("flow not found: %s (must be a registered flow in v3/flows/ or .team/flows/)", name)
 }

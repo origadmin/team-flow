@@ -30,6 +30,7 @@ func ExtractGateConditions(node *flow.FlowNode) []GateCondOutput {
 			Check:        c.Check,
 			Expected:     c.Expected,
 			Deliverables: c.Deliverables,
+			NodeID:       node.ID,
 		})
 	}
 	return conditions
@@ -55,8 +56,10 @@ func BuildNextOptionsFromGateFallback(node *flow.FlowNode, edges []flow.FlowEdge
 
 	for i, e := range edges {
 		role := ""
+		name := ""
 		if target, ok := nodeMap[e.To]; ok {
 			role = extractRole(target)
+			name = target.Name
 		}
 
 		var condition *string
@@ -77,6 +80,7 @@ func BuildNextOptionsFromGateFallback(node *flow.FlowNode, edges []flow.FlowEdge
 
 		options = append(options, NextOption{
 			NodeID:    e.To,
+			Name:      name,
 			Role:      role,
 			Condition: condition,
 			IsDefault: isDefault,

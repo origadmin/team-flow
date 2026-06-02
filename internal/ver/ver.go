@@ -86,12 +86,12 @@ func showStatus(projectPath, currentVersion string) error {
 		fmt.Println("  ⬆ Upgrade available: v1 → v2")
 		fmt.Println("    Run: flow migrate")
 	case "v2":
-		fmt.Println("  Task management: beads (bd CLI)")
+		fmt.Println("  Task management: CLI-based (beads v2)")
 		beadsDir := filepath.Join(projectPath, ".beads")
 		if dirExists(beadsDir) {
-			fmt.Println("  ✓ .beads/ exists")
+			fmt.Println("  ✓ Task storage ready")
 		} else {
-			fmt.Println("  ⚠ .beads/ not found (run: bd init)")
+			fmt.Println("  ⚠ Task storage not found (run: bd init)")
 		}
 		fmt.Println()
 		fmt.Println("  ⬆ Upgrade available: v2 → v3")
@@ -106,7 +106,7 @@ func showStatus(projectPath, currentVersion string) error {
 		}
 		beadsDir := filepath.Join(projectPath, ".beads")
 		if dirExists(beadsDir) {
-			fmt.Println("  ✓ .beads/ exists (beads is version-agnostic)")
+			fmt.Println("  ✓ Task storage ready (beads v3)")
 		}
 		fmt.Println()
 		fmt.Println("  Commands:")
@@ -119,7 +119,11 @@ func showStatus(projectPath, currentVersion string) error {
 
 	skillPath := findSkillPath(projectPath)
 	if skillPath != "" {
-		fmt.Printf("\n  Skill location: %s\n", skillPath)
+		display := skillPath
+		if home, err := os.UserHomeDir(); err == nil {
+			display = strings.Replace(skillPath, home, "~", 1)
+		}
+		fmt.Printf("\n  Skill location: %s\n", display)
 	} else {
 		fmt.Println("\n  ⚠ Skill not installed in any detected path")
 		fmt.Println("     Run: flow init")

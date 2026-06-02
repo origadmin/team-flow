@@ -21,6 +21,8 @@ type flowNodeRaw struct {
 	Type        NodeType        `json:"type"`
 	Name        string          `json:"name"`
 	Description string          `json:"description,omitempty"`
+	Entry       bool            `json:"entry,omitempty"`
+	Status      string          `json:"status,omitempty"`
 	Config      json.RawMessage `json:"config,omitempty"`
 	Components  *NodeComponents `json:"components,omitempty"`
 	Docs        []DocSpec       `json:"docs,omitempty"`
@@ -57,6 +59,12 @@ func ParseFlow(data []byte) (*Flow, error) {
 		nodes[i] = normalizeNode(rn)
 	}
 
+	edges := make([]FlowEdge, len(raw.Edges))
+	for i := range raw.Edges {
+		raw.Edges[i].Normalize()
+		edges[i] = raw.Edges[i]
+	}
+
 	return &Flow{
 		Version:    raw.Version,
 		Metadata:   raw.Metadata,
@@ -65,7 +73,7 @@ func ParseFlow(data []byte) (*Flow, error) {
 		Overrides:  raw.Overrides,
 		Components: raw.Components,
 		Nodes:      nodes,
-		Edges:      raw.Edges,
+		Edges:      edges,
 		Variables:  raw.Variables,
 	}, nil
 }
@@ -76,6 +84,8 @@ func normalizeNode(rn flowNodeRaw) FlowNode {
 		Type:        rn.Type,
 		Name:        rn.Name,
 		Description: rn.Description,
+		Entry:       rn.Entry,
+		Status:      rn.Status,
 		Docs:        rn.Docs,
 		Gates:       rn.Gates,
 		OnEnter:     rn.OnEnter,

@@ -15,6 +15,7 @@ import (
 	"github.com/origadmin/team-flow/internal/migrate"
 	projectpkg "github.com/origadmin/team-flow/internal/project"
 	"github.com/origadmin/team-flow/internal/proc"
+	"github.com/origadmin/team-flow/internal/session"
 	"github.com/origadmin/team-flow/internal/skill"
 	"github.com/origadmin/team-flow/internal/status"
 	"github.com/origadmin/team-flow/internal/task"
@@ -38,17 +39,16 @@ var rootCmd = &cobra.Command{
 	Short: "team-flow: AI Team Collaboration Framework CLI",
 	Long: `flow is the CLI for team-flow AI collaboration framework.
 
-Supports v1 (task-pool) and v2 (beads-native + code-review-graph) modes.
 Provides initialization, migration, graph analysis, and diagnostics.
 
 Tools: External tools can be configured and run through 'flow tools'.
-Default tools include: beads (task management with Dolt git-native storage).`,
+Default tools include: task management (beads), code review, and flow engine.`,
 	Version: version.Version,
 }
 
 func init() {
 	rootCmd.SetVersionTemplate(fmt.Sprintf("flow version %s (build: %s, commit: %s)\n", version.Version, version.BuildTime, version.GitCommit))
-	rootCmd.PersistentFlags().BoolVarP(&verboseFlag, "verbose", "v", false, "Verbose output (log to .team/logs/)")
+	rootCmd.PersistentFlags().BoolVarP(&verboseFlag, "verbose", "v", false, "Verbose output")
 	rootCmd.PersistentFlags().StringVarP(&configPath, "config", "c", "", "Config file path (default: ~/.flow/config.yaml)")
 	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
 		log = logger.GetLogger()
@@ -90,6 +90,7 @@ func main() {
 	rootCmd.AddCommand(projectpkg.Cmd)
 	rootCmd.AddCommand(update.Cmd)
 	rootCmd.AddCommand(skill.Cmd)
+	rootCmd.AddCommand(session.Cmd)
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)

@@ -4,8 +4,7 @@ version: 3.2
 description: |
   team-flow v3 / team-flow/v3: 流程驱动的AI协作框架 (Process-Centric AI Collaboration Framework).
   当用户提到以下任何关键词时必须触发此技能：team-flow, team-flow/v3, 团队流程, 流程管理,
-  软件开发流程, 项目管理流程, v3流程, dev-flow, bugfix-flow, feature-flow, hotfix-flow,
-  flow proc run, flow init, 齐活林, 匠思远, 铸灵手, 严过关, 合无间, 寇豆码, 溯源, 高见远.
+  软件开发流程, 项目管理流程, v3流程, flow proc run, flow init.
   当 .team/version = v3 时，此技能是所有工作的强制入口 — 编码、调试、功能开发、Bug修复、
   重构、分析或任何任务。做任何工作之前必须先运行 flow proc run 进入流程驱动执行协议。
   不要直接开始解决问题。当以下情况触发：新会话开始、v3项目中收到任何用户请求、
@@ -14,7 +13,7 @@ description: |
 
 # team-flow v3 SKILL.md - Entry Point
 
-> **Version**: v3.2 | **Date**: 2026-05-27
+> **Version**: v3.2 | **Date**: 2026-05-28
 
 ## ⛔ MANDATORY: Read Consensus First
 
@@ -25,11 +24,11 @@ description: |
 Every response MUST start with:
 
 ```
-[{alias} | {node_id}:{node_name}({flow}) | {ref} | {phase}]
+[{alias} | {node_name}({node_id}:{flow}) | {ref} | {phase}]
 ```
 
-- alias: from `flow proc run` output (e.g., 齐活林, 匠思远, 铸灵手)
-- node_id:name(flow): current node + flow name
+- alias: from `flow proc run` output (dynamic per team)
+- node_name(node_id:flow): current node name + node ID + flow name
 - ref: task_id or `disc-{YYYYMMDD}-{seq}` or `-`
 - Phase: current execution phase (on_enter/on_exit/analyze/design/implement/verify/review)
 
