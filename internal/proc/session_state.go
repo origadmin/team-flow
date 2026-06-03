@@ -13,7 +13,8 @@ import (
 type SessionState struct {
 	CurrentNodeID     string            `json:"current_node_id"`
 	CurrentNode       string            `json:"current_node"` // human-readable name
-	VisitedNodes      []string          `json:"visited_nodes"` // node IDs visited (ordered, most recent last)
+	VisitedNodes      []string          `json:"visited_nodes"` // node IDs visited (ordered, includes repeats for backtracking)
+	VisitCount        map[string]int    `json:"visit_count,omitempty"` // node ID → number of times entered
 	FlowName          string            `json:"flow_name"`
 	TaskID            string            `json:"task_id"`
 	LastNodeAt        string            `json:"last_node_at"` // ISO-8601 timestamp

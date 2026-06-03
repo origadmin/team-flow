@@ -352,10 +352,52 @@ func (l *Logger) WriteContext(sessionName string, content string) error {
 
 // UpdateContextSnapshot writes a lightweight context.md snapshot for v4#23:
 // auto-updates on every node advance so AI can recover session context.
-func (l *Logger) UpdateContextSnapshot(sessionName, taskID, flowName, nodeName, phase, statusLine string) error {
+func (l *Logger) UpdateContextSnapshot(sessionName, taskID, flowName, nodeName, phase, statusLine, userInput string) error {
+	// Read existing context.md to preserve Round/Topic/Started/Round History
+	existing, _ := l.ReadContext(sessionName)
+
 	var b strings.Builder
-	b.WriteString(fmt.Sprintf("# Session: %s\n\n", sessionName))
-	b.WriteString("- **Status**: active\n")
+
+	// Preserve header section (everything before "## Current State" or "## Latest Analysis")
+	// If no existing content, create a minimal header
+	if existing != "" {
+		// Find the first "## Current State" or "## Latest Analysis" marker
+		cutIdx := -1
+		for _, marker := range []string{"## Current State", "## Latest Analysis"} {
+			idx := strings.Index(existing, marker)
+			if idx >= 0 && (cutIdx < 0 || idx < cutIdx) {
+				cutIdx = idx
+			}
+		}
+		if cutIdx > 0 {
+			b.WriteString(existing[:cutIdx])
+		} else {
+			// No markers found — keep the header (everything before last _Last updated_)
+			lastUpdatedIdx := strings.LastIndex(existing, "_Last updated:")
+			if lastUpdatedIdx > 0 {
+				// Walk back to start of line
+				lineStart := strings.LastIndex(existing[:lastUpdatedIdx], "\n")
+				if lineStart > 0 {
+					b.WriteString(existing[:lineStart+1])
+				} else {
+					b.WriteString(existing)
+				}
+			} else {
+				b.WriteString(existing)
+			}
+		}
+	} else {
+		// No existing content — write a fresh header
+		b.WriteString(fmt.Sprintf("# Session: %s\n\n", sessionName))
+		b.WriteString("- **Status**: active\n")
+		if flowName != "" {
+			b.WriteString(fmt.Sprintf("- **Flow**: %s\n", flowName))
+		}
+		b.WriteString("\n")
+	}
+
+	// Write current state section
+	b.WriteString("## Current State\n\n")
 	if flowName != "" {
 		b.WriteString(fmt.Sprintf("- **Flow**: %s\n", flowName))
 	}
@@ -369,9 +411,28 @@ func (l *Logger) UpdateContextSnapshot(sessionName, taskID, flowName, nodeName, 
 		b.WriteString(fmt.Sprintf("- **Task**: %s\n", taskID))
 	}
 	if statusLine != "" {
-		b.WriteString(fmt.Sprintf("\n## Current State\n\n```\n%s\n```\n", statusLine))
+		b.WriteString(fmt.Sprintf("- **StatusLine**: `%s`\n", statusLine))
+	}
+	if userInput != "" {
+		// Truncate long input for context.md readability
+		displayInput := userInput
+		if len([]rune(displayInput)) > 200 {
+			displayInput = string([]rune(displayInput)[:200]) + "..."
+		}
+		b.WriteString(fmt.Sprintf("- **User Input**: %s\n", displayInput))
+	} else if existing != "" {
+		// Preserve existing User Input if no new input provided (auto-advance case)
+		if idx := strings.Index(existing, "- **User Input**:"); idx >= 0 {
+			endIdx := strings.Index(existing[idx:], "\n")
+			if endIdx >= 0 {
+				b.WriteString(existing[idx : idx+endIdx+1])
+			} else {
+				b.WriteString(existing[idx:])
+			}
+		}
 	}
 	b.WriteString(fmt.Sprintf("\n_Last updated: %s_\n", now()))
+
 	return l.WriteContext(sessionName, b.String())
 }
 

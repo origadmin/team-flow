@@ -27,6 +27,7 @@ type ProcRunRequest struct {
 	Workspace   string
 	Format      string
 	RunGate     bool
+	Input       string // User input for this round (written to context.md)
 }
 
 type ProcRunResult struct {
@@ -401,21 +402,16 @@ func (e *ProcRunEngine) Run(ctx context.Context, req ProcRunRequest) (*ProcRunRe
 		state.CurrentNodeID = nextNodeID
 		state.CurrentNode = nextNodeName
 		state.VisitedNodes = append(state.VisitedNodes, node.ID)
-		// Deduplicate: keep only unique, preserving order
-		seen := make(map[string]bool, len(state.VisitedNodes))
-		unique := state.VisitedNodes[:0]
-		for _, id := range state.VisitedNodes {
-			if !seen[id] {
-				seen[id] = true
-				unique = append(unique, id)
-			}
+		// Track visit count for each node (detects backtracking)
+		if state.VisitCount == nil {
+			state.VisitCount = make(map[string]int)
 		}
-		state.VisitedNodes = unique
+		state.VisitCount[node.ID]++
 		_ = SaveSessionState(lgr.SessionsDir(), sessionName, state)
 
 		// v4#23: auto-update context.md with current node/task snapshot
 		_ = lgr.UpdateContextSnapshot(sessionName, state.TaskID, fl.Metadata.Name,
-			nextNodeName, string(node.Type), result.StatusLine)
+			nextNodeName, string(node.Type), result.StatusLine, req.Input)
 	}
 
 	return result, nil

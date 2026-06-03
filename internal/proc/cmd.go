@@ -25,6 +25,7 @@ var (
 	procFormat   string
 	procTaskID   string
 	procRunGate  bool
+	procInput    string
 
 	// node subcommand
 	nodeAddID    string
@@ -343,6 +344,7 @@ func init() {
 	Cmd.PersistentFlags().StringVar(&procRootDir, "root", "", "Root directory for preset processes (default: current directory)")
 	runCmd.Flags().StringVar(&procFormat, "format", "json", "Output format: json or text")
 	runCmd.Flags().StringVar(&procTaskID, "task", "", "Task ID for variable substitution")
+	runCmd.Flags().StringVar(&procInput, "input", "", "User input for this round (recorded in context.md)")
 	runCmd.Flags().BoolVar(&procRunGate, "gate", true, "Run automated gate checks when encountering a gate node")
 	ruleCmd.Flags().StringVar(&procFormat, "format", "text", "Output format: json or text")
 	gateCmd.Flags().StringVar(&procFormat, "format", "text", "Output format: json or text")
@@ -491,6 +493,7 @@ func runRun(cmd *cobra.Command, args []string) error {
 		Workspace:   workspace,
 		Format:      procFormat,
 		RunGate:     procRunGate,
+		Input:       procInput,
 	}
 
 	engine := NewProcRunEngine(teamRoot)
@@ -545,6 +548,7 @@ func runNext(cmd *cobra.Command, args []string) error {
 		Workspace:   workspace,
 		Format:      procFormat,
 		RunGate:     true,
+		Input:       procInput,
 	}
 
 	engine := NewProcRunEngine(teamRoot)
