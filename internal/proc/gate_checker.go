@@ -1,16 +1,22 @@
 package proc
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/origadmin/team-flow/internal/bd"
 	"github.com/origadmin/team-flow/internal/eventlog"
 	"github.com/origadmin/team-flow/internal/flow"
 )
+
+// gateCheckTimeout is the maximum duration for any external command run during gate checks.
+// Commands exceeding this are terminated and reported as FAIL with timeout message.
+const gateCheckTimeout = 5 * time.Minute
 
 type GateCheckResult struct {
 	Type     string `json:"type"`
@@ -193,14 +199,10 @@ func (gc *GateChecker) checkScriptCommand(cond GateCondOutput, command string) G
 	name := parts[0]
 	args := parts[1:]
 
-	execCmd := exec.Command(name, args...)
-	execCmd.Dir = gc.ProjectRoot
-	execCmd.Env = append(os.Environ(), "GOWORK=off")
-
-	output, err := execCmd.CombinedOutput()
+	output, err := runCommandWithTimeout(name, args, gc.ProjectRoot)
 	if err != nil {
 		result.Passed = false
-		result.Message = fmt.Sprintf("FAIL: %s\n%s", command, truncateOutput(string(output), 500))
+		result.Message = fmt.Sprintf("FAIL: %s\n%s", command, truncateOutput(output, 500))
 	} else {
 		result.Passed = true
 		result.Message = fmt.Sprintf("PASS: %s", command)
@@ -232,14 +234,10 @@ func (gc *GateChecker) checkTestsPass(cond GateCondOutput) GateCheckResult {
 	name := parts[0]
 	args := parts[1:]
 
-	execCmd := exec.Command(name, args...)
-	execCmd.Dir = gc.ProjectRoot
-	execCmd.Env = append(os.Environ(), "GOWORK=off")
-
-	output, err := execCmd.CombinedOutput()
+	output, err := runCommandWithTimeout(name, args, gc.ProjectRoot)
 	if err != nil {
 		result.Passed = false
-		result.Message = fmt.Sprintf("FAIL: %s\n%s", cmd, truncateOutput(string(output), 500))
+		result.Message = fmt.Sprintf("FAIL: %s\n%s", cmd, truncateOutput(output, 500))
 	} else {
 		result.Passed = true
 		result.Message = fmt.Sprintf("PASS: %s", cmd)
@@ -271,14 +269,10 @@ func (gc *GateChecker) checkLintPass(cond GateCondOutput) GateCheckResult {
 	name := parts[0]
 	args := parts[1:]
 
-	execCmd := exec.Command(name, args...)
-	execCmd.Dir = gc.ProjectRoot
-	execCmd.Env = append(os.Environ(), "GOWORK=off")
-
-	output, err := execCmd.CombinedOutput()
+	output, err := runCommandWithTimeout(name, args, gc.ProjectRoot)
 	if err != nil {
 		result.Passed = false
-		result.Message = fmt.Sprintf("FAIL: %s\n%s", cmd, truncateOutput(string(output), 500))
+		result.Message = fmt.Sprintf("FAIL: %s\n%s", cmd, truncateOutput(output, 500))
 	} else {
 		result.Passed = true
 		result.Message = fmt.Sprintf("PASS: %s", cmd)
@@ -492,6 +486,7 @@ func (gc *GateChecker) checkTypeMatches(cond GateCondOutput) GateCheckResult {
 
 	// Missing check or expected — can't auto-verify
 	result.Passed = false
+	result.Skipped = true
 	result.Message = "SKIP: type_matches requires both check and expected values — AI must verify"
 	result.Auto = false
 	return result
@@ -661,6 +656,23 @@ func truncateOutput(s string, maxLen int) string {
 		return s
 	}
 	return s[:maxLen] + "...(truncated)"
+}
+
+// runCommandWithTimeout executes an external command with a deadline.
+// Returns (output, nil) on success, or (captured output, error) on failure/timeout.
+func runCommandWithTimeout(name string, args []string, dir string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), gateCheckTimeout)
+	defer cancel()
+
+	execCmd := exec.CommandContext(ctx, name, args...)
+	execCmd.Dir = dir
+	execCmd.Env = append(os.Environ(), "GOWORK=off")
+
+	output, err := execCmd.CombinedOutput()
+	if ctx.Err() == context.DeadlineExceeded {
+		return string(output), fmt.Errorf("command timed out after %v: %s %s", gateCheckTimeout, name, strings.Join(args, " "))
+	}
+	return string(output), err
 }
 
 func (gc *GateChecker) checkHasActiveTasks(cond GateCondOutput) GateCheckResult {

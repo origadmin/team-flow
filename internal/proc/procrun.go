@@ -316,14 +316,18 @@ func (e *ProcRunEngine) Run(ctx context.Context, req ProcRunRequest) (*ProcRunRe
 	result.NextOptions = buildNextOptions(fl, node.ID, condCtx)
 	result.SessionName = sessionName
 
-	// Trace: node entered
-	if e.Trace != nil && sessionName != "" && node.Type != flow.NodeTypeStart {
+	// Trace: node entered (including Start — it has a role now)
+	if e.Trace != nil && sessionName != "" {
 		e.Trace.NodeEnter(sessionName, req.TaskID, node.ID, node.Name, fl.Metadata.Name)
 	}
 
-	if lgrErr == nil && node.Type != flow.NodeTypeStart {
-		phase := resolvePhaseFromNode(node)
-		_ = lgr.FlowNodeAdvance(sessionName, req.TaskID, node.ID, node.Name, phase, fl.Metadata.Name)
+	if lgrErr == nil {
+		if node.Type == flow.NodeTypeStart {
+			_ = lgr.FlowStarted(sessionName, req.TaskID, fl.Metadata.Name, node.ID)
+		} else {
+			phase := resolvePhaseFromNode(node)
+			_ = lgr.FlowNodeAdvance(sessionName, req.TaskID, node.ID, node.Name, phase, fl.Metadata.Name)
+		}
 	}
 
 	if req.RunGate && node.Type == flow.NodeTypeGate && len(result.Current.GateConditions) > 0 {
@@ -357,8 +361,8 @@ func (e *ProcRunEngine) Run(ctx context.Context, req ProcRunRequest) (*ProcRunRe
 		}
 	}
 
-	// Write flow.ended event for terminal nodes
-	if node.Type == flow.NodeTypeTerminal && req.TaskID != "" {
+	// Write flow.ended event for terminal nodes (always, even without task)
+	if node.Type == flow.NodeTypeTerminal {
 		status := "success"
 		if result.Current.TerminalStatus != "" {
 			status = result.Current.TerminalStatus

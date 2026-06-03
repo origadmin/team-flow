@@ -595,6 +595,11 @@ func runNext(cmd *cobra.Command, args []string) error {
 				result = nextResult
 				continue
 			}
+			// Gate not passed or no next options — stop advancing and report the gate result
+			if !passed {
+				result.ResumedFrom = "gate-blocked"
+			}
+			break
 		}
 
 		if (result.Current.NodeType == "start" || result.Current.NodeType != "gate") && len(result.NextOptions) > 0 {
