@@ -258,6 +258,19 @@ func (l *Logger) RecordAnalysis(sessionName string, round int, status, taskType,
 	return nil
 }
 
+// RecordNodeAnalysis records AI analysis for a specific node (simplified API).
+func (l *Logger) RecordNodeAnalysis(sessionName, taskID, analysis, flowName, nodeID string) error {
+	return l.writeEvent(map[string]interface{}{
+		"event":    "node.analysis",
+		"ts":       now(),
+		"session":  sessionName,
+		"task":     taskID,
+		"flow":     flowName,
+		"node":     nodeID,
+		"analysis": analysis,
+	})
+}
+
 // ─── global events (task, flow, error) ──────────────────────────────────────
 
 // TaskCreated writes a task.created event to the global events.mdl.
@@ -352,7 +365,7 @@ func (l *Logger) WriteContext(sessionName string, content string) error {
 
 // UpdateContextSnapshot writes a lightweight context.md snapshot for v4#23:
 // auto-updates on every node advance so AI can recover session context.
-func (l *Logger) UpdateContextSnapshot(sessionName, taskID, flowName, nodeName, phase, statusLine, userInput string) error {
+func (l *Logger) UpdateContextSnapshot(sessionName, taskID, flowName, nodeName, phase, statusLine, userInput, analysis string) error {
 	// Read existing context.md to preserve Round/Topic/Started/Round History
 	existing, _ := l.ReadContext(sessionName)
 
@@ -430,6 +443,14 @@ func (l *Logger) UpdateContextSnapshot(sessionName, taskID, flowName, nodeName, 
 				b.WriteString(existing[idx:])
 			}
 		}
+	}
+	if analysis != "" {
+		// Truncate long analysis for context.md readability
+		displayAnalysis := analysis
+		if len([]rune(displayAnalysis)) > 500 {
+			displayAnalysis = string([]rune(displayAnalysis)[:500]) + "..."
+		}
+		b.WriteString(fmt.Sprintf("- **Analysis**: %s\n", displayAnalysis))
 	}
 	b.WriteString(fmt.Sprintf("\n_Last updated: %s_\n", now()))
 

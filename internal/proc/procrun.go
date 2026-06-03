@@ -28,6 +28,7 @@ type ProcRunRequest struct {
 	Format      string
 	RunGate     bool
 	Input       string // User input for this round (written to context.md)
+	Analysis    string // AI analysis/conclusion for this round (written to events.mdl + context.md)
 }
 
 type ProcRunResult struct {
@@ -411,7 +412,12 @@ func (e *ProcRunEngine) Run(ctx context.Context, req ProcRunRequest) (*ProcRunRe
 
 		// v4#23: auto-update context.md with current node/task snapshot
 		_ = lgr.UpdateContextSnapshot(sessionName, state.TaskID, fl.Metadata.Name,
-			nextNodeName, string(node.Type), result.StatusLine, req.Input)
+			nextNodeName, string(node.Type), result.StatusLine, req.Input, req.Analysis)
+
+		// Record AI analysis to events.mdl if provided
+		if req.Analysis != "" && lgrErr == nil {
+			_ = lgr.RecordNodeAnalysis(sessionName, req.TaskID, req.Analysis, fl.Metadata.Name, node.ID)
+		}
 	}
 
 	return result, nil
