@@ -534,8 +534,8 @@ func runRun(cmd *cobra.Command, args []string) error {
 	}
 
 	// Mandatory validation: analysis and conclusion are required when advancing
-	// Exempt --new (new session creation) as there is no prior context to analyze
-	if !procNewSession {
+	// Exempt --new (new session creation) and rescue mode (no node-id provided)
+	if !procNewSession && nodeID != "" {
 		if analysis == "" {
 			return fmt.Errorf("--analysis is required when advancing nodes. Use --analysis or --analysis-file to provide the AI analysis for this round")
 		}

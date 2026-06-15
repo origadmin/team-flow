@@ -309,11 +309,28 @@ func (e *ProcRunEngine) Run(ctx context.Context, req ProcRunRequest) (*ProcRunRe
 				node, err := e.NodeResolver.Resolve(ctx, fl, currentNodeID)
 				if err == nil && node != nil {
 					vars := e.VarSubstitutor.CollectVars(ctx, fl, req, node.ID)
-					result := generateResult(fl, node, vars, nil, true, req.ProjectRoot, req.Workspace, req.RunGate)
+					// Resolve team for proper role alias display
+					var rescueTeam *flow.TeamDefinition
+					if e.TeamLoader != nil {
+						t, tErr := e.TeamLoader.LoadTeam(req.ProjectRoot)
+						if tErr == nil && t != nil {
+							rescueTeam = t
+						}
+					}
+					result := generateResult(fl, node, vars, rescueTeam, true, req.ProjectRoot, req.Workspace, req.RunGate)
 					condCtx := buildConditionContext(fl, node, req, result)
 					result.NextOptions = buildNextOptions(fl, node.ID, condCtx)
 					result.RescueContext = sessionCtx
 					result.SessionName = sessionName
+					// Resolve task info for proper StatusLine ref
+					if taskInfo := resolveTaskInfo(req.TaskID); taskInfo != nil {
+						result.Task = taskInfo
+						if taskInfo.TaskID != "" {
+							result.StatusLine = buildStatusLineWithRef(fl, node, result.Current, taskInfo.TaskID)
+							sld := buildStatusLineData(fl, node, result.Current, taskInfo.TaskID)
+							result.StatusLineFields = &sld
+						}
+					}
 					if lgrErr == nil {
 						phase := resolvePhaseFromNode(node)
 						_ = lgr.UpdateContextSnapshot(sessionName, req.TaskID, fl.Metadata.Name,
