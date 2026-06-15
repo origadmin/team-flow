@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/origadmin/team-flow/internal/bd"
 	"github.com/origadmin/team-flow/internal/config"
 	"github.com/origadmin/team-flow/internal/eventlog"
+	"github.com/origadmin/team-flow/internal/idgen"
 	taskSync "github.com/origadmin/team-flow/internal/sync"
 	"github.com/spf13/cobra"
 )
@@ -203,14 +203,8 @@ func taskCreateV3(projectRoot string, args []string) error {
 		taskType = "task"
 	}
 
-	// Use beads to create task with proper format (project-xxx or numeric).
-	taskID, err := bd.CreateIssue(title, taskType, description)
-	if err != nil {
-		return fmt.Errorf("create task via beads: %w", err)
-	}
-	if taskID == "" {
-		return fmt.Errorf("create task via beads: got empty id (bd output unparseable)")
-	}
+	// Generate task ID using idgen (not beads — flow owns its task IDs).
+	taskID := idgen.RandHex(2)
 
 	now := time.Now().UTC()
 	task := &Task{
