@@ -47,11 +47,11 @@ Step 1: Read CONSENSUS.md
 
 Step 2: Read project configuration
   → Read .team/project.md
-  → Extract: default_flow name, docs_path, TOOLCHAIN
+  → Extract: active_flow name, docs_path, TOOLCHAIN
 
 Step 3: Start the flow
   → flow proc run
-  → Engine reads default_flow from project config automatically
+  → Engine reads active_flow from project config automatically
   → Receive first node instruction
 
 Step 4: Adopt the principal role
@@ -76,7 +76,7 @@ Step 4.5: Team Introduction (first session only)
       4. 我验证后向你汇报
 
       可用流程：{list flows from TEAM_INTRO}
-      当前使用：{default_flow} ⭐
+      当前使用：{active_flow} ⭐
 
       有什么我可以帮你的？"
   → This introduction helps users understand the team's capabilities and workflow
@@ -84,7 +84,7 @@ Step 4.5: Team Introduction (first session only)
   → Wait for user input
 ```
 
-**If no flow is bound** (default_flow is empty or points to non-existent flow):
+**If no flow is bound** (active_flow is empty or points to non-existent flow):
 
 ```
 Step 1: Run flow proc list
@@ -102,18 +102,18 @@ Step 2: Present options to user
 
 Step 3: Handle user's choice
   → User selects existing flow:
-      1. Edit .team/project.md → set default_flow: {chosen-flow}
+      1. Edit .team/project.md → set active_flow: {chosen-flow}
       2. Re-run flow proc run → enter normal execution
   → User wants to create new team:
       1. Load team-flow-v3-create skill (via Skill tool)
       2. Follow create workflow (Step 0-10)
-      3. After creation: register in project.md → set default_flow → re-run flow proc run
+      3. After creation: register in project.md → set active_flow → re-run flow proc run
   → User wants to browse:
       1. Run flow proc show {name} for details
       2. Return to Step 2 after browsing
 
 Step 4: Resume normal execution
-  → After default_flow is set, continue from Session Startup Protocol Step 3
+  → After active_flow is set, continue from Session Startup Protocol Step 3
 ```
 
 **⛔ Never proceed without a flow binding.** AC1 requires one project = one flow.
@@ -666,7 +666,7 @@ Step 3: Reset for next interaction
 
 A project is bound to exactly **one** team flow.
 
-- The flow binding is in project configuration (`default_flow` in project.md)
+- The flow binding is in project configuration (`active_flow` in project.md)
 - `--flow` parameter is never needed — the engine reads the binding automatically
 - If no flow is bound → user must create one first (via team-flow-v3-create)
 - Switching flows is a project-level decision, not per-task

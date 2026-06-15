@@ -16,11 +16,11 @@ flow init --v3 [--team {team-id}] [--flow {flow-name}]
 5. 或 `--flow dev-flow` 通过 flow 名找到对应团队
 6. 安装选中团队的所有 flows 到 `.team/flows/`
 7. 初始化 beads 数据库
-8. 在 project.yaml 中设置 `default_flow`
+8. 在 project.yaml 中设置 `active_flow`
 
 ## Scenario B: AI 会话中发现无流程绑定
 
-当 AI 执行 Session Startup Protocol 时，发现 `default_flow` 为空或指向不存在的流程：
+当 AI 执行 Session Startup Protocol 时，发现 `active_flow` 为空或指向不存在的流程：
 
 ```
 Step 1: 运行 flow proc list
@@ -31,12 +31,12 @@ Step 2: 判断可用团队
   → 如果没有团队 → 直接进入创建流程
 
 Step 3: 用户选择
-  → 用户选了某个团队 → 更新 project.yaml 的 default_flow → 重新执行 flow proc run
-  → 用户要创建新团队 → 加载 team-flow-v3-create skill → 创建完成后注册并设置 default_flow
+  → 用户选了某个团队 → 更新 project.yaml 的 active_flow → 重新执行 flow proc run
+  → 用户要创建新团队 → 加载 team-flow-v3-create skill → 创建完成后注册并设置 active_flow
   → 用户想先看看 → flow proc show {name} 展示详情
 
-Step 4: 设置 default_flow
-  → 编辑 .team/project.yaml，设置 default_flow: {chosen-flow}
+Step 4: 设置 active_flow
+  → 编辑 .team/project.yaml，设置 active_flow: {chosen-flow}
   → 重新执行 flow proc run，进入正常执行流程
 ```
 
@@ -60,7 +60,7 @@ flow migrate v3 [--flow {name}]
 3. 安装预设流程到 `.team/flows/` 并注册到 project.yaml
 4. 更新 IDE bridge 文件指向 v3
 5. 更新 `.team/version` 为 v3
-6. 设置 `default_flow`
+6. 设置 `active_flow`
 
 ## 团队放置规则
 

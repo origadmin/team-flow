@@ -145,7 +145,7 @@ func (c *Config) GetResolved(key string, projectRoot string) string {
 		return c.ProjectName
 	case "team_version":
 		return c.TeamVersion
-	case "default_flow", "active_flow":
+	case "active_flow":
 		return c.ActiveFlow
 	case "flow_path":
 		// Return resolved flow path (relative → absolute)
@@ -182,16 +182,16 @@ func (c *Config) resolveFlowPath(projectRoot string) string {
 	flowPath := c.FlowPath
 	if flowPath == "" {
 		// Default: scripts/flow.exe relative to project root
-		defaultFlowPath := filepath.Join(projectRoot, "scripts", "flow.exe")
-		if _, err := os.Stat(defaultFlowPath); err == nil {
-			return defaultFlowPath
+		flowExePath := filepath.Join(projectRoot, "scripts", "flow.exe")
+		if _, err := os.Stat(flowExePath); err == nil {
+			return flowExePath
 		}
 		// Fallback 1: check PATH
 		if exePath, err := exec.LookPath("flow"); err == nil {
 			return exePath
 		}
 		// Fallback 2: return the constructed default
-		return defaultFlowPath
+		return flowExePath
 	}
 
 	// If already absolute, return as-is
@@ -226,7 +226,11 @@ func (c *Config) resolvePath(path, projectRoot string) string {
 		return path
 	}
 
-	return filepath.Join(projectRoot, path)
+	workspace := config.FindWorkspaceRoot(projectRoot)
+	if workspace == "" {
+		workspace = projectRoot
+	}
+	return config.ResolvePathWithAnchor(projectRoot, workspace, path)
 }
 
 func loadConfig(projectRoot string) (*Config, error) {
@@ -237,17 +241,13 @@ func loadConfig(projectRoot string) (*Config, error) {
 	if err == nil {
 		// Successfully loaded from YAML
 		cfg.ProjectName = projectCfg.Name
-		if projectCfg.ActiveFlow != "" {
-			cfg.ActiveFlow = projectCfg.ActiveFlow
-		} else {
-			cfg.ActiveFlow = projectCfg.DefaultFlow
-		}
+		cfg.ActiveFlow = projectCfg.ActiveFlow
 		cfg.DocsInternal = projectCfg.Paths.DocsInternal
 		cfg.DocsExternal = projectCfg.Paths.DocsExternal
 		cfg.ProjectsPath = projectCfg.Paths.ProjectsPath
 		// Load flow-specific config from YAML
 		cfg.FlowPath = projectCfg.Flow.Path
-		cfg.BackupPath = projectCfg.Flow.BackupPath
+		cfg.BackupPath = projectCfg.Paths.BackupPath
 		cfg.UpdateDisabled = projectCfg.Flow.UpdateDisabled
 		cfg.UpdateInterval = projectCfg.Flow.UpdateInterval
 	}
@@ -344,7 +344,7 @@ func getProjectRoot() string {
 		return configProject
 	}
 	dir, _ := os.Getwd()
-	return config.FindProjectRoot(dir)
+	return config.ResolveProjectRoot(dir)
 }
 
 func getFlowExePath() string {
@@ -354,16 +354,27 @@ func getFlowExePath() string {
 
 // allowedConfigKeys lists the keys that can be set via flow config set
 var allowedConfigKeys = map[string]string{
-	"active_flow": "ActiveFlow",
+	"active_flow":    "ActiveFlow",
+	"active_project": "ActiveProject",
 }
 
 func runSet(cmd *cobra.Command, args []string) error {
 	key := args[0]
 	value := args[1]
 
-	projectRoot := getProjectRoot()
-	if projectRoot == "" {
-		return fmt.Errorf("project not found")
+	var configRoot string
+
+	if key == "active_project" {
+		cwd, _ := os.Getwd()
+		configRoot = config.FindWorkspaceRoot(cwd)
+		if configRoot == "" {
+			configRoot = cwd
+		}
+	} else {
+		configRoot = getProjectRoot()
+		if configRoot == "" {
+			return fmt.Errorf("project not found")
+		}
 	}
 
 	yamlField, ok := allowedConfigKeys[key]
@@ -376,7 +387,7 @@ func runSet(cmd *cobra.Command, args []string) error {
 	}
 
 	// Load existing config
-	cfg, err := config.LoadProjectConfig(projectRoot)
+	cfg, err := config.LoadProjectConfig(configRoot)
 	if err != nil {
 		cfg = &config.ProjectConfig{}
 	}
@@ -384,18 +395,20 @@ func runSet(cmd *cobra.Command, args []string) error {
 	// Validate value based on key
 	switch key {
 	case "active_flow":
-		if err := validateFlowName(projectRoot, value); err != nil {
+		if err := validateFlowName(configRoot, value); err != nil {
 			return err
 		}
 		cfg.ActiveFlow = value
-		cfg.DefaultFlow = value // Backward compat
+		// (no alias — the canonical key is "active_flow")
+	case "active_project":
+		cfg.ActiveProject = value
 	}
 
 	// Suppress unused var warning
 	_ = yamlField
 
 	// Save config
-	if err := config.SaveProjectConfig(projectRoot, cfg); err != nil {
+	if err := config.SaveProjectConfig(configRoot, cfg); err != nil {
 		return fmt.Errorf("save config: %w", err)
 	}
 

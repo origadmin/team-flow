@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/origadmin/team-flow/internal/config"
 	"github.com/spf13/cobra"
 )
 
@@ -24,12 +25,15 @@ var (
 func init() {
 	listCmd.Flags().StringVarP(&roleFlag, "role", "r", "", "Filter by role")
 	listCmd.Flags().BoolVar(&refreshFlag, "refresh", false, "Force refresh cache")
-	scanCmd.Flags().StringVarP(&sourceFlag, "source", "s", "", "Filter by source (trae/local/team/global)")
+	scanCmd.Flags().StringVarP(&sourceFlag, "source", "s", "", "Filter by source (trae/local/team/global/plugin")
 
 	Cmd.AddCommand(listCmd)
 	Cmd.AddCommand(updateCmd)
 	Cmd.AddCommand(scanCmd)
 	Cmd.AddCommand(showCmd)
+	Cmd.AddCommand(installCmd)
+	Cmd.AddCommand(uninstallCmd)
+	Cmd.AddCommand(listPluginsCmd)
 }
 
 var listCmd = &cobra.Command{
@@ -62,12 +66,13 @@ var showCmd = &cobra.Command{
 }
 
 func runList(cmd *cobra.Command, args []string) error {
-	projectRoot, err := findProjectRoot()
-	if err != nil {
-		return err
+	dir, _ := os.Getwd()
+	projectRoot := config.ResolveProjectRoot(dir)
+	if projectRoot == "" {
+		return fmt.Errorf("no project root found")
 	}
 
-	manager := NewSkillManager(projectRoot, "", "")
+	manager := NewSkillManager(projectRoot)
 
 	opts := ResolveOptions{
 		ForceRefresh: refreshFlag,
@@ -108,14 +113,15 @@ func runList(cmd *cobra.Command, args []string) error {
 }
 
 func runUpdate(cmd *cobra.Command, args []string) error {
-	projectRoot, err := findProjectRoot()
-	if err != nil {
-		return err
+	dir, _ := os.Getwd()
+	projectRoot := config.ResolveProjectRoot(dir)
+	if projectRoot == "" {
+		return fmt.Errorf("no project root found")
 	}
 
 	fmt.Println("Updating skill cache...")
 
-	manager := NewSkillManager(projectRoot, "", "")
+	manager := NewSkillManager(projectRoot)
 
 	opts := ResolveOptions{
 		ForceRefresh: true,
@@ -135,15 +141,16 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 }
 
 func runScan(cmd *cobra.Command, args []string) error {
-	projectRoot, err := findProjectRoot()
-	if err != nil {
-		return err
+	dir, _ := os.Getwd()
+	projectRoot := config.ResolveProjectRoot(dir)
+	if projectRoot == "" {
+		return fmt.Errorf("no project root found")
 	}
 
 	fmt.Println("Scanning available skills...")
 	fmt.Println()
 
-	manager := NewSkillManager(projectRoot, "", "")
+	manager := NewSkillManager(projectRoot)
 
 	skills, err := manager.ScanAvailable(sourceFlag)
 	if err != nil {
@@ -178,12 +185,13 @@ func runScan(cmd *cobra.Command, args []string) error {
 func runShow(cmd *cobra.Command, args []string) error {
 	skillID := args[0]
 
-	projectRoot, err := findProjectRoot()
-	if err != nil {
-		return err
+	dir, _ := os.Getwd()
+	projectRoot := config.ResolveProjectRoot(dir)
+	if projectRoot == "" {
+		return fmt.Errorf("no project root found")
 	}
 
-	manager := NewSkillManager(projectRoot, "", "")
+	manager := NewSkillManager(projectRoot)
 
 	skill, err := manager.GetSkill(skillID)
 	if err != nil {
@@ -204,28 +212,6 @@ func runShow(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
-}
-
-func findProjectRoot() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-
-	for {
-		teamDir := filepath.Join(dir, ".team")
-		if _, err := os.Stat(teamDir); err == nil {
-			return dir, nil
-		}
-
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			break
-		}
-		dir = parent
-	}
-
-	return "", fmt.Errorf("no project root found (looking for .team directory)")
 }
 
 func orDefault(s, def string) string {
@@ -250,6 +236,153 @@ func printDirectory(path string, indent string) error {
 		if entry.IsDir() {
 			printDirectory(filepath.Join(path, name), indent+"  ")
 		}
+	}
+
+	return nil
+}
+
+// ── Plugin 命令 ─────────────────────────────────────────────────────────
+
+var installCmd = &cobra.Command{
+	Use:   "install <owner/repo> [@branch]",
+	Short: "Install a skill plugin from GitHub",
+	Long:  "Download and install a skill plugin from a GitHub repository.\n\nExample:\n  flow skill install phuryn/pm-skills\n  flow skill install phuryn/pm-skills@main",
+	Args:  cobra.ExactArgs(1),
+	RunE:  runInstall,
+}
+
+var uninstallCmd = &cobra.Command{
+	Use:   "uninstall <plugin-name>",
+	Short: "Uninstall a skill plugin",
+	Long:  "Remove an installed skill plugin from the project.",
+	Args:  cobra.ExactArgs(1),
+	RunE:  runUninstall,
+}
+
+var listPluginsCmd = &cobra.Command{
+	Use:   "list-plugins",
+	Short: "List installed skill plugins",
+	Long:  "List all skill plugins installed in the project, with their skills.",
+	RunE:  runListPlugins,
+}
+
+func runInstall(cmd *cobra.Command, args []string) error {
+	dir, _ := os.Getwd()
+	projectRoot := config.ResolveProjectRoot(dir)
+	if projectRoot == "" {
+		return fmt.Errorf("no project root found")
+	}
+
+	manager := NewSkillManager(projectRoot)
+	pm := manager.PluginManager()
+
+	fmt.Printf("Installing plugin: %s\n", args[0])
+
+	plugin, err := pm.Install(args[0])
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("✓ Plugin installed: %s\n", plugin.Name)
+	fmt.Printf("  Source: %s\n", plugin.Source)
+	fmt.Printf("  Branch: %s\n", plugin.Version)
+	fmt.Printf("  Installed at: %s\n", plugin.InstalledAt)
+	fmt.Printf("  Directory: %s\n", plugin.InstallDir)
+
+	if len(plugin.Skills) > 0 {
+		fmt.Printf("\nSkills (%d skills available):\n", len(plugin.Skills))
+		seen := make(map[string]bool)
+		for _, skill := range plugin.Skills {
+			if seen[skill.ID] {
+				continue
+			}
+			seen[skill.ID] = true
+			fmt.Printf("  - %s\n", skill.ID)
+		}
+	} else {
+		fmt.Println("\n(No SKILL.md files found in plugin)")
+	}
+
+	// 刷新 skill 缓存
+	if err := manager.InvalidateCache(); err == nil {
+		fmt.Println("\n✓ Skill cache refreshed")
+	}
+
+	return nil
+}
+
+func runUninstall(cmd *cobra.Command, args []string) error {
+	dir, _ := os.Getwd()
+	projectRoot := config.ResolveProjectRoot(dir)
+	if projectRoot == "" {
+		return fmt.Errorf("no project root found")
+	}
+
+	manager := NewSkillManager(projectRoot)
+	pm := manager.PluginManager()
+
+	pluginName := args[0]
+	fmt.Printf("Uninstalling plugin: %s\n", pluginName)
+
+	if err := pm.Uninstall(pluginName); err != nil {
+		return err
+	}
+
+	fmt.Printf("✓ Plugin uninstalled: %s\n", pluginName)
+
+	// 刷新 skill 缓存
+	if err := manager.InvalidateCache(); err == nil {
+		fmt.Println("✓ Skill cache refreshed")
+	}
+
+	return nil
+}
+
+func runListPlugins(cmd *cobra.Command, args []string) error {
+	dir, _ := os.Getwd()
+	projectRoot := config.ResolveProjectRoot(dir)
+	if projectRoot == "" {
+		return fmt.Errorf("no project root found")
+	}
+
+	manager := NewSkillManager(projectRoot)
+	pm := manager.PluginManager()
+
+	plugins, err := pm.List()
+	if err != nil {
+		return err
+	}
+
+	if len(plugins) == 0 {
+		fmt.Println("No skill plugins installed")
+		fmt.Println("\nTo install a plugin, run:")
+		fmt.Println("  flow skill install <owner>/<repo>")
+		return nil
+	}
+
+	fmt.Printf("Installed skill plugins (%d):\n\n", len(plugins))
+
+	for _, plugin := range plugins {
+		fmt.Printf("Name: %s\n", plugin.Name)
+		fmt.Printf("  Source: %s\n", plugin.Source)
+		fmt.Printf("  Branch: %s\n", plugin.Version)
+		fmt.Printf("  Installed: %s\n", plugin.InstalledAt)
+		fmt.Printf("  Directory: %s\n", plugin.InstallDir)
+
+		if len(plugin.Skills) > 0 {
+			fmt.Printf("  Skills (%d):\n", len(plugin.Skills))
+			seen := make(map[string]bool)
+			for _, skill := range plugin.Skills {
+				if seen[skill.ID] {
+					continue
+				}
+				seen[skill.ID] = true
+				fmt.Printf("    - %s\n", skill.ID)
+			}
+		} else {
+			fmt.Println("  (no SKILL.md files found)")
+		}
+		fmt.Println()
 	}
 
 	return nil

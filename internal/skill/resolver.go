@@ -29,18 +29,10 @@ func (sr *SkillResolver) ResolveFromTags(tags []string) []ResolvedSkill {
 	return skills
 }
 
-func (sr *SkillResolver) MergeSkills(projectSkills, teamSkills, globalSkills []ResolvedSkill) []ResolvedSkill {
+func (sr *SkillResolver) MergeSkills(skills []ResolvedSkill) []ResolvedSkill {
 	merged := make(map[string]ResolvedSkill)
 
-	for _, skill := range globalSkills {
-		merged[skill.ID] = skill
-	}
-
-	for _, skill := range teamSkills {
-		merged[skill.ID] = skill
-	}
-
-	for _, skill := range projectSkills {
+	for _, skill := range skills {
 		merged[skill.ID] = skill
 	}
 

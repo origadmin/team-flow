@@ -37,7 +37,20 @@ flow config paths --json
 - Never create temp files in project root or workspace root
 - Clean up {TMP_DIR} when session ends
 
-## Legacy Variables
+## Asset Resolution Protocol
+
+Pointers in JSON flow definitions (e.g., `prompt_source`, `ref`, `template`) MUST be resolved to local file paths.
+
+1. **Identify the Reference**: Extract the `ref` or `path` from the engine output.
+2. **Resolve the Path**: 
+   - If it starts with `assets/skill/v3/` → Resolve relative to `{TEAM_PATH}`.
+   - If it's a relative path → Resolve relative to `{PROJECT}`.
+3. **MANDATORY Action**: AI MUST use `read_file` on the resolved path BEFORE executing the task for that node. **Implicit knowledge is forbidden.**
+
+Example:
+- `prompt_source: "assets/skill/v3/prompts/tech-lead.md"`
+- Resolved: `{TEAM_PATH}/prompts/tech-lead.md`
+- Action: `read_file(file_path="{TEAM_PATH}/prompts/tech-lead.md")`
 
 - `{DOCS_PATH}` → replaced by `{DOCS_INTERNAL}`
 - `{PROJECT_PATH}` → replaced by `{PROJECT}`

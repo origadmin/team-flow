@@ -26,7 +26,7 @@ This document defines the clear separation between **config** (configuration lay
 ```yaml
 name: framework
 version: v3
-default_flow: dev-flow
+active_flow: dev-flow
 
 paths:
     projects_path: projects/
@@ -128,7 +128,7 @@ Structured Output (no placeholders)
 type ProjectConfig struct {
     Name         string
     Version      string
-    DefaultFlow  string
+    ActiveFlow   string
     Paths        ProjectPaths
     Toolchain    ProjectToolchain
     Flows        []ProjectFlow

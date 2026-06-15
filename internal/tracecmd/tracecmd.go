@@ -151,7 +151,7 @@ func runTraceIssues(cmd *cobra.Command, args []string) error {
 
 func findProjectRoot() string {
 	dir, _ := os.Getwd()
-	return config.FindProjectRoot(dir)
+	return config.ResolveProjectRoot(dir)
 }
 
 func resolveTracePath(projectRoot, sessionName string) (string, error) {

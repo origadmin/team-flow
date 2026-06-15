@@ -10,7 +10,7 @@
   "flows": [
     {"id": "trading-flow", "file": "trading-flow.json", "description": "Complete trading analysis flow", "default": true}
   ],
-  "default_flow": "trading-flow",
+  "active_flow": "trading-flow",
   "roles": [
     {
       "id": "r3k7",

@@ -8,7 +8,8 @@
       "development",
       "main-flow",
       "software"
-    ]
+    ],
+    "notes": "Node IDs use short keys (tri3, ent7, etc.) for internal routing uniqueness. Node names are the human-readable display labels. sf-* subflow nodes route to: feature-flow, bugfix-flow, hotfix-flow, analysis-flow, change-flow. batch-flow and release-flow are independent flows and are NOT routed through dev-flow sf-* subflows."
   },
   "config": {
     "task_type": "development",
@@ -68,34 +69,31 @@
       "id": "sta0",
       "type": "start",
       "name": "Session Start",
-      "description": "Session start: record context, analyze user intent, create task if needed",
+      "description": "Session start: record context, analyze user intent, create task before proceeding",
       "entry": true,
+      "config": {
+        "role": "pm"
+      },
+      "guidance": "MUST create a task via 'flow task create --title <title>' before any other action. Every user request requires a task. Do NOT skip task creation. After task creation, analyze intent and dispatch to appropriate sub-role.",
       "components": {
-        "prompts": [
-          {
-            "path": "{TEAM_PATH}/prompts/concierge.md",
-            "ref": "concierge",
-            "source": "file"
-          }
-        ],
         "roles": [
           {
-            "ref": "concierge",
+            "ref": "pm",
             "source": "team"
           }
         ],
         "tools": [
           {
             "ref": "task",
-            "commands": ["create", "show"]
+            "commands": [
+              "create",
+              "show"
+            ]
           },
           {
             "ref": "search"
           }
         ]
-      },
-      "config": {
-        "role": "concierge"
       },
       "on_enter": [
         {
@@ -118,14 +116,14 @@
       "id": "tri3",
       "type": "phase",
       "name": "Task Triage",
-      "description": "Classify incoming task by type and dispatch to the appropriate branch",
+      "description": "PM classifies incoming task by type, scope, and priority, then dispatches to the appropriate branch",
       "config": {
-        "role": "Triage"
+        "role": "pm"
       },
       "components": {
         "roles": [
           {
-            "ref": "triage",
+            "ref": "pm",
             "source": "team"
           }
         ],
@@ -147,22 +145,15 @@
           {
             "ref": "search"
           }
-        ],
-        "prompts": [
-          {
-            "ref": "triage",
-            "source": "file",
-            "path": "{TEAM_PATH}/prompts/triage.md"
-          }
         ]
       },
       "docs": [
         {
-          "name": "TRIAGE.md",
+          "name": "ASSESSMENT.md",
           "format": "markdown",
-          "path": "{DOCS_INTERNAL}/{task_id}/TRIAGE.md",
+          "path": "{DOCS_INTERNAL}/{task_id}/ASSESSMENT.md",
           "required": true,
-          "description": "Triage classification record with task type, priority, scope assessment, and dispatch decision"
+          "description": "PM task assessment record: task type, priority, scope assessment, and dispatch decision"
         }
       ],
       "on_enter": [
@@ -204,7 +195,7 @@
       "name": "Requirements Analysis",
       "description": "Analyze feature requirements and produce specification with acceptance criteria",
       "config": {
-        "role": "TechLead"
+        "role": "tech-lead"
       },
       "components": {
         "roles": [
@@ -220,7 +211,7 @@
           },
           {
             "ref": "d2b",
-            "source": "framework"
+            "source": "builtin"
           }
         ],
         "tools": [
@@ -242,13 +233,6 @@
             "source": "builtin"
           }
         ],
-        "prompts": [
-          {
-            "ref": "tech-lead",
-            "source": "file",
-            "path": "{TEAM_PATH}/prompts/tech-lead.md"
-          }
-        ],
         "constraints": [
           {
             "type": "file_write",
@@ -260,6 +244,54 @@
       },
       "docs": [
         {
+          "name": "ARCHITECTURE.md",
+          "format": "markdown",
+          "path": "{DOCS_EXTERNAL}/ARCHITECTURE.md",
+          "required": true,
+          "description": "[PRE-READ] Project system architecture: module structure, data flow, external dependencies. Understand before writing any design/spec",
+          "content_rules": [
+            "READ-ONLY: Do not modify. Understand the layered architecture (cmd→internal→data→infra)",
+            "Verify: your design respects existing module boundaries",
+            "If change requires architecture modification: update this doc FIRST, then proceed"
+          ]
+        },
+        {
+          "name": "DESIGN.md",
+          "format": "markdown",
+          "path": "{DOCS_EXTERNAL}/DESIGN.md",
+          "required": true,
+          "description": "[PRE-READ] Design principles: pure-function-first, defensive design, explicit-over-implicit. Every design decision must follow these principles",
+          "content_rules": [
+            "READ-ONLY: Do not modify. Use as the rule book for design decisions",
+            "If your change violates a principle: the principle must be updated before the change",
+            "Check: Does new logic go into pure functions? Are side effects isolated at edges?"
+          ]
+        },
+        {
+          "name": "CONSENSUS.md",
+          "format": "markdown",
+          "path": "{DOCS_EXTERNAL}/CONSENSUS.md",
+          "required": true,
+          "description": "[PRE-READ] Project consensus decisions: task-ID format (team-flow-xxx), v2/v3 separation, test requirements, document-before-code policy",
+          "content_rules": [
+            "READ-ONLY: Do not modify. Consensus changes require team-level process",
+            "Verify: any task IDs you create follow beads format",
+            "Verify: any document references point to v3 paths"
+          ]
+        },
+        {
+          "name": "STANDARDS.md",
+          "format": "markdown",
+          "path": "{DOCS_EXTERNAL}/STANDARDS.md",
+          "required": true,
+          "description": "[PRE-READ] Coding and testing standards: test-driven, error handling, naming conventions, git/commit format",
+          "content_rules": [
+            "READ-ONLY: Do not modify. Use as the standard for code review",
+            "All implementation must follow Go standards: explicit error returns, meaningful names",
+            "All public functions must have doc comments"
+          ]
+        },
+        {
           "name": "SPEC.md",
           "format": "markdown",
           "path": "{DOCS_INTERNAL}/{task_id}/SPEC.md",
@@ -268,6 +300,8 @@
           "description": "Feature specification: requirements, scope, constraints, data models, API contracts, user journey, navigation, interaction flows",
           "content_rules": [
             "Must contain: overview, requirements, constraints, dependencies",
+            "Must contain: reference to relevant section in ARCHITECTURE.md (which modules are affected)",
+            "Must contain: design rationale against DESIGN.md principles",
             "Must contain: user-facing pages with routes, layouts, and component specs (not admin-only)",
             "Must contain: navigation entry points — how users reach each page from existing UI",
             "Must contain: interaction flows for key scenarios (subscribe, upgrade, cancel, etc.) with step-by-step UI transitions",
@@ -304,7 +338,7 @@
       "name": "Technical Design",
       "description": "Design data models, state machines, and API contracts based on requirements",
       "config": {
-        "role": "TechLead"
+        "role": "tech-lead"
       },
       "components": {
         "roles": [
@@ -327,13 +361,6 @@
           {
             "ref": "api-design",
             "source": "builtin"
-          }
-        ],
-        "prompts": [
-          {
-            "ref": "tech-lead",
-            "source": "file",
-            "path": "{TEAM_PATH}/prompts/tech-lead.md"
           }
         ],
         "constraints": [
@@ -399,7 +426,7 @@
       "name": "Implementation",
       "description": "Implement the feature code and unit tests following the technical design",
       "config": {
-        "role": "Dev"
+        "role": "dev"
       },
       "components": {
         "roles": [
@@ -433,13 +460,6 @@
             "ref": "file-write"
           }
         ],
-        "prompts": [
-          {
-            "ref": "dev",
-            "source": "file",
-            "path": "{TEAM_PATH}/prompts/dev.md"
-          }
-        ],
         "constraints": [
           {
             "type": "file_write",
@@ -457,11 +477,66 @@
       },
       "docs": [
         {
+          "name": "ARCHITECTURE.md",
+          "format": "markdown",
+          "path": "{DOCS_EXTERNAL}/ARCHITECTURE.md",
+          "required": true,
+          "description": "[PRE-READ] Understand module structure and data flow BEFORE implementing. Verify that your implementation respects existing boundaries (cmd → internal/flow → internal/proc → internal/bd).",
+          "content_rules": [
+            "Map your implementation to module(s). What layer does each change touch?",
+            "If your change requires a new module boundary or new external CLI → UPDATE ARCHITECTURE.md first, then implement",
+            "Verify: no circular dependencies between modules"
+          ]
+        },
+        {
+          "name": "DESIGN.md",
+          "format": "markdown",
+          "path": "{DOCS_EXTERNAL}/DESIGN.md",
+          "required": true,
+          "description": "[PRE-READ] Check design principles: pure-function-first, defensive design, explicit-over-implicit, single responsibility.",
+          "content_rules": [
+            "Logic core must be in pure functions (no I/O, no global state)",
+            "Side effects (file read/write, exec.Command) must be isolated at the EDGE of the module",
+            "Pure functions MUST have unit tests"
+          ]
+        },
+        {
+          "name": "CONSENSUS.md",
+          "format": "markdown",
+          "path": "{DOCS_EXTERNAL}/CONSENSUS.md",
+          "required": true,
+          "description": "[PRE-READ] Check consensus: task ID format (team-flow-xxx via beads), v3-only paths, flow-driven (not ad-hoc) execution.",
+          "content_rules": [
+            "NEVER generate task IDs by hand or with random ID generators — always go through bd.CreateIssue()",
+            "Do not bypass v3 flow: if there is no flow for your operation, propose adding one, do not just code it"
+          ]
+        },
+        {
+          "name": "STANDARDS.md",
+          "format": "markdown",
+          "path": "{DOCS_EXTERNAL}/STANDARDS.md",
+          "required": true,
+          "description": "[PRE-READ] Coding/testing standards to follow during implementation.",
+          "content_rules": [
+            "TDD Red-Green-Refactor: write failing test → make it pass → clean up",
+            "Every exported function MUST have a doc comment",
+            "Error wrapping: fmt.Errorf(\"context: %w\", err)",
+            "Commit format: feat|fix({module}): {description}"
+          ]
+        },
+        {
           "name": "IMPL.md",
           "format": "markdown",
           "path": "{DOCS_INTERNAL}/{task_id}/IMPL.md",
           "required": true,
-          "description": "Implementation notes: key code changes, architectural decisions, test coverage summary"
+          "description": "Implementation notes: key code changes, architectural decisions, test coverage summary",
+          "content_rules": [
+            "Must contain: list of files changed, purpose of each change",
+            "Must reference: which ARCHITECTURE.md modules are affected",
+            "Must reference: which DESIGN.md principles guided the change",
+            "Must document: test coverage (unit test names, what they cover)",
+            "Must have: verification commands (actual CLI commands to run tests + E2E check)"
+          ]
         }
       ],
       "on_enter": [
@@ -477,7 +552,7 @@
       "name": "Root Cause Investigation",
       "description": "Investigate the bug, identify root cause, and produce RCA document",
       "config": {
-        "role": "Dev"
+        "role": "dev"
       },
       "components": {
         "roles": [
@@ -493,7 +568,7 @@
           },
           {
             "ref": "d2b",
-            "source": "framework"
+            "source": "builtin"
           }
         ],
         "tools": [
@@ -508,16 +583,52 @@
           {
             "ref": "search"
           }
-        ],
-        "prompts": [
-          {
-            "ref": "dev",
-            "source": "file",
-            "path": "{TEAM_PATH}/prompts/dev.md"
-          }
         ]
       },
       "docs": [
+        {
+          "name": "ARCHITECTURE.md",
+          "format": "markdown",
+          "path": "{DOCS_EXTERNAL}/ARCHITECTURE.md",
+          "required": true,
+          "description": "[PRE-READ] Before investigating: map the bug to its module in the architecture. Which module(s) does it touch? Where is the boundary it crosses?",
+          "content_rules": [
+            "Map the bug to the module structure (cmd/flow → internal/flow → internal/proc → bd/ etc.)",
+            "Identify which architecture assumption is broken (e.g., stdout-only assumption, pure-function assumption)"
+          ]
+        },
+        {
+          "name": "DESIGN.md",
+          "format": "markdown",
+          "path": "{DOCS_EXTERNAL}/DESIGN.md",
+          "required": true,
+          "description": "[PRE-READ] Identify which design principle the bug violates. Did the original code fail to follow defensive design? Pure-function-first? Explicit-over-implicit?",
+          "content_rules": [
+            "State the principle that was violated",
+            "This is the baseline your fix must restore — your fix must re-align with these principles"
+          ]
+        },
+        {
+          "name": "CONSENSUS.md",
+          "format": "markdown",
+          "path": "{DOCS_EXTERNAL}/CONSENSUS.md",
+          "required": true,
+          "description": "[PRE-READ] Verify no consensus-violation in the bug. E.g., did code bypass bd.CreateIssue and generate IDs directly?",
+          "content_rules": [
+            "READ-ONLY. Check: is the bug a consensus-violation (wrong task ID format, bypassing tools)?"
+          ]
+        },
+        {
+          "name": "STANDARDS.md",
+          "format": "markdown",
+          "path": "{DOCS_EXTERNAL}/STANDARDS.md",
+          "required": true,
+          "description": "[PRE-READ] Understand testing standards: the fix needs unit tests + integration tests, matching the test level required",
+          "content_rules": [
+            "What test level does this bug require? Unit for pure functions, integration for module interactions, E2E for CLI paths",
+            "Use the test templates from this document when writing regression tests"
+          ]
+        },
         {
           "name": "RCA.md",
           "format": "markdown",
@@ -527,6 +638,9 @@
           "description": "Root cause analysis: bug origin, affected components, reproduction steps, severity assessment",
           "content_rules": [
             "Must contain: phenomenon, root_cause, impact, prevention",
+            "Must reference: which ARCHITECTURE.md module is affected",
+            "Must reference: which DESIGN.md principle is violated",
+            "Must reference: which CONSENSUS.md decision is violated (if any)",
             "Data flow trace required for API/permission/state bugs",
             "Real scenario verification required (not mock-only)"
           ]
@@ -545,7 +659,7 @@
       "name": "Bug Fix",
       "description": "Implement the bug fix and add regression tests",
       "config": {
-        "role": "Dev"
+        "role": "dev"
       },
       "components": {
         "roles": [
@@ -575,13 +689,6 @@
             "ref": "file-write"
           }
         ],
-        "prompts": [
-          {
-            "ref": "dev",
-            "source": "file",
-            "path": "{TEAM_PATH}/prompts/dev.md"
-          }
-        ],
         "constraints": [
           {
             "type": "file_write",
@@ -593,11 +700,68 @@
       },
       "docs": [
         {
+          "name": "ARCHITECTURE.md",
+          "format": "markdown",
+          "path": "{DOCS_EXTERNAL}/ARCHITECTURE.md",
+          "required": true,
+          "description": "[PRE-READ] Must understand module boundaries BEFORE making code changes. Verify which modules are affected.",
+          "content_rules": [
+            "Before touching code: map the fix to module(s). What layer? cmd/flow? internal/proc? internal/bd?",
+            "After the fix: if the fix changes architecture (module boundary or flow), UPDATE this document to reflect the change",
+            "If your fix introduces a new module or a new external CLI dependency: UPDATE ARCHITECTURE.md — the document must change before the code"
+          ]
+        },
+        {
+          "name": "DESIGN.md",
+          "format": "markdown",
+          "path": "{DOCS_EXTERNAL}/DESIGN.md",
+          "required": true,
+          "description": "[PRE-READ] Design principles: pure-function-first, defensive design, explicit-over-implicit. The fix must follow these.",
+          "content_rules": [
+            "Core logic must be in pure functions. Side effects at edges",
+            "If parsing or validation logic: MUST be a pure function with unit tests",
+            "The fix should make things more consistent, not introduce new patterns"
+          ]
+        },
+        {
+          "name": "CONSENSUS.md",
+          "format": "markdown",
+          "path": "{DOCS_EXTERNAL}/CONSENSUS.md",
+          "required": true,
+          "description": "[PRE-READ] Confirm the fix respects consensus: task-ID format (team-flow-xxx), v2/v3 separation, flow-driven execution.",
+          "content_rules": [
+            "Do not bypass tools: use bd.CreateIssue() for task IDs, not hand-rolled ID generators",
+            "Do not hard-code paths. Use config paths from project.md",
+            "Flow-driven: if this fix needs to become a new rule, propose a consensus update"
+          ]
+        },
+        {
+          "name": "STANDARDS.md",
+          "format": "markdown",
+          "path": "{DOCS_EXTERNAL}/STANDARDS.md",
+          "required": true,
+          "description": "[PRE-READ] Coding standards, testing standards, commit format. Every code change must match these.",
+          "content_rules": [
+            "Write tests FIRST (TDD Red-Green-Refactor)",
+            "Pure functions MUST have unit tests",
+            "Public functions MUST have doc comments",
+            "Commit messages follow: fix({module}): {description}",
+            "Never commit lint warnings"
+          ]
+        },
+        {
           "name": "FIX.md",
           "format": "markdown",
           "path": "{DOCS_INTERNAL}/{task_id}/FIX.md",
           "required": true,
-          "description": "Bug fix notes: fix approach, code changes, regression test additions, verification steps"
+          "description": "Bug fix notes: fix approach, code changes, regression test additions, verification steps",
+          "content_rules": [
+            "Must contain: files modified, functions changed, rationale against DESIGN.md principles",
+            "Must reference: ARCHITECTURE.md modules involved",
+            "Must reference: CONSENSUS.md decisions respected (or violated, with explanation)",
+            "Must contain: new tests added (unit test names and what they cover)",
+            "Must contain: end-to-end verification steps (CLI commands + expected output)"
+          ]
         }
       ],
       "on_enter": [
@@ -613,7 +777,7 @@
       "name": "Emergency Fix",
       "description": "Implement the emergency hotfix with minimal scope",
       "config": {
-        "role": "Dev"
+        "role": "dev"
       },
       "components": {
         "roles": [
@@ -641,13 +805,6 @@
           },
           {
             "ref": "file-write"
-          }
-        ],
-        "prompts": [
-          {
-            "ref": "dev",
-            "source": "file",
-            "path": "{TEAM_PATH}/prompts/dev.md"
           }
         ],
         "constraints": [
@@ -696,12 +853,24 @@
       }
     },
     {
+      "id": "sf-an",
+      "type": "subflow",
+      "name": "Analysis Subflow",
+      "description": "Invoke analysis-flow for deep technical analysis",
+      "config": {
+        "flow_ref": "builtin:analysis-flow",
+        "input_mapping": {
+          "task_id": "{task_id}"
+        }
+      }
+    },
+    {
       "id": "ai01",
       "type": "phase",
       "name": "Deep Analysis",
       "description": "Perform technical analysis and gather findings",
       "config": {
-        "role": "Analysis"
+        "role": "analysis"
       },
       "components": {
         "roles": [
@@ -713,7 +882,7 @@
         "rules": [
           {
             "ref": "d2b",
-            "source": "framework"
+            "source": "builtin"
           }
         ],
         "tools": [
@@ -727,13 +896,6 @@
           },
           {
             "ref": "search"
-          }
-        ],
-        "prompts": [
-          {
-            "ref": "analysis",
-            "source": "file",
-            "path": "{TEAM_PATH}/prompts/analysis.md"
           }
         ]
       },
@@ -759,7 +921,7 @@
       "name": "Analysis Report",
       "description": "Compile analysis results into a structured report with conclusions",
       "config": {
-        "role": "Analysis"
+        "role": "analysis"
       },
       "components": {
         "roles": [
@@ -771,14 +933,7 @@
         "rules": [
           {
             "ref": "d2b",
-            "source": "framework"
-          }
-        ],
-        "prompts": [
-          {
-            "ref": "analysis",
-            "source": "file",
-            "path": "{TEAM_PATH}/prompts/analysis.md"
+            "source": "builtin"
           }
         ]
       },
@@ -804,7 +959,7 @@
       "name": "Change Planning",
       "description": "Plan the change scope, impact analysis, and migration strategy",
       "config": {
-        "role": "TechLead"
+        "role": "tech-lead"
       },
       "components": {
         "roles": [
@@ -820,7 +975,7 @@
           },
           {
             "ref": "d2b",
-            "source": "framework"
+            "source": "builtin"
           }
         ],
         "tools": [
@@ -834,13 +989,6 @@
           },
           {
             "ref": "search"
-          }
-        ],
-        "prompts": [
-          {
-            "ref": "tech-lead",
-            "source": "file",
-            "path": "{TEAM_PATH}/prompts/tech-lead.md"
           }
         ],
         "constraints": [
@@ -885,7 +1033,7 @@
       "name": "Change Execution",
       "description": "Execute the planned changes and update tests",
       "config": {
-        "role": "Dev"
+        "role": "dev"
       },
       "components": {
         "roles": [
@@ -913,13 +1061,6 @@
           },
           {
             "ref": "file-write"
-          }
-        ],
-        "prompts": [
-          {
-            "ref": "dev",
-            "source": "file",
-            "path": "{TEAM_PATH}/prompts/dev.md"
           }
         ],
         "constraints": [
@@ -951,7 +1092,7 @@
       "id": "qua9",
       "type": "gate",
       "name": "Quality Gate",
-      "description": "Verify code quality: tests pass, lint clean, no regressions",
+      "description": "Verify code quality: tests pass, lint clean, no regressions, AND document consistency",
       "config": {
         "auto_retry": {
           "delay_minutes": 5,
@@ -974,6 +1115,29 @@
             "check": "No regressions in existing functionality",
             "required": false,
             "type": "no_regressions"
+          },
+          {
+            "check": "Core documents reviewed and acknowledged",
+            "required": true,
+            "type": "doc_review",
+            "details": "ARCHITECTURE.md, DESIGN.md, CONSENSUS.md, STANDARDS.md were loaded and their rules respected"
+          },
+          {
+            "check": "Task deliverable references core documents",
+            "required": true,
+            "type": "doc_reference",
+            "details": "SPEC.md/RCA.md/FIX.md/IMPL.md must reference relevant sections in ARCHITECTURE.md + DESIGN.md + CONSENSUS.md"
+          },
+          {
+            "check": "No code change without corresponding doc update when design changes",
+            "required": true,
+            "type": "doc_sync",
+            "details": "If code introduces new modules/breaks a design principle: the core docs must be updated BEFORE the code change"
+          },
+          {
+            "check": "Validate all deliverables against .team/checklist.md",
+            "required": true,
+            "type": "checklist_complete"
           }
         ]
       }
@@ -984,7 +1148,7 @@
       "name": "Integration Verification",
       "description": "Run full integration and E2E tests, verify completeness",
       "config": {
-        "role": "QA"
+        "role": "qa"
       },
       "components": {
         "roles": [
@@ -997,13 +1161,6 @@
           {
             "ref": "d6g",
             "source": "builtin"
-          }
-        ],
-        "prompts": [
-          {
-            "ref": "qa",
-            "source": "file",
-            "path": "{TEAM_PATH}/prompts/qa-engineer.md"
           }
         ]
       },
@@ -1030,7 +1187,7 @@
       "name": "Code Review",
       "description": "Review code quality, architecture compliance, and produce completion scope",
       "config": {
-        "role": "TechLead"
+        "role": "tech-lead"
       },
       "components": {
         "roles": [
@@ -1043,13 +1200,6 @@
           {
             "ref": "d7h",
             "source": "builtin"
-          }
-        ],
-        "prompts": [
-          {
-            "ref": "tech-lead",
-            "source": "file",
-            "path": "{TEAM_PATH}/prompts/tech-lead.md"
           }
         ]
       },
@@ -1166,15 +1316,20 @@
       ]
     },
     {
-      "id": "e-ent7-ai01",
+      "id": "e-ent7-sf-an",
       "from": "ent7",
-      "to": "ai01",
+      "to": "sf-an",
       "type": "conditional",
       "conditions": [
         {
           "expression": "task_type=analysis"
         }
       ]
+    },
+    {
+      "id": "e-sf-an-rev6",
+      "from": "sf-an",
+      "to": "rev6"
     },
     {
       "id": "e-ent7-cp01",

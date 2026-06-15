@@ -40,6 +40,82 @@ const (
 	TaskTypeBatch    TaskType = "batch"
 )
 
+type TaskStatus string
+
+const (
+	TaskStatusOpen       TaskStatus = "open"
+	TaskStatusInProgress TaskStatus = "in_progress"
+	TaskStatusBlocked    TaskStatus = "blocked"
+	TaskStatusClosed     TaskStatus = "closed"
+)
+
+type TaskPriority string
+
+const (
+	PriorityHigh   TaskPriority = "high"
+	PriorityMedium TaskPriority = "medium"
+	PriorityLow    TaskPriority = "low"
+)
+
+type TaskPhase string
+
+const (
+	TaskPhaseConcierge TaskPhase = "concierge"
+	TaskPhaseTriage    TaskPhase = "triage"
+	TaskPhaseAnalyze   TaskPhase = "analyze"
+	TaskPhaseDesign    TaskPhase = "design"
+	TaskPhaseImplement TaskPhase = "implement"
+	TaskPhaseReview    TaskPhase = "review"
+	TaskPhaseComplete  TaskPhase = "complete"
+)
+
+type TaskRelationType string
+
+const (
+	TaskRelParentOf     TaskRelationType = "parent_of"
+	TaskRelChildOf      TaskRelationType = "child_of"
+	TaskRelRelatedTo    TaskRelationType = "related_to"
+	TaskRelDuplicateOf  TaskRelationType = "duplicate_of"
+	TaskRelBlockedBy    TaskRelationType = "blocked_by"
+	TaskRelMergedFrom   TaskRelationType = "merged_from"
+)
+
+type TaskRelation struct {
+	Type   TaskRelationType `json:"type"`
+	Target string           `json:"target"`
+	Note   string           `json:"note,omitempty"`
+}
+
+type TaskMerge struct {
+	ID        string `json:"id"`
+	MergedAt  string `json:"merged_at"`
+	Reason    string `json:"reason,omitempty"`
+}
+
+type TaskArtifact struct {
+	Name string `json:"name"`
+	Path string `json:"path"`
+}
+
+type TaskDefinition struct {
+	ID          string            `json:"id"`
+	Type        TaskType          `json:"type,omitempty"`
+	Title       string            `json:"title,omitempty"`
+	Description string            `json:"description,omitempty"`
+	Status      TaskStatus        `json:"status,omitempty"`
+	Phase       TaskPhase         `json:"phase,omitempty"`
+	Priority    TaskPriority      `json:"priority,omitempty"`
+	CreatedAt   string            `json:"created_at,omitempty"`
+	UpdatedAt   string            `json:"updated_at,omitempty"`
+	Labels      []string          `json:"labels,omitempty"`
+	Assignee    string            `json:"assignee,omitempty"`
+	Relations   []TaskRelation    `json:"relations,omitempty"`
+	Merged      []TaskMerge       `json:"merged,omitempty"`
+	Artifacts   map[string]string `json:"artifacts,omitempty"`
+	Flow        string            `json:"flow,omitempty"`
+	CurrentNode string            `json:"current_node,omitempty"`
+}
+
 type ComponentSource string
 
 const (
@@ -85,6 +161,7 @@ const (
 	GateCondTraceUpdated        GateConditionType = "trace_updated"
 	GateCondHasActiveTasks      GateConditionType = "has_active_tasks"
 	GateCondHasSessionHistory   GateConditionType = "has_session_history"
+	GateCondChecklistComplete   GateConditionType = "checklist_complete"
 	GateCondCustom              GateConditionType = "custom"
 )
 
@@ -226,6 +303,9 @@ type FlowMetadata struct {
 	CreatedAt   string   `json:"created_at,omitempty"`
 	UpdatedAt   string   `json:"updated_at,omitempty"`
 	Tags       []string `json:"tags,omitempty"`
+	Domain     string   `json:"domain,omitempty"`     // dev | skill | content | trading | game | ...
+	Type       string   `json:"type,omitempty"`       // main | sub | standalone
+	ParentFlow string   `json:"parent_flow,omitempty"` // required when type=sub
 }
 
 type FlowConfig struct {
@@ -533,13 +613,14 @@ type TeamDefinition struct {
 	Description      string            `json:"description,omitempty"`
 	DescriptionZh    string            `json:"description_zh,omitempty"`
 	Version          string            `json:"version,omitempty"`
+	SchemaVersion    string            `json:"schema_version,omitempty"`
 	Author           string            `json:"author,omitempty"`
 	Tags             []string          `json:"tags,omitempty"`
 	Org              string            `json:"org,omitempty"`
 	Roles            []RoleDefinition  `json:"roles,omitempty"`
 	Rules            []RuleDefinition  `json:"rules,omitempty"`
 	Flows            []TeamFlowRef     `json:"flows,omitempty"`
-	DefaultFlow      string            `json:"default_flow,omitempty"`
+	ActiveFlow       string            `json:"active_flow,omitempty"`
 	SkillTags        []string          `json:"skill_tags,omitempty"`
 	SkillRequirements []SkillRequirement `json:"skill_requirements,omitempty"`
 	Toolchain        *TeamToolchain    `json:"toolchain,omitempty"`
@@ -568,7 +649,10 @@ type SkillRequirement struct {
 
 type TeamFlowRef struct {
 	ID          string `json:"id"`
-	File        string `json:"file"`
+	Type        string `json:"type,omitempty"`
+	Parent      string `json:"parent,omitempty"`
+	Domain      string `json:"domain,omitempty"`
 	Description string `json:"description,omitempty"`
 	Default     bool   `json:"default,omitempty"`
+	File        string `json:"file,omitempty"`
 }

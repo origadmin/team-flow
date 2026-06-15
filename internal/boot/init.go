@@ -179,7 +179,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 
 	projectYamlContent := fmt.Sprintf(`name: %s
 version: %s
-default_flow: %s
+active_flow: %s
 
 paths:
   docs_internal: _docs/%s/
@@ -196,7 +196,7 @@ toolchain:
     ui_library: shadcn
     css_framework: tailwind
     package_manager: bun
-`, projectName, version, defaultFlowValue(version), projectName)
+`, projectName, version, activeFlowValue(version), projectName)
 
 	projectYamlPath := filepath.Join(teamDir, "project.yaml")
 	if _, err := os.Stat(projectYamlPath); err == nil && !force {
@@ -254,7 +254,7 @@ pipeline: bun run test | bun run build
 ## Constraints
 - No Chinese comments in code
 - TDD required
-`, projectName, version, projectName, defaultFlowLine(version))
+`, projectName, version, projectName, activeFlowLine(version))
 
 		if err := os.WriteFile(projectMdPath, []byte(projectMd), 0644); err != nil {
 			return fmt.Errorf("create project.md: %w", err)
@@ -356,7 +356,7 @@ pipeline: bun run test | bun run build
 
 			flowName := initFlow
 			if flowName == "" {
-				flowName = teamInfo.DefaultFlow
+				flowName = teamInfo.ActiveFlow
 			}
 
 			flowFound := false
@@ -367,24 +367,24 @@ pipeline: bun run test | bun run build
 				}
 			}
 			if !flowFound && len(teamInfo.Flows) > 0 {
-				flowName = teamInfo.DefaultFlow
+				flowName = teamInfo.ActiveFlow
 			}
 
 			projectMdPath := filepath.Join(teamDir, "project.md")
 			if data, err := os.ReadFile(projectMdPath); err == nil {
 				content := string(data)
-				if !strings.Contains(content, "default_flow:") {
-					content += "\ndefault_flow: " + flowName + "\n"
+				if !strings.Contains(content, "active_flow:") {
+					content += "\nactive_flow: " + flowName + "\n"
 				} else {
-					re := regexp.MustCompile(`default_flow:\s*\S+`)
-					content = re.ReplaceAllString(content, "default_flow: "+flowName)
+					re := regexp.MustCompile(`active_flow:\s*\S+`)
+					content = re.ReplaceAllString(content, "active_flow: "+flowName)
 				}
 				os.WriteFile(projectMdPath, []byte(content), 0644)
 			}
 
 			projectYamlPath := filepath.Join(teamDir, "project.yaml")
 			if cfg, err := config.LoadProjectConfig(projectPath); err == nil {
-				cfg.DefaultFlow = flowName
+				cfg.ActiveFlow = flowName
 				found := false
 				for _, f := range cfg.Flows {
 					if f.ID == flowName {
@@ -400,10 +400,10 @@ pipeline: bun run test | bun run build
 				}
 				config.SaveProjectConfig(projectPath, cfg)
 			} else {
-				yamlContent := fmt.Sprintf("name: %s\nversion: v3\ndefault_flow: %s\n", filepath.Base(projectPath), flowName)
+				yamlContent := fmt.Sprintf("name: %s\nversion: v3\nactive_flow: %s\n", filepath.Base(projectPath), flowName)
 				os.WriteFile(projectYamlPath, []byte(yamlContent), 0644)
 			}
-			fmt.Printf("  ✓ default_flow set to %s\n", flowName)
+			fmt.Printf("  ✓ active_flow set to %s\n", flowName)
 
 			fmt.Println("\n  Installing team flows...")
 			projectFlowsDir := filepath.Join(projectPath, ".team", "flows")
@@ -765,15 +765,15 @@ func confirm(prompt string) bool {
 	return response == "y" || response == "yes"
 }
 
-func defaultFlowLine(version string) string {
-	name := defaultFlowValue(version)
+func activeFlowLine(version string) string {
+	name := activeFlowValue(version)
 	if name == "" {
 		return ""
 	}
-	return fmt.Sprintf("default_flow: %s\n", name)
+	return fmt.Sprintf("active_flow: %s\n", name)
 }
 
-func defaultFlowValue(version string) string {
+func activeFlowValue(version string) string {
 	if version != "v3" {
 		return ""
 	}
@@ -781,7 +781,7 @@ func defaultFlowValue(version string) string {
 	if flowName == "" {
 		if initTeam != "" {
 			if team := loadTeamFromFS(skillfs.FS, initTeam); team != nil {
-				flowName = team.DefaultFlow
+				flowName = team.ActiveFlow
 			}
 		}
 		if flowName == "" {
@@ -797,7 +797,7 @@ type teamMeta struct {
 	NameZh       string `json:"name_zh"`
 	Description  string `json:"description"`
 	DescriptionZh string `json:"description_zh"`
-	DefaultFlow  string `json:"default_flow"`
+	ActiveFlow  string `json:"active_flow"`
 	Flows        []struct {
 		ID          string `json:"id"`
 		File        string `json:"file"`
@@ -1135,9 +1135,7 @@ Only AFTER Step 3, start working on user requests.
 
 ## Status Line (MANDATORY — Every Response)
 
-Format: ` + "`[{alias} | {node_name}({node_id}:{flow}) | {ref} | {phase}]`" + `
-
-Data from ` + "`flow proc run`" + ` output only — never hardcode.
+Every response MUST start with the ` + "`status_line`" + ` from ` + "`flow proc run`" + ` output. The tool outputs it already formatted — use as-is. Never hardcode.
 
 ## Entry Point
 

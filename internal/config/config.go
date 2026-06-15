@@ -37,14 +37,14 @@ type PathVars struct {
 	Version       string `json:"version"`
 	Workspace     string `json:"workspace"`
 	Project       string `json:"project"`
-	TeamRoot      string `json:"team_root,omitempty"`
 	TEAM_PATH     string `json:"TEAM_PATH"`
 	DOCS_INTERNAL string `json:"DOCS_INTERNAL"`
 	DOCS_EXTERNAL string `json:"DOCS_EXTERNAL"`
+	BACKUP_PATH   string `json:"BACKUP_PATH"`
 	BEADS_DB      string `json:"BEADS_DB"`
 	SKILL_PATH    string `json:"SKILL_PATH"`
 	FLOW_DIR      string `json:"FLOW_DIR"`
-	DEFAULT_FLOW  string `json:"DEFAULT_FLOW"`
+	ACTIVE_FLOW   string `json:"ACTIVE_FLOW"`
 }
 
 // FindWorkspaceRoot 查找 workspace 根目录
@@ -101,23 +101,57 @@ func FindWorkspaceRoot(startDir string) string {
 	return ""
 }
 
-func IsMonorepoWorkspace(root string) bool {
-	if root == "" {
+// IsWorkspaceRoot 判断给定路径是否是 workspace 根目录
+// - 有 .team/project.yaml
+// - 有 projects 字段 或 存在 projects/ 目录
+// - 不应该有 team.json 或 flows/ 目录（但检测时不强制）
+func IsWorkspaceRoot(path string) bool {
+	if path == "" {
 		return false
 	}
-	teamDir := filepath.Join(root, ".team")
-	if _, err := os.Stat(teamDir); err != nil {
-		return false
-	}
-	projectsDir := filepath.Join(root, "projects")
-	if _, err := os.Stat(projectsDir); err == nil {
-		return true
-	}
-	cfg, err := LoadProjectConfig(root)
+
+	// 检查是否有 .team/project.yaml
+	cfg, err := LoadProjectConfig(path)
 	if err != nil {
 		return false
 	}
-	return len(cfg.Projects) > 0
+
+	// 如果有 projects 字段，直接判断为 workspace
+	if len(cfg.Projects) > 0 {
+		return true
+	}
+
+	// 检查是否有 projects/ 目录
+	projectsDir := filepath.Join(path, "projects")
+	if _, err := os.Stat(projectsDir); err == nil {
+		return true
+	}
+
+	return false
+}
+
+// IsProjectRoot 判断给定路径是否是 project 根目录
+// - 有 .team/project.yaml
+// - 不是 workspace 根
+func IsProjectRoot(path string) bool {
+	if path == "" {
+		return false
+	}
+	// 首先检查是否有 .team/project.yaml
+	_, err := LoadProjectConfig(path)
+	if err != nil {
+		return false
+	}
+	// 是 workspace 根就不是 project 根
+	if IsWorkspaceRoot(path) {
+		return false
+	}
+	return true
+}
+
+// 保留旧函数兼容
+func IsMonorepoWorkspace(root string) bool {
+	return IsWorkspaceRoot(root)
 }
 
 // GetProjectsDir 获取 projects 目录路径
@@ -143,76 +177,30 @@ type DiscoveredProject struct {
 	HasTeam bool   `json:"has_team"`
 }
 
-func FindTeamRoot(startDir string) string {
-	searchDir := startDir
-	for {
-		teamDir := filepath.Join(searchDir, ".team")
-		if _, err := os.Stat(teamDir); err == nil {
-			versionFile := filepath.Join(teamDir, "version")
-			flowsDir := filepath.Join(teamDir, "flows")
-			projectMd := filepath.Join(teamDir, "project.md")
-			projectYaml := filepath.Join(teamDir, "project.yaml")
-
-			if _, errV := os.Stat(versionFile); errV == nil {
-				return searchDir
-			}
-			if _, errF := os.Stat(flowsDir); errF == nil {
-				return searchDir
-			}
-			if _, errP := os.Stat(projectMd); errP == nil {
-				return searchDir
-			}
-			if _, errY := os.Stat(projectYaml); errY == nil {
-				return searchDir
-			}
-		}
-
-		parentDir := filepath.Dir(searchDir)
-		if parentDir == searchDir {
-			break
-		}
-		searchDir = parentDir
-	}
-
-	return ""
-}
-
-func FindProjectRoot(startDir string) string {
-	return FindTeamRoot(startDir)
-}
-
+// ResolveProjectRoot 从 cwd 向上查找项目根目录
+// 优先找 .team 目录（项目有团队配置），其次找项目 marker（go.mod 等）
 func ResolveProjectRoot(cwd string) string {
-	teamRoot := FindTeamRoot(cwd)
-	if teamRoot == "" {
-		return cwd
-	}
+	dir := cwd
 
-	if cwd == teamRoot {
-		return teamRoot
-	}
-
-	searchDir := cwd
 	for {
-		if searchDir == teamRoot {
-			return teamRoot
+		// 检查 .team 目录
+		if _, err := os.Stat(filepath.Join(dir, ".team")); err == nil {
+			return dir
 		}
 
+		// 检查项目 marker
 		projectMarkers := []string{"go.mod", "package.json", "Cargo.toml", "pyproject.toml", "pom.xml", "build.gradle"}
 		for _, m := range projectMarkers {
-			if _, err := os.Stat(filepath.Join(searchDir, m)); err == nil {
-				return searchDir
+			if _, err := os.Stat(filepath.Join(dir, m)); err == nil {
+				return dir
 			}
 		}
 
-		if _, err := os.Stat(filepath.Join(searchDir, ".team")); err == nil {
-			return searchDir
-		}
-
-		parentDir := filepath.Dir(searchDir)
-		if parentDir == searchDir {
+		parentDir := filepath.Dir(dir)
+		if parentDir == dir {
 			break
 		}
-		searchDir = parentDir
+		dir = parentDir
 	}
 
 	return cwd
@@ -406,13 +394,10 @@ func ListProjects(workspaceRoot string) []string {
 }
 
 // ResolvePaths 解析所有路径变量，区分 workspace 和 project
-func ResolvePaths(workspaceDir string, projectRoot string, teamRoot string) PathVars {
+func ResolvePaths(workspaceDir string, projectRoot string) PathVars {
 	vars := PathVars{}
 
-	configRoot := teamRoot
-	if configRoot == "" {
-		configRoot = projectRoot
-	}
+	configRoot := projectRoot
 
 	versionFile := filepath.Join(configRoot, ".team", "version")
 	if data, err := os.ReadFile(versionFile); err == nil {
@@ -421,7 +406,6 @@ func ResolvePaths(workspaceDir string, projectRoot string, teamRoot string) Path
 
 	vars.Workspace = workspaceDir
 	vars.Project = projectRoot
-	vars.TeamRoot = configRoot
 	vars.TEAM_PATH = filepath.Join(configRoot, ".team")
 	vars.BEADS_DB = filepath.Join(projectRoot, ".beads")
 	vars.FLOW_DIR = filepath.Join(configRoot, ".team", "flows")
@@ -430,15 +414,12 @@ func ResolvePaths(workspaceDir string, projectRoot string, teamRoot string) Path
 	if cfgErr == nil {
 		vars.DOCS_INTERNAL = resolvePathWithAnchor(configRoot, workspaceDir, cfg.Paths.DocsInternal)
 		vars.DOCS_EXTERNAL = resolvePathWithAnchor(configRoot, workspaceDir, cfg.Paths.DocsExternal)
-		if cfg.ActiveFlow != "" {
-			vars.DEFAULT_FLOW = cfg.ActiveFlow
-		} else {
-			vars.DEFAULT_FLOW = cfg.DefaultFlow
-		}
+		vars.BACKUP_PATH = resolvePathWithAnchor(configRoot, workspaceDir, cfg.Paths.BackupPath)
+		vars.ACTIVE_FLOW = cfg.ActiveFlow
 	} else {
 		vars.DOCS_INTERNAL = resolvePathWithAnchor(configRoot, workspaceDir, resolveDocsPathFromMD(configRoot))
 		vars.DOCS_EXTERNAL = resolvePathWithAnchor(configRoot, workspaceDir, resolveDocsExternalPathFromMD(configRoot))
-		vars.DEFAULT_FLOW, _ = resolveDefaultFlowFromMD(configRoot)
+		vars.ACTIVE_FLOW, _ = resolveActiveFlowFromMD(configRoot)
 	}
 
 	vars.SKILL_PATH = findSkillPath(projectRoot)
@@ -449,13 +430,8 @@ func ResolvePaths(workspaceDir string, projectRoot string, teamRoot string) Path
 func resolvePaths(workspaceDir string) PathVars {
 	vars := PathVars{}
 
-	projectRoot := FindProjectRoot(workspaceDir)
-	teamRoot := FindTeamRoot(workspaceDir)
-
-	configRoot := teamRoot
-	if configRoot == "" {
-		configRoot = projectRoot
-	}
+	projectRoot := ResolveProjectRoot(workspaceDir)
+	configRoot := projectRoot
 
 	versionFile := filepath.Join(configRoot, ".team", "version")
 	if data, err := os.ReadFile(versionFile); err == nil {
@@ -464,7 +440,6 @@ func resolvePaths(workspaceDir string) PathVars {
 
 	vars.Workspace = workspaceDir
 	vars.Project = projectRoot
-	vars.TeamRoot = configRoot
 	vars.TEAM_PATH = filepath.Join(configRoot, ".team")
 	vars.BEADS_DB = filepath.Join(projectRoot, ".beads")
 	vars.FLOW_DIR = filepath.Join(configRoot, ".team", "flows")
@@ -473,15 +448,12 @@ func resolvePaths(workspaceDir string) PathVars {
 	if cfgErr == nil {
 		vars.DOCS_INTERNAL = resolvePathWithAnchor(configRoot, workspaceDir, cfg.Paths.DocsInternal)
 		vars.DOCS_EXTERNAL = resolvePathWithAnchor(configRoot, workspaceDir, cfg.Paths.DocsExternal)
-		if cfg.ActiveFlow != "" {
-			vars.DEFAULT_FLOW = cfg.ActiveFlow
-		} else {
-			vars.DEFAULT_FLOW = cfg.DefaultFlow
-		}
+		vars.BACKUP_PATH = resolvePathWithAnchor(configRoot, workspaceDir, cfg.Paths.BackupPath)
+		vars.ACTIVE_FLOW = cfg.ActiveFlow
 	} else {
 		vars.DOCS_INTERNAL = resolvePathWithAnchor(configRoot, workspaceDir, resolveDocsPathFromMD(configRoot))
 		vars.DOCS_EXTERNAL = resolvePathWithAnchor(configRoot, workspaceDir, resolveDocsExternalPathFromMD(configRoot))
-		vars.DEFAULT_FLOW, _ = resolveDefaultFlowFromMD(configRoot)
+		vars.ACTIVE_FLOW, _ = resolveActiveFlowFromMD(configRoot)
 	}
 
 	vars.SKILL_PATH = findSkillPath(projectRoot)
@@ -553,14 +525,13 @@ func runPaths(cmd *cobra.Command, args []string) error {
 	}
 
 	workspace := FindWorkspaceRoot(cwd)
-	projectRoot := FindProjectRoot(cwd)
-	teamRoot := FindTeamRoot(cwd)
+	projectRoot := ResolveProjectRoot(cwd)
 	
 	if workspace == "" {
 		workspace = cwd
 	}
 	
-	vars := ResolvePaths(workspace, projectRoot, teamRoot)
+	vars := ResolvePaths(workspace, projectRoot)
 
 	if pathsJSON {
 		data, err := json.MarshalIndent(vars, "", "  ")
@@ -583,12 +554,6 @@ func runPaths(cmd *cobra.Command, args []string) error {
 			}
 			return vars.Project
 		}()},
-		{"team_root", func() string {
-			if vars.TeamRoot == "" || vars.TeamRoot == vars.Project {
-				return ""
-			}
-			return vars.TeamRoot
-		}()},
 		{"TEAM_PATH", func() string {
 			if vars.Project == "" {
 				return "(none)"
@@ -607,6 +572,12 @@ func runPaths(cmd *cobra.Command, args []string) error {
 			}
 			return vars.DOCS_EXTERNAL
 		}()},
+		{"BACKUP_PATH", func() string {
+			if vars.Project == "" {
+				return "(none)"
+			}
+			return vars.BACKUP_PATH
+		}()},
 		{"BEADS_DB", func() string {
 			if vars.Project == "" {
 				return "(none)"
@@ -620,7 +591,7 @@ func runPaths(cmd *cobra.Command, args []string) error {
 			}
 			return vars.FLOW_DIR
 		}()},
-		{"DEFAULT_FLOW", vars.DEFAULT_FLOW},
+		{"ACTIVE_FLOW", vars.ACTIVE_FLOW},
 	}
 
 	maxName := 0
@@ -675,28 +646,15 @@ func resolveDocsExternalPathFromMD(root string) string {
 	return ""
 }
 
-func resolveDefaultFlowFromMD(root string) (string, error) {
+func resolveActiveFlowFromMD(root string) (string, error) {
 	projectMD := filepath.Join(root, ".team", "project.md")
 	data, err := os.ReadFile(projectMD)
 	if err != nil {
 		return "", fmt.Errorf("no active flow configured")
 	}
-	// Prefer active_flow over default_flow
 	for _, line := range strings.Split(string(data), "\n") {
 		trimmed := strings.TrimSpace(line)
 		if strings.Contains(trimmed, "active_flow:") {
-			parts := strings.SplitN(trimmed, ":", 2)
-			if len(parts) == 2 {
-				val := strings.Trim(strings.TrimSpace(parts[1]), "\"' ")
-				if val != "" {
-					return val, nil
-				}
-			}
-		}
-	}
-	for _, line := range strings.Split(string(data), "\n") {
-		trimmed := strings.TrimSpace(line)
-		if strings.Contains(trimmed, "default_flow:") {
 			parts := strings.SplitN(trimmed, ":", 2)
 			if len(parts) == 2 {
 				val := strings.Trim(strings.TrimSpace(parts[1]), "\"' ")

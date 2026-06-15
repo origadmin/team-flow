@@ -12,9 +12,9 @@ import (
 type ProjectContext struct {
 	Name      string `json:"name"`
 	Path      string `json:"path"`
+	RelPath   string `json:"rel_path,omitempty"`
 	Version   string `json:"version"`
 	Workspace string `json:"workspace"`
-	TeamRoot  string `json:"team_root,omitempty"`
 	Type      string `json:"type,omitempty"`
 	Source    string `json:"source,omitempty"`
 	HasTeam   bool   `json:"has_team,omitempty"`
@@ -25,7 +25,6 @@ type ProjectDetectionResult struct {
 	CurrentProject    *ProjectContext          `json:"current,omitempty"`
 	AvailableProjects []ProjectContext         `json:"available_projects"`
 	Workspace         string                   `json:"workspace"`
-	TeamRoot          string                   `json:"team_root,omitempty"`
 	NeedsConfirmation bool                     `json:"needs_confirmation"`
 	Status            string                   `json:"status"`
 	SelectionGuidance string                   `json:"selection_guidance,omitempty"`
@@ -42,12 +41,10 @@ func DetectProject() *ProjectDetectionResult {
 		workspace = filepath.Dir(cwd)
 	}
 
-	teamRoot := config.FindTeamRoot(cwd)
 	projectRoot := config.ResolveProjectRoot(cwd)
 
 	result := &ProjectDetectionResult{
 		Workspace: workspace,
-		TeamRoot:  teamRoot,
 	}
 
 	discovered := config.DiscoverProjects(workspace)
@@ -55,9 +52,9 @@ func DetectProject() *ProjectDetectionResult {
 		pc := ProjectContext{
 			Name:      dp.Name,
 			Path:      dp.Path,
+			RelPath:   dp.RelPath,
 			Version:   getProjectVersion(dp.Path),
 			Workspace: workspace,
-			TeamRoot:  teamRoot,
 			Type:      dp.Type,
 			Source:    dp.Source,
 			HasTeam:   dp.HasTeam,
@@ -66,18 +63,14 @@ func DetectProject() *ProjectDetectionResult {
 	}
 
 	if projectRoot != "" {
-		isLocked := projectRoot != teamRoot
+		// 当前 cwd 在某个项目目录内，直接锁定
 		result.CurrentProject = &ProjectContext{
 			Name:      getProjectName(projectRoot),
 			Path:      projectRoot,
 			Version:   getProjectVersion(projectRoot),
 			Workspace: workspace,
-			TeamRoot:  teamRoot,
-			IsLocked:  isLocked,
+			IsLocked:  true,
 		}
-	}
-
-	if projectRoot != "" && projectRoot != teamRoot {
 		result.Status = "ready"
 		result.SelectionGuidance = "Project locked. Run 'flow proc run' to continue."
 	} else if len(result.AvailableProjects) == 1 {
@@ -89,9 +82,6 @@ func DetectProject() *ProjectDetectionResult {
 		result.NeedsConfirmation = true
 		result.Status = "project_not_selected"
 		result.SelectionGuidance = "Multiple projects detected. cd to the project directory, then run 'flow proc run'."
-	} else if teamRoot != "" {
-		result.Status = "ready"
-		result.SelectionGuidance = "Single workspace. Run 'flow proc run' to continue."
 	} else {
 		result.Status = "no_workspace"
 		result.SelectionGuidance = "No workspace found. Run 'flow init --v3' to initialize."
@@ -111,7 +101,6 @@ func ListProjects() []ProjectContext {
 		workspace = filepath.Dir(cwd)
 	}
 
-	teamRoot := config.FindTeamRoot(cwd)
 	discovered := config.DiscoverProjects(workspace)
 	var projects []ProjectContext
 
@@ -119,9 +108,9 @@ func ListProjects() []ProjectContext {
 		projects = append(projects, ProjectContext{
 			Name:      dp.Name,
 			Path:      dp.Path,
+			RelPath:   dp.RelPath,
 			Version:   getProjectVersion(dp.Path),
 			Workspace: workspace,
-			TeamRoot:  teamRoot,
 			Type:      dp.Type,
 			Source:    dp.Source,
 			HasTeam:   dp.HasTeam,
@@ -180,8 +169,14 @@ func PrintDetectionResult(result *ProjectDetectionResult) {
 	fmt.Fprintf(os.Stdout, "║%-70s║\n", "")
 	fmt.Fprintf(os.Stdout, "║  WORKSPACE: %-54s║\n", result.Workspace)
 
-	if result.TeamRoot != "" && result.TeamRoot != result.Workspace {
-		fmt.Fprintf(os.Stdout, "║  TEAM_ROOT: %-54s║\n", result.TeamRoot)
+	var activeProjectPath string
+	if result.Workspace != "" {
+		if cfg, err := config.LoadProjectConfig(result.Workspace); err == nil {
+			activeProjectPath = cfg.ActiveProject
+			if activeProjectPath != "" && !filepath.IsAbs(activeProjectPath) {
+				activeProjectPath = filepath.Join(result.Workspace, activeProjectPath)
+			}
+		}
 	}
 
 	if result.CurrentProject != nil {
@@ -191,8 +186,36 @@ func PrintDetectionResult(result *ProjectDetectionResult) {
 		}
 		fmt.Fprintf(os.Stdout, "║  PROJECT: %s%s\n", padLine(result.CurrentProject.Name+lockLabel, 55), "║")
 		fmt.Fprintf(os.Stdout, "║    → %-60s║\n", result.CurrentProject.Path)
-		if result.CurrentProject.TeamRoot != "" && result.CurrentProject.TeamRoot != result.CurrentProject.Path {
-			fmt.Fprintf(os.Stdout, "║    team_config: %-48s║\n", result.CurrentProject.TeamRoot)
+	}
+
+	if activeProjectPath != "" {
+		fmt.Fprintf(os.Stdout, "║%-70s║\n", "")
+		fmt.Fprintf(os.Stdout, "║  ACTIVE PROJECT:%-49s║\n", "")
+		var activeFound bool
+		for _, p := range result.AvailableProjects {
+			if p.Path == activeProjectPath || (result.Workspace != "" && filepath.Join(result.Workspace, p.RelPath) == activeProjectPath) {
+				typeLabel := ""
+				if p.Type != "" {
+					typeLabel = " (" + p.Type + ")"
+				}
+				teamLabel := ""
+				if p.HasTeam {
+					teamLabel = " ✅"
+				}
+				relPath := p.Path
+				if result.Workspace != "" {
+					if rel, err := filepath.Rel(result.Workspace, p.Path); err == nil {
+						relPath = rel
+					}
+				}
+				fmt.Fprintf(os.Stdout, "║    ★ %s%s%s\n", padLine(p.Name, 20), typeLabel, teamLabel)
+				fmt.Fprintf(os.Stdout, "║      → %-56s║\n", relPath)
+				activeFound = true
+				break
+			}
+		}
+		if !activeFound {
+			fmt.Fprintf(os.Stdout, "║    %-64s║\n", activeProjectPath)
 		}
 	}
 
@@ -200,6 +223,12 @@ func PrintDetectionResult(result *ProjectDetectionResult) {
 		fmt.Fprintf(os.Stdout, "║%-70s║\n", "")
 		fmt.Fprintf(os.Stdout, "║  AVAILABLE PROJECTS:%-48s║\n", "")
 		for i, p := range result.AvailableProjects {
+			isActive := false
+			if activeProjectPath != "" {
+				if p.Path == activeProjectPath || (result.Workspace != "" && filepath.Join(result.Workspace, p.RelPath) == activeProjectPath) {
+					isActive = true
+				}
+			}
 			marker := ""
 			if result.CurrentProject != nil && p.Path == result.CurrentProject.Path {
 				marker = " ← current"
@@ -212,13 +241,17 @@ func PrintDetectionResult(result *ProjectDetectionResult) {
 			if p.HasTeam {
 				teamLabel = " ✅"
 			}
+			activeLabel := ""
+			if isActive {
+				activeLabel = " ★"
+			}
 			relPath := p.Path
 			if result.Workspace != "" {
 				if rel, err := filepath.Rel(result.Workspace, p.Path); err == nil {
 					relPath = rel
 				}
 			}
-			fmt.Fprintf(os.Stdout, "║    [%d] %s%s%s%s\n", i+1, padLine(p.Name, 20), typeLabel, teamLabel, marker)
+			fmt.Fprintf(os.Stdout, "║    [%d] %s%s%s%s%s\n", i+1, padLine(p.Name, 20), typeLabel, teamLabel, marker, activeLabel)
 			fmt.Fprintf(os.Stdout, "║        → %-56s║\n", relPath)
 		}
 	}

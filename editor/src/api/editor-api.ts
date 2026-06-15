@@ -6,7 +6,7 @@ export interface TeamMeta {
   name_zh: string;
   description: string;
   flow_count: number;
-  default_flow: string;
+  active_flow: string;
 }
 
 export interface TeamFlowMeta {
@@ -18,7 +18,7 @@ export interface TeamFlowMeta {
 
 export interface ProjectConfig {
   name: string;
-  default_flow: string;
+  active_flow: string;
   paths: {
     docs_internal?: string;
     docs_external?: string;

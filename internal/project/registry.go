@@ -17,7 +17,7 @@ type ProjectEntry struct {
 	Name        string    `yaml:"name"`
 	Path        string    `yaml:"path"`
 	Team        string    `yaml:"team,omitempty"`
-	DefaultFlow string    `yaml:"default_flow,omitempty"`
+	ActiveFlow  string    `yaml:"active_flow,omitempty"`
 	LastNode    string    `yaml:"last_node,omitempty"`
 	LastTask    string    `yaml:"last_task,omitempty"`
 	LastActive  time.Time `yaml:"last_active,omitempty"`

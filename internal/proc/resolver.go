@@ -2,6 +2,7 @@ package proc
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -21,11 +22,11 @@ type VarSubstitutor interface {
 	CollectVars(ctx context.Context, f *flow.Flow, req ProcRunRequest, resolvedNodeID string) map[string]string
 }
 
-type DefaultFlowResolver struct {
+type ActiveFlowResolver struct {
 	Root string
 }
 
-func (r *DefaultFlowResolver) Resolve(ctx context.Context, name string, projectRoot string) (*flow.Flow, error) {
+func (r *ActiveFlowResolver) Resolve(ctx context.Context, name string, projectRoot string) (*flow.Flow, error) {
 	root := projectRoot
 	if root == "" {
 		root = r.Root
@@ -35,14 +36,20 @@ func (r *DefaultFlowResolver) Resolve(ctx context.Context, name string, projectR
 	// Strip builtin: namespace prefix (v1#1: builtin namespace resolution)
 	flowName = strings.TrimPrefix(flowName, "builtin:")
 	if flowName == "" {
-		var err error
-		flowName, err = ResolveActiveFlow(root)
-		if err != nil {
-			return nil, err
-		}
+		flowName = ResolveActiveFlow(root)
 	}
 
-	return LoadFlow(root, flowName)
+	fl, err := LoadFlow(root, flowName)
+	if err != nil {
+		return nil, err
+	}
+
+	// v3.2 architecture enforcement: sub_flows cannot be invoked directly
+	if fl.Metadata.Type == "sub" {
+		return nil, fmt.Errorf("flow %q is a sub_flow (parent=%q) and cannot be invoked directly — invoke via main flow dispatch", flowName, fl.Metadata.ParentFlow)
+	}
+
+	return fl, nil
 }
 
 type DefaultNodeResolver struct{}

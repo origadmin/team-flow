@@ -40,7 +40,7 @@ func runDebug(cmd *cobra.Command, args []string) error {
 	fmt.Fprintln(w, "=== FLOW CONTEXT ===")
 	fmt.Fprintln(w, "FIELD\tVALUE")
 
-	flowName, _ := proc.ResolveActiveFlow(projectRoot)
+	flowName := proc.ResolveActiveFlow(projectRoot)
 	if flowName == "" {
 		flowName = "(not configured)"
 	}
@@ -59,25 +59,23 @@ func runDebug(cmd *cobra.Command, args []string) error {
 	}
 	fmt.Fprintf(w, "Session\t%s\n", sessionName)
 
-	var state *proc.SessionState
 	var currentNodeName string
 	if sessionName != "(no session)" {
-		state, _ = proc.LoadSessionState(lgr.SessionsDir(), sessionName)
-		if state != nil {
-			currentNodeName = state.CurrentNode
-			if currentNodeName == "" {
-				currentNodeName = state.CurrentNodeID
+		ctx, err := lgr.ReadContext(sessionName)
+		if err == nil && ctx != "" {
+			// Parse current node name from context.md
+			for _, line := range strings.Split(ctx, "\n") {
+				line = strings.TrimSpace(line)
+				if strings.HasPrefix(line, "- **Node**:") {
+					currentNodeName = strings.TrimPrefix(line, "- **Node**: ")
+					break
+				}
 			}
-			fmt.Fprintf(w, "Current Node\t%s (%s)\n", currentNodeName, state.CurrentNodeID)
-			fmt.Fprintf(w, "Active Task\t%s\n", state.TaskID)
-			fmt.Fprintf(w, "Flow Name (state)\t%s\n", state.FlowName)
-			fmt.Fprintf(w, "Last Node At\t%s\n", state.LastNodeAt)
-			if len(state.VisitedNodes) > 0 {
-				fmt.Fprintf(w, "Visited Nodes\t%d nodes\n", len(state.VisitedNodes))
-			}
+		}
+		if currentNodeName != "" {
+			fmt.Fprintf(w, "Current State\t%s\n", currentNodeName)
 		} else {
-			fmt.Fprintln(w, "Current Node\t(no state.json)")
-			fmt.Fprintln(w, "Active Task\t(none)")
+			fmt.Fprintln(w, "Current State\t(start)")
 		}
 	}
 
@@ -98,21 +96,6 @@ func runDebug(cmd *cobra.Command, args []string) error {
 		}
 	}
 	w.Flush()
-
-	// ── Session State (detailed) ──
-	if state != nil {
-		fmt.Fprintln(w, "\n=== SESSION STATE ===")
-		fmt.Fprintln(w, "FIELD\tVALUE")
-		fmt.Fprintf(w, "TaskID\t%s\n", state.TaskID)
-		fmt.Fprintf(w, "CurrentNodeID\t%s\n", state.CurrentNodeID)
-		fmt.Fprintf(w, "CurrentNode\t%s\n", state.CurrentNode)
-		fmt.Fprintf(w, "FlowName\t%s\n", state.FlowName)
-		fmt.Fprintf(w, "LastNodeAt\t%s\n", state.LastNodeAt)
-		if len(state.VisitedNodes) > 0 {
-			fmt.Fprintf(w, "VisitedNodes\t%s\n", strings.Join(state.VisitedNodes, " → "))
-		}
-		w.Flush()
-	}
 
 	// ── Recent Events ──
 	fmt.Fprintln(w, "\n=== RECENT EVENTS (last 10) ===")
@@ -170,10 +153,6 @@ func runDebug(cmd *cobra.Command, args []string) error {
 	// ── Status ──
 	fmt.Fprintln(w, "\n=== STATUS ===")
 	fmt.Fprintln(w, "FIELD\tVALUE")
-
-	if state != nil && state.TaskID != "" {
-		fmt.Fprintf(w, "TaskID\t%s\n", state.TaskID)
-	}
 
 	activeTasks, _ := lgr.ActiveTasks()
 	if len(activeTasks) > 0 {

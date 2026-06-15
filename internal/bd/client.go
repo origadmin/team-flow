@@ -252,3 +252,66 @@ func InstallQuiet() error {
 
 	return installCmd.Run()
 }
+
+// CreateIssue creates a new issue using beads and returns the generated ID
+//
+// Design contract (verified via diagnose_bd.go):
+//   - bd create --silent writes the ID to stdout ONLY
+//   - warnings go to stderr ONLY
+//   - So RunQuiet (cmd.Output) captures only stdout: a single line like "team-flow-zur\n"
+//   - But we tolerate stray multi-line output as defense-in-depth
+func CreateIssue(title, issueType, description string) (string, error) {
+	args := []string{"create", "--title", title, "--type", issueType, "--silent"}
+	if description != "" {
+		args = append(args, "--description", description)
+	}
+
+	// RunQuiet captures stdout only; warnings are on stderr and are discarded.
+	output, err := RunQuiet(args...)
+	if err != nil {
+		return "", err
+	}
+
+	id := parseBeadsID(output)
+	if id == "" {
+		return "", fmt.Errorf("failed to parse issue ID from output: %q", output)
+	}
+	return id, nil
+}
+
+// parseBeadsID extracts a beads issue ID from raw stdout output.
+//
+// ⚠ CONTRACT — DO NOT ADD FORMAT RESTRICTIONS (no hyphen, no prefix, etc).
+//
+//   bd is an EXTERNAL tool whose output format varies across projects and
+//   versions.  Real outputs observed in the wild:
+//     - "team-flow-zur"    (project-hash format, contains hyphen)
+//     - "6142"             (plain numeric, NO hyphen)
+//     - "7f97"             (hex-looking 4 chars, NO hyphen)
+//     - "backend-a1b"      (different project prefix)
+//
+//   Any "must contain hyphen" / "must start with X" rule will silently
+//   break `flow task create` for legitimate bd configurations — this has
+//   happened multiple times.  See `client_test.go` for the contract tests
+//   that enforce this liberal parsing.
+//
+// Normal case (--silent, stdout only):  "team-flow-zur\n"   -> "team-flow-zur"
+// Defense-in-depth: if stdout contains extra lines (e.g., a future bd version
+// or misconfiguration), pick the first line that is not blank and not a
+// "warning" prefix.
+func parseBeadsID(output string) string {
+	for _, line := range strings.Split(output, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		lower := strings.ToLower(line)
+		if strings.HasPrefix(lower, "warning") {
+			continue
+		}
+		// Any non-empty non-warning line in --silent mode is the ID.
+		// Do NOT add format restrictions here.  See function comment above.
+		return line
+	}
+	return ""
+}

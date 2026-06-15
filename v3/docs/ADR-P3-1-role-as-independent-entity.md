@@ -154,7 +154,7 @@ dev-team 的 dev 角色和 skill-team 的 go-dev 角色本质相似（都是寇�
   "flows": [
     {"id": "dev-flow", "file": "dev-flow.json", "description": "Standard development flow", "default": true}
   ],
-  "default_flow": "dev-flow"
+  "active_flow": "dev-flow"
 }
 ```
 
@@ -648,6 +648,6 @@ team.json 中每个角色必须满足最低质量约束：
     {"id": "batch-flow", "file": "batch-flow.json", "description": "Batch task processing flow"}
   ],
 
-  "default_flow": "dev-flow"
+  "active_flow": "dev-flow"
 }
 ```

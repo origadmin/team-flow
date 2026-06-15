@@ -10,7 +10,7 @@
   "flows": [
     {"id": "game-design-flow", "file": "game-design-flow.json", "description": "Game design and development flow", "default": true}
   ],
-  "default_flow": "game-design-flow",
+  "active_flow": "game-design-flow",
   "roles": [
     {
       "id": "game-designer",

@@ -332,8 +332,8 @@ func TestLoadTeamFromFS(t *testing.T) {
 	if team.ID != "dev-team" {
 		t.Errorf("team.ID = %q, want %q", team.ID, "dev-team")
 	}
-	if team.DefaultFlow != "dev-flow" {
-		t.Errorf("team.DefaultFlow = %q, want %q", team.DefaultFlow, "dev-flow")
+	if team.ActiveFlow != "dev-flow" {
+		t.Errorf("team.ActiveFlow = %q, want %q", team.ActiveFlow, "dev-flow")
 	}
 	if len(team.Flows) == 0 {
 		t.Error("dev-team should have at least 1 flow")

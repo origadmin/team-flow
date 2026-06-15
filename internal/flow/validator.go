@@ -64,6 +64,11 @@ func ValidateTeam(team *TeamDefinition) *ValidationResult {
 		return result
 	}
 
+	// v3 schema validation: team.json must use reference-only format
+	// (装配清单格式), not inline content. 内联角色/规则内容是旧格式(v2/v1),
+	// 在 v3 中是 ERROR, 不是 warning. 角色内容存在 prompts/*.md 中，通过 prompt_source 引用。
+	validateV3Schema(team, result)
+
 	if team.ID == "" {
 		result.Errors = append(result.Errors, ValidationIssue{
 			Severity: SeverityError,
@@ -88,6 +93,136 @@ func ValidateTeam(team *TeamDefinition) *ValidationResult {
 	}
 
 	return result
+}
+
+// validateV3Schema 检测 team.json 是否使用旧格式（角色/规则内联内容）。
+// v3 规范：team.json 是装配清单，只管理引用，不管理内容。
+// 角色内容必须在 assets/skill/v3/prompts/{role-id}.md 中。
+// 规则内容必须在 prompts/rules.md 或 prompts/{rule-id}.md 中。
+func validateV3Schema(team *TeamDefinition, result *ValidationResult) {
+	// 1. schema_version 必须存在且为 "3.0"
+	//    (SchemaVersion 是可选字段 — 旧格式通常没有)
+	//    如果有 schema_version 且不是 "3.0" → ERROR
+	//    如果没有 schema_version → 检查是否有旧格式内联字段
+
+	hasExplicitSchemaV3 := false
+	if team.SchemaVersion != "" {
+		if team.SchemaVersion != "3.0" {
+			result.Errors = append(result.Errors, ValidationIssue{
+				Severity: SeverityError,
+				Message: fmt.Sprintf("team.json schema_version %q is invalid; expected \"3.0\"",
+					team.SchemaVersion),
+				Field: "schema_version",
+			})
+		} else {
+			hasExplicitSchemaV3 = true
+		}
+	}
+
+	// 2. 检测角色内联字段 (v2/v1 的标志)
+	//    以下字段如果在 team.json roles[] 中存在就是旧格式:
+	//    name, alias, alias_en, persona, traits, guidance, capabilities
+	for i, role := range team.Roles {
+		// 收集旧格式字段
+		legacyFields := []string{}
+		if role.Name != "" {
+			legacyFields = append(legacyFields, "name")
+		}
+		if role.Alias != "" {
+			legacyFields = append(legacyFields, "alias")
+		}
+		if role.AliasEn != "" {
+			legacyFields = append(legacyFields, "alias_en")
+		}
+		if role.Persona != "" {
+			legacyFields = append(legacyFields, "persona")
+		}
+		if len(role.Traits) > 0 {
+			legacyFields = append(legacyFields, "traits")
+		}
+		if role.Guidance != "" {
+			legacyFields = append(legacyFields, "guidance")
+		}
+		if len(role.Capabilities) > 0 {
+			legacyFields = append(legacyFields, "capabilities")
+		}
+
+		if len(legacyFields) > 0 {
+			result.Errors = append(result.Errors, ValidationIssue{
+				Severity: SeverityError,
+				Message: fmt.Sprintf(
+					"team.json roles[%d] (%s) uses v2/v1 legacy inline format: "+
+						"fields [%s] must be in assets/skill/v3/prompts/%s.md "+
+						"(team.json is an assembly manifest, not a role content container). "+
+						"See docs/ARCHITECTURE.md §6.3",
+					i, role.ID, strings.Join(legacyFields, ", "), role.ID),
+				Field: "roles",
+			})
+		}
+
+		// 新格式强制要求 prompt_source
+		if hasExplicitSchemaV3 && role.PromptSource == "" {
+			result.Errors = append(result.Errors, ValidationIssue{
+				Severity: SeverityError,
+				Message: fmt.Sprintf(
+					"team.json roles[%d] (%s) is v3 but has no prompt_source field. "+
+						"Must reference assets/skill/v3/prompts/%s.md or equivalent path",
+					i, role.ID, role.ID),
+				Field: "roles[" + role.ID + "].prompt_source",
+			})
+		}
+	}
+
+	// 3. 检测规则内联字段 (v2/v1 的标志)
+	for i, rule := range team.Rules {
+		legacyFields := []string{}
+		if rule.Name != "" {
+			legacyFields = append(legacyFields, "name")
+		}
+		if rule.Instruction != "" {
+			legacyFields = append(legacyFields, "instruction")
+		}
+		if rule.Description != "" {
+			legacyFields = append(legacyFields, "description")
+		}
+		if rule.Enforcement != "" {
+			legacyFields = append(legacyFields, "enforcement")
+		}
+
+		if len(legacyFields) > 0 {
+			result.Errors = append(result.Errors, ValidationIssue{
+				Severity: SeverityError,
+				Message: fmt.Sprintf(
+					"team.json rules[%d] (%s) uses v2/v1 legacy inline format: "+
+						"fields [%s] must be in assets/skill/v3/prompts/rules.md "+
+						"(team.json is an assembly manifest, not a rule content container). "+
+						"See docs/ARCHITECTURE.md §6.3",
+					i, rule.ID, strings.Join(legacyFields, ", ")),
+				Field: "rules",
+			})
+		}
+
+		// 新格式强制要求 source 字段
+		if hasExplicitSchemaV3 && rule.Source == "" {
+			result.Errors = append(result.Errors, ValidationIssue{
+				Severity: SeverityError,
+				Message: fmt.Sprintf(
+					"team.json rules[%d] (%s) is v3 but has no source field. "+
+						"Must reference assets/skill/v3/prompts/rules.md or equivalent path",
+					i, rule.ID),
+				Field: "rules[" + rule.ID + "].source",
+			})
+		}
+	}
+
+	// 4. 无 schema_version 但无任何内联内容 → 提示添加 schema_version:"3.0"
+	if !hasExplicitSchemaV3 && len(result.Errors) == 0 && (len(team.Roles) > 0 || len(team.Rules) > 0) {
+		result.Warnings = append(result.Warnings, ValidationIssue{
+			Severity: SeverityWarning,
+			Message: "team.json missing schema_version; add \"schema_version\": \"3.0\" to declare v3 reference-only format compliance",
+			Field:   "schema_version",
+		})
+	}
 }
 
 func ValidateFlowWithTeam(fl *Flow, team *TeamDefinition) *ValidationResult {
@@ -614,10 +749,14 @@ func validateCycles(flow *Flow, result *ValidationResult) {
 		return
 	}
 
-	// Build adjacency list (only sequential and conditional edges)
+	// Build adjacency list (only sequential edges — conditional and subflow edges are excluded)
 	adj := make(map[string][]string, len(flow.Nodes))
 	for _, edge := range flow.Edges {
 		if edge.Type == EdgeTypeSubflow {
+			continue
+		}
+		// Conditional edges represent intentional branches, not guaranteed cycles
+		if edge.Type == EdgeTypeConditional {
 			continue
 		}
 		adj[edge.From] = append(adj[edge.From], edge.To)

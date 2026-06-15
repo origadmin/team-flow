@@ -208,7 +208,7 @@ persona 格式：`"你是{alias}({alias_en})，{name}。..."`
 
 ### 6.1 AC1: 一个项目 = 一个流程
 
-- 项目绑定唯一流程，存储在 project.yaml 的 `default_flow` 字段
+- 项目绑定唯一流程，存储在 project.yaml 的 `active_flow` 字段
 - 切换流程是项目级决策
 - 没有流程？按 First-Time Setup 引导选择或创建
 

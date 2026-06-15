@@ -36,7 +36,7 @@ flow migrate v3 [--flow {name}]
 | `CONSENSUS.md` | 共识文件（架构决策） |
 | `skills/team-flow-v3-create/SKILL.md` | 流程创建技能 |
 | `skills/team-flow-v3-exec/SKILL.md` | 流程执行技能 |
-| `.team/project.md` | 项目配置（含 default_flow） |
+| `.team/project.md` | 项目配置（含 active_flow） |
 | `.team/version` | 版本标识（v3） |
 
 ## v2 → v3 变化

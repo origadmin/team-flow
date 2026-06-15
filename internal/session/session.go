@@ -19,9 +19,13 @@ var Cmd = &cobra.Command{
 	Short: "Manage conversation sessions (one dir per conversation)",
 	Long: `Each conversation gets its own directory under .team/sessions/:
 
-  .team/sessions/2026-05-29-2230-a1b2c3/
-    events.jsonl  → event timeline (this session only)
-    context.md    → structured summary for AI recovery
+  .team/
+    state/
+      events.mdl        ← global event log (JSONL, all sessions)
+    sessions/
+      2026-05-29-2230-a1b2c3/
+        context.md      ← structured summary for AI recovery
+        trace.jsonl     ← per-session operational tracing
 
 Subcommands:
   start     Start a new session (creates directory, writes session.start)
@@ -50,8 +54,8 @@ var startCmd = &cobra.Command{
   flow session start --input "Fix login 500 error"
 
 Creates .team/sessions/YYYY-MM-DD-HHMM-XXXXXX/ and writes:
-  events.jsonl → session.start
-  context.md  → initial empty context`,
+  context.md  -> initial empty context
+  (global events are written to .team/state/events.mdl)`,
 	RunE: runStart,
 }
 
@@ -402,7 +406,7 @@ func runList(cmd *cobra.Command, args []string) error {
 			}
 		}
 
-		// Fallback: read context.md for topic
+		// Fallback: read context.md for topic and status
 		if topic == "" {
 			ctx, _ := lgr.ReadContext(name)
 			if ctx != "" {
@@ -410,6 +414,13 @@ func runList(cmd *cobra.Command, args []string) error {
 				if len(lines) > 0 {
 					topic = lines[0]
 				}
+			}
+		}
+		// v5: check context.md for completed status (from MarkSessionCompleted)
+		if status == "active" {
+			ctx, _ := lgr.ReadContext(name)
+			if ctx != "" && strings.Contains(ctx, "- **Status**: completed") {
+				status = "completed"
 			}
 		}
 

@@ -40,7 +40,7 @@ func (s *apiServer) handleTeams(w http.ResponseWriter, r *http.Request) {
 		NameZh       string `json:"name_zh"`
 		Description  string `json:"description"`
 		FlowCount    int    `json:"flow_count"`
-		DefaultFlow  string `json:"default_flow"`
+		ActiveFlow string `json:"active_flow"`
 	}
 
 	var teams []teamItem
@@ -57,7 +57,7 @@ func (s *apiServer) handleTeams(w http.ResponseWriter, r *http.Request) {
 			Name        string `json:"name"`
 			NameZh      string `json:"name_zh"`
 			Description string `json:"description"`
-			DefaultFlow string `json:"default_flow"`
+			ActiveFlow string `json:"active_flow"`
 			Flows       []struct{} `json:"flows"`
 		}
 		if jsonErr := json.Unmarshal(data, &meta); jsonErr != nil {
@@ -69,7 +69,7 @@ func (s *apiServer) handleTeams(w http.ResponseWriter, r *http.Request) {
 			NameZh:      meta.NameZh,
 			Description: meta.Description,
 			FlowCount:   len(meta.Flows),
-			DefaultFlow: meta.DefaultFlow,
+			ActiveFlow: meta.ActiveFlow,
 		})
 	}
 
@@ -149,14 +149,14 @@ func (s *apiServer) handleProjectFlows(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cfg, _ := config.LoadProjectConfig(s.rootDir)
-	defaultFlow := ""
+	activeFlow := ""
 	if cfg != nil {
-		defaultFlow = cfg.DefaultFlow
+		activeFlow = cfg.ActiveFlow
 	}
 
 	type flowItem struct {
-		ID      string `json:"id"`
-		Default bool   `json:"default"`
+		ID     string `json:"id"`
+		Active bool   `json:"active"`
 	}
 
 	var flows []flowItem
@@ -166,8 +166,8 @@ func (s *apiServer) handleProjectFlows(w http.ResponseWriter, r *http.Request) {
 		}
 		id := strings.TrimSuffix(entry.Name(), ".json")
 		flows = append(flows, flowItem{
-			ID:      id,
-			Default: id == defaultFlow,
+			ID:     id,
+			Active: id == activeFlow,
 		})
 	}
 

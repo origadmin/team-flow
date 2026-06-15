@@ -158,10 +158,6 @@ func FormatText(w io.Writer, result *ProcRunResult) error {
 	if result.ProjectRoot != "" {
 		fmt.Fprintf(w, "║  PROJECT_ROOT: %-43s║\n", result.ProjectRoot)
 	}
-	if result.TeamRoot != "" && result.TeamRoot != result.ProjectRoot {
-		fmt.Fprintf(w, "║  TEAM_ROOT: %-46s║\n", result.TeamRoot)
-		fmt.Fprintf(w, "║  (config from TEAM_ROOT, work in PROJECT_ROOT)%-20s║\n", "")
-	}
 
 	if result.PathValidation != nil {
 		formatPathValidation(w, result.PathValidation)
@@ -191,6 +187,17 @@ func FormatText(w io.Writer, result *ProcRunResult) error {
 	}
 	if current.Guidance != "" {
 		fmt.Fprintf(w, "║  GUIDANCE: %-48s║\n", current.Guidance)
+	}
+
+	if len(result.CriticalReminders) > 0 {
+		fmt.Fprintf(w, "║%-60s║\n", "")
+		fmt.Fprintf(w, "║  🚨 CRITICAL REMINDERS:%-36s║\n", "")
+		for _, r := range result.CriticalReminders {
+			lines := wrapMessage(r, 56)
+			for _, line := range lines {
+				fmt.Fprintf(w, "║    %-56s║\n", line)
+			}
+		}
 	}
 
 	if current.Principal {

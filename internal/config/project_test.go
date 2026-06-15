@@ -13,7 +13,7 @@ func TestLoadProjectConfig_YAML(t *testing.T) {
 
 	yamlContent := `name: test-project
 version: v3
-default_flow: dev-flow
+active_flow: dev-flow
 
 paths:
   docs_internal: _docs/test-project/
@@ -37,8 +37,8 @@ toolchain:
 	if cfg.Name != "test-project" {
 		t.Errorf("Name = %q, want %q", cfg.Name, "test-project")
 	}
-	if cfg.DefaultFlow != "dev-flow" {
-		t.Errorf("DefaultFlow = %q, want %q", cfg.DefaultFlow, "dev-flow")
+	if cfg.ActiveFlow != "dev-flow" {
+		t.Errorf("ActiveFlow = %q, want %q", cfg.ActiveFlow, "dev-flow")
 	}
 	if cfg.Paths.DocsInternal != "_docs/test-project/" {
 		t.Errorf("DocsInternal = %q, want %q", cfg.Paths.DocsInternal, "_docs/test-project/")
@@ -67,7 +67,7 @@ func TestLoadProjectConfig_MDFallback(t *testing.T) {
 
 docs_internal: _docs/legacy/
 docs_external: docs/
-default_flow: bugfix-flow
+active_flow: bugfix-flow
 `
 	mdPath := filepath.Join(teamDir, "project.md")
 	os.WriteFile(mdPath, []byte(mdContent), 0644)
@@ -76,8 +76,8 @@ default_flow: bugfix-flow
 	if err != nil {
 		t.Fatalf("LoadProjectConfig failed: %v", err)
 	}
-	if cfg.DefaultFlow != "bugfix-flow" {
-		t.Errorf("DefaultFlow = %q, want %q", cfg.DefaultFlow, "bugfix-flow")
+	if cfg.ActiveFlow != "bugfix-flow" {
+		t.Errorf("ActiveFlow = %q, want %q", cfg.ActiveFlow, "bugfix-flow")
 	}
 	if cfg.Paths.DocsInternal != "_docs/legacy/" {
 		t.Errorf("DocsInternal = %q, want %q", cfg.Paths.DocsInternal, "_docs/legacy/")
@@ -91,11 +91,11 @@ func TestLoadProjectConfig_YAMLPriority(t *testing.T) {
 
 	yamlContent := `name: yaml-project
 version: v3
-default_flow: yaml-flow
+active_flow: yaml-flow
 `
 	os.WriteFile(filepath.Join(teamDir, "project.yaml"), []byte(yamlContent), 0644)
 
-	mdContent := `default_flow: md-flow
+	mdContent := `active_flow: md-flow
 `
 	os.WriteFile(filepath.Join(teamDir, "project.md"), []byte(mdContent), 0644)
 
@@ -103,8 +103,8 @@ default_flow: yaml-flow
 	if err != nil {
 		t.Fatalf("LoadProjectConfig failed: %v", err)
 	}
-	if cfg.DefaultFlow != "yaml-flow" {
-		t.Errorf("YAML should take priority, got %q", cfg.DefaultFlow)
+	if cfg.ActiveFlow != "yaml-flow" {
+		t.Errorf("YAML should take priority, got %q", cfg.ActiveFlow)
 	}
 }
 
@@ -116,7 +116,7 @@ func TestSaveProjectConfig(t *testing.T) {
 	cfg := &ProjectConfig{
 		Name:        "save-test",
 		Version:     "v3",
-		DefaultFlow: "dev-flow",
+		ActiveFlow: "dev-flow",
 		Paths: ProjectPaths{
 			DocsInternal: "_docs/save-test/",
 			DocsExternal: "docs/",
@@ -137,8 +137,8 @@ func TestSaveProjectConfig(t *testing.T) {
 	if loaded.Name != "save-test" {
 		t.Errorf("Name = %q, want %q", loaded.Name, "save-test")
 	}
-	if loaded.DefaultFlow != "dev-flow" {
-		t.Errorf("DefaultFlow = %q, want %q", loaded.DefaultFlow, "dev-flow")
+	if loaded.ActiveFlow != "dev-flow" {
+		t.Errorf("ActiveFlow = %q, want %q", loaded.ActiveFlow, "dev-flow")
 	}
 	if len(loaded.Flows) != 1 || loaded.Flows[0].ID != "dev-flow" {
 		t.Errorf("Flows not preserved correctly")
@@ -152,7 +152,7 @@ func TestResolveInternalDocs_Configured(t *testing.T) {
 
 	yamlContent := `name: test
 version: v3
-default_flow: dev-flow
+active_flow: dev-flow
 paths:
   docs_internal: _docs/test/
 `
@@ -172,7 +172,7 @@ func TestResolveInternalDocs_Fallback(t *testing.T) {
 
 	yamlContent := `name: test
 version: v3
-default_flow: dev-flow
+active_flow: dev-flow
 `
 	os.WriteFile(filepath.Join(teamDir, "project.yaml"), []byte(yamlContent), 0644)
 

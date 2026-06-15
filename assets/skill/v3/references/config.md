@@ -5,7 +5,7 @@
 ```yaml
 name: my-project
 version: v3
-default_flow: dev-flow
+active_flow: dev-flow
 
 paths:
   docs_internal: _docs/my-project/    # Optional, fallback to .team/docs/

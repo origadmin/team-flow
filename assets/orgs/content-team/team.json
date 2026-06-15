@@ -12,7 +12,7 @@
     {"id": "promo-video-flow", "file": "promo-video-flow.json", "description": "Promotional video production flow"},
     {"id": "novel-flow", "file": "novel-flow.json", "description": "Novel writing flow"}
   ],
-  "default_flow": "content-distribution-flow",
+  "active_flow": "content-distribution-flow",
   "roles": [
     {
       "id": "strategist",

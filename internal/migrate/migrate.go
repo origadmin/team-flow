@@ -73,7 +73,7 @@ var v3Cmd = &cobra.Command{
 Steps:
   1. Pre-check: verify current version is v2
   2. Backup: .team/project.md → .team/project.md.v2.bak
-  3. Update project.md: docs_path → docs_internal, add docs_external, add default_flow
+  3. Update project.md: docs_path → docs_internal, add docs_external, add active_flow
   4. Update .team/version: v2 → v3
   5. Install v3 skills to IDE skill directory (v2 preserved in v2/ subdirectory)
   6. Update IDE bridge file to point to v3 SKILL
@@ -211,7 +211,7 @@ func runMigrateV3(cmd *cobra.Command, args []string) error {
 		fmt.Println("Would update .team/project.md:")
 		fmt.Println("  - docs_path: → docs_internal:")
 		fmt.Println("  - Add docs_external: docs/")
-		fmt.Printf("  - Add default_flow: %s\n", migrateFlow)
+		fmt.Printf("  - Add active_flow: %s\n", migrateFlow)
 		fmt.Println("  - Registered Projects table: docs_path → docs_internal")
 		fmt.Println("Would update .team/version: v2 → v3")
 		fmt.Println("Would install v3 skills")
@@ -243,18 +243,18 @@ func runMigrateV3(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	if !strings.Contains(updated, "default_flow:") {
+	if !strings.Contains(updated, "active_flow:") {
 		lines := strings.Split(updated, "\n")
 		for i, line := range lines {
 			if strings.HasPrefix(strings.TrimSpace(line), "docs_external:") {
-				lines[i] = line + "\ndefault_flow: " + migrateFlow
+				lines[i] = line + "\nactive_flow: " + migrateFlow
 				updated = strings.Join(lines, "\n")
 				break
 			}
 		}
 	} else {
-		re := regexp.MustCompile(`default_flow:\s*\S+`)
-		updated = re.ReplaceAllString(updated, "default_flow: "+migrateFlow)
+		re := regexp.MustCompile(`active_flow:\s*\S+`)
+		updated = re.ReplaceAllString(updated, "active_flow: "+migrateFlow)
 	}
 
 	updated = strings.Replace(updated, "| docs_path |", "| docs_internal |", 1)
@@ -267,7 +267,7 @@ func runMigrateV3(cmd *cobra.Command, args []string) error {
 	}
 	fmt.Println("  ✓ docs_path → docs_internal")
 	fmt.Println("  ✓ Added docs_external: docs/")
-	fmt.Printf("  ✓ Added default_flow: %s\n", migrateFlow)
+	fmt.Printf("  ✓ Added active_flow: %s\n", migrateFlow)
 	fmt.Println("  ✓ Updated Registered Projects table")
 
 	fmt.Println("\n━━━ Step 4: Update version ━━━")
@@ -305,7 +305,7 @@ func runMigrateV3(cmd *cobra.Command, args []string) error {
 	fmt.Println("╚══════════════════════════════════════════╝")
 	fmt.Println("\nWhat changed:")
 	fmt.Println("  • .team/version: v2 → v3")
-	fmt.Println("  • .team/project.md: docs_path → docs_internal + docs_external + default_flow")
+	fmt.Println("  • .team/project.md: docs_path → docs_internal + docs_external + active_flow")
 	fmt.Println("  • v3 skills installed to IDE skill directory")
 	fmt.Println("  • IDE bridge file updated to v3 SKILL")
 	fmt.Println("\nWhat was preserved:")

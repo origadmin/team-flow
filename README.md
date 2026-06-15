@@ -112,7 +112,7 @@ flow init --v3 --flow dev-flow
 1. Create `.team/` directory and configuration files
 2. Show preset team menu (5 teams) — pick the closest match
 3. Install selected team's flows to `.team/flows/`
-4. Set `default_flow` in project configuration
+4. Set `active_flow` in project configuration
 
 ### 2. Start Working
 
@@ -225,6 +225,40 @@ team-flow/
 | Configuration | project.md (monolithic) | **project.yaml** (structured, ~100 tokens) |
 | Session tracking | None | **Session logs** for traceability |
 | Migration | v1→v2 manual | **v2→v3 automatic** (7 steps) with rollback |
+
+## Core Documentation — ⭐ Start Here
+
+**PHILOSOPHY: Document-Before-Code. The 4 documents below are NOT passive references — they are hard requirements of the flow engine.**
+
+Every change (bug fix, feature, refactor) must go through:
+
+```
+Step 1: READ docs/ARCHITECTURE.md, docs/DESIGN.md, docs/CONSENSUS.md, docs/STANDARDS.md
+          ↓ (each flow node pre-loads these documents)
+Step 2: Map your work to architecture modules and design principles
+          ↓ (every task deliverable must reference these docs)
+Step 3: If your change introduces a new module / pattern / consensus violation →
+          UPDATE THE DOCUMENTS FIRST → THEN change the code
+          ↓
+Step 4: Quality Gate (qua9) BLOCKS: doc_review, doc_reference, doc_sync
+```
+
+This is enforced by flow nodes:
+
+| Document | Purpose | Referenced by Flow Nodes | Enforced by Quality Gate |
+|----------|---------|--------------------------|--------------------------|
+| **ARCHITECTURE.md** | System architecture: modules, data flow, boundaries | fa01, fi03, bi01, bf02, cp01, ce02 | doc_review, doc_reference, doc_sync |
+| **DESIGN.md** | Design principles: pure-function-first, defensive design, explicit-over-implicit | fa01, fi03, bi01, bf02, cp01, ce02 | doc_reference, doc_sync |
+| **CONSENSUS.md** | Non-negotiable decisions: task-ID format, v3-only, tool-before-workaround | ALL nodes | doc_review, doc_reference |
+| **STANDARDS.md** | Coding standards, TDD, commit format, testing policy | fi03, bf02, hi01, qua9 | tests_pass, doc_sync |
+
+**RULE**: If your code change affects module boundaries, data flow, or any design principle →
+
+- **You must update the corresponding core document BEFORE or WITH the code change.**
+- **Your task deliverable (SPEC/RCA/FIX/IMPL) must reference specific sections of these documents.**
+- **The Quality Gate (qua9) will block the task if document references are missing.**
+
+---
 
 ## Session Startup Protocol
 

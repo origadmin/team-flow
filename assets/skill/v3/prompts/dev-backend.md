@@ -20,12 +20,12 @@ ai:
       - Reference v1 paths
   standards:
     # Layer 2 (必须): 核心协议
-    - {TEAM_PATH}/workflows/shared.md
-    - {TEAM_PATH}/workflows/shared-protocol.md
+    - "{TEAM_PATH}/workflows/shared.md"
+    - "{TEAM_PATH}/workflows/shared-protocol.md"
     # Layer 3 (按需加载):
-    - {TEAM_PATH}/workflows/roles/development-standards.md
-    - {TEAM_PATH}/workflows/roles/devtestops.md
-    - {TEAM_PATH}/workflows/roles/test-levels.md
+    - "{TEAM_PATH}/workflows/roles/development-standards.md"
+    - "{TEAM_PATH}/workflows/roles/devtestops.md"
+    - "{TEAM_PATH}/workflows/roles/test-levels.md"
 ---
 
 # Dev (Backend) -- team-flow v2 (beads-native)

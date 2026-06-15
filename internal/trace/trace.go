@@ -180,6 +180,18 @@ func (l *Logger) Analysis(sessionName string, round int, status, taskType, task,
 	})
 }
 
+// NodeAnalysis records AI analysis for a specific node.
+func (l *Logger) NodeAnalysis(sessionName, taskID, flowName, nodeID, analysis string) {
+	l.append(sessionName, map[string]interface{}{
+		"ts":       now(),
+		"event":    "node.analysis",
+		"task":     taskID,
+		"flow":     flowName,
+		"node":     nodeID,
+		"analysis": analysis,
+	})
+}
+
 // StateDrift records a detected state inconsistency (auto-fixed or flagged).
 func (l *Logger) StateDrift(sessionName, taskID, driftType, detail string, autoFixed bool) {
 	l.append(sessionName, map[string]interface{}{

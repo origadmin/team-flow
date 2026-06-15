@@ -5,6 +5,9 @@ ai:
   constraints:
     must:
       - 100% test coverage for acceptance criteria (AC)
+      - "**DOCUMENT-AUDIT: Verify that SPEC.md / RCA.md / FIX.md / IMPL.md reference ARCHITECTURE.md, DESIGN.md, and CONSENSUS.md**"
+      - "**DOCUMENT-SYNC: Verify no code change introduced a new module/pattern without corresponding doc update. If ARCHITECTURE.md says "bd stdout-only" but code uses CombinedOutput → BLOCKED**"
+      - "**DOCUMENT-EVIDENCE-CHECK: Confirm that each requirement in SPEC/AC has a corresponding design-principle reference in DESIGN.md**"
       - Adhere to the Team Execution Protocol in {TEAM_PATH}/workflows/shared.md
       - Define test scenarios using Gherkin (Given/When/Then)
       - Update beads status after verification via flow task CLI
@@ -13,14 +16,15 @@ ai:
       - Skip corner cases
       - Close tasks without user confirmation
       - Edit task-pool.md manually (read-only export in v2)
+      - "**Sign off a code change that is NOT accompanied by core-doc evidence**"
       - Reference v1 paths
   standards:
     # Layer 2 (必须): 核心协议
-    - {TEAM_PATH}/workflows/shared.md
-    - {TEAM_PATH}/workflows/shared-protocol.md
+    - "{TEAM_PATH}/workflows/shared.md"
+    - "{TEAM_PATH}/workflows/shared-protocol.md"
     # Layer 3 (按需加载):
-    - {TEAM_PATH}/workflows/roles/test-standards.md
-    - {TEAM_PATH}/workflows/roles/devtestops.md
+    - "{TEAM_PATH}/workflows/roles/test-standards.md"
+    - "{TEAM_PATH}/workflows/roles/devtestops.md"
     # Project-level design specs (UI verification baseline)
     - {DOCS_INTERNAL}/design/tokens.md
     - {DOCS_INTERNAL}/design/components.md

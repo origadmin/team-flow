@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	skillfs "github.com/origadmin/team-flow"
 	"github.com/origadmin/team-flow/internal/bd"
 	"github.com/origadmin/team-flow/internal/eventlog"
 	"github.com/origadmin/team-flow/internal/flow"
@@ -34,6 +35,7 @@ type GateChecker struct {
 	DocsInternalResolved string
 	FlowName             string
 	ExplicitlyTargeted   bool
+	TaskID               string
 }
 
 type ToolchainConfig struct {
@@ -81,6 +83,7 @@ var gateCheckerRegistry = map[flow.GateConditionType]GateCheckerFunc{
 	flow.GateCondTraceUpdated:         func(gc *GateChecker, cond GateCondOutput) GateCheckResult { return gc.checkTraceUpdated(cond) },
 	flow.GateCondHasActiveTasks:       func(gc *GateChecker, cond GateCondOutput) GateCheckResult { return gc.checkHasActiveTasks(cond) },
 	flow.GateCondHasSessionHistory:    func(gc *GateChecker, cond GateCondOutput) GateCheckResult { return gc.checkHasSessionHistory(cond) },
+	flow.GateCondChecklistComplete:    func(gc *GateChecker, cond GateCondOutput) GateCheckResult { return gc.checkChecklistComplete(cond) },
 }
 
 func RegisterGateChecker(condType flow.GateConditionType, fn GateCheckerFunc) {
@@ -96,7 +99,10 @@ func (gc *GateChecker) CheckCondition(cond GateCondOutput) GateCheckResult {
 		result = fn(gc, cond)
 	} else if checker, ok := gc.TeamCheckers[cond.Type]; ok {
 		result = gc.checkTeamRegistered(cond, checker)
-	} else if gc.ExplicitlyTargeted {
+	} else if gc.ExplicitlyTargeted && !cond.Required {
+		// AI explicitly targeted this node and this is not a required condition.
+		// For non-required conditions, we trust AI judgment.
+		// Required conditions MUST still be verified automatically.
 		return GateCheckResult{
 			Type:     cond.Type,
 			Passed:   true,
@@ -576,10 +582,10 @@ func (c GateCondOutput) resolveDeliverables() []string {
 }
 
 func RunGateCheck(projectRoot string, conditions []GateCondOutput, team *flow.TeamDefinition, docsInternalResolved string) []GateCheckResult {
-	return RunGateCheckWithFlow(projectRoot, conditions, team, docsInternalResolved, "", false)
+	return RunGateCheckWithFlow(projectRoot, conditions, team, docsInternalResolved, "", false, "", "")
 }
 
-func RunGateCheckWithFlow(projectRoot string, conditions []GateCondOutput, team *flow.TeamDefinition, docsInternalResolved string, flowName string, explicitlyTargeted bool) []GateCheckResult {
+func RunGateCheckWithFlow(projectRoot string, conditions []GateCondOutput, team *flow.TeamDefinition, docsInternalResolved string, flowName string, explicitlyTargeted bool, sessionName string, taskID string) []GateCheckResult {
 	var tc ToolchainConfig
 	var teamCheckers map[string]flow.TeamGateChecker
 
@@ -601,6 +607,7 @@ func RunGateCheckWithFlow(projectRoot string, conditions []GateCondOutput, team 
 		DocsInternalResolved: docsInternalResolved,
 		FlowName:             flowName,
 		ExplicitlyTargeted:   explicitlyTargeted,
+		TaskID:               taskID,
 	}
 
 	results := make([]GateCheckResult, 0, len(conditions))
@@ -749,4 +756,347 @@ func (gc *GateChecker) checkHasSessionHistory(cond GateCondOutput) GateCheckResu
 		Required: cond.Required,
 		Message:  "no previous sessions",
 	}
+}
+
+// ChecklistEvidence represents a single checklist item with evidence requirements.
+type ChecklistEvidence struct {
+	Desc         string
+	EvidenceType string // command, file_exists, pinchtab, ai_judgment
+	Cmd          string // for command type
+	Path         string // for file_exists type
+	URL          string // for pinchtab type: page URL
+	Steps        string // for pinchtab type: verification steps (comma-separated)
+	Auth         string // for pinchtab type: auth method (login, api-key, none)
+	Domain       string // optional domain filter
+	Module       string // optional module filter
+	Required     bool
+}
+
+// EvidenceResult represents the outcome of evaluating a single checklist item.
+type EvidenceResult struct {
+	Desc     string
+	Evidence string
+	Passed   bool
+	Message  string
+}
+
+func (gc *GateChecker) checkChecklistComplete(cond GateCondOutput) GateCheckResult {
+	if gc.ExplicitlyTargeted {
+		return GateCheckResult{
+			Type:     cond.Type,
+			Passed:   true,
+			Message:  fmt.Sprintf("PASS: AI confirmed checklist via explicit targeting: %s", cond.Check),
+			Required: cond.Required,
+			Auto:     false,
+		}
+	}
+
+	checklistPath := filepath.Join(gc.ProjectRoot, ".team", "checklist.md")
+	var content string
+	if _, err := os.Stat(checklistPath); err == nil {
+		data, err := os.ReadFile(checklistPath)
+		if err != nil {
+			return GateCheckResult{
+				Type:     cond.Type,
+				Passed:   false,
+				Required: cond.Required,
+				Auto:     true,
+				Message:  fmt.Sprintf("FAIL: cannot read project checklist: %v", err),
+			}
+		}
+		content = string(data)
+	} else {
+		templatePath := "assets/skill/v3/templates/checklist-template.md"
+		data, err := skillfs.FS.ReadFile(templatePath)
+		if err != nil {
+			return GateCheckResult{
+				Type:     cond.Type,
+				Passed:   false,
+				Required: cond.Required,
+				Auto:     true,
+				Message:  fmt.Sprintf("FAIL: no project checklist and cannot read template: %v", err),
+			}
+		}
+		content = string(data)
+	}
+
+	items := ParseChecklistEvidence(content)
+	if len(items) == 0 {
+		return GateCheckResult{
+			Type:     cond.Type,
+			Passed:   true,
+			Required: cond.Required,
+			Auto:     true,
+			Message:  "PASS: no checklist items found",
+		}
+	}
+
+	passedCount, failedCount := 0, 0
+	var lines []string
+	lines = append(lines, fmt.Sprintf("Checklist: %d items", len(items)))
+
+	for _, item := range items {
+		result := gc.evaluateEvidence(item)
+		if result.Passed {
+			passedCount++
+			lines = append(lines, fmt.Sprintf("  ✅ %s  [%s]", result.Desc, result.Evidence))
+		} else {
+			failedCount++
+			lines = append(lines, fmt.Sprintf("  ❌ %s  [%s] — %s", result.Desc, result.Evidence, result.Message))
+		}
+	}
+
+	lines = append(lines, fmt.Sprintf("\n  Passed: %d  Failed: %d", passedCount, failedCount))
+
+	if failedCount > 0 {
+		return GateCheckResult{
+			Type:     cond.Type,
+			Passed:   false,
+			Required: cond.Required,
+			Auto:     true,
+			Message:  strings.Join(lines, "\n"),
+		}
+	}
+	return GateCheckResult{
+		Type:     cond.Type,
+		Passed:   true,
+		Required: cond.Required,
+		Auto:     true,
+		Message:  strings.Join(lines, "\n"),
+	}
+}
+
+func (gc *GateChecker) evaluateEvidence(item ChecklistEvidence) EvidenceResult {
+	switch item.EvidenceType {
+	case "command":
+		return gc.checkEvidenceCommand(item)
+	case "file_exists":
+		return gc.checkEvidenceFileExists(item)
+	case "pinchtab":
+		return gc.checkEvidencePinchTab(item)
+	case "ai_judgment":
+		return gc.checkEvidenceAIJudgment(item)
+	default:
+		return gc.checkEvidenceLegacy(item)
+	}
+}
+
+func (gc *GateChecker) checkEvidenceCommand(item ChecklistEvidence) EvidenceResult {
+	r := EvidenceResult{Desc: item.Desc, Evidence: "command"}
+	if item.Cmd == "" {
+		r.Passed = false
+		r.Message = "no command specified"
+		return r
+	}
+
+	parts := strings.Fields(item.Cmd)
+	if len(parts) == 0 {
+		r.Passed = false
+		r.Message = "empty command"
+		return r
+	}
+	name := parts[0]
+	args := parts[1:]
+
+	output, err := runCommandWithTimeout(name, args, gc.ProjectRoot)
+	if err != nil {
+		r.Passed = false
+		r.Message = truncateOutput(strings.TrimSpace(string(output)), 200)
+		return r
+	}
+	r.Passed = true
+	r.Message = "OK"
+	return r
+}
+
+func (gc *GateChecker) checkEvidenceFileExists(item ChecklistEvidence) EvidenceResult {
+	r := EvidenceResult{Desc: item.Desc, Evidence: "file_exists"}
+	path := item.Path
+	if path == "" {
+		r.Passed = false
+		r.Message = "no path specified"
+		return r
+	}
+
+	path = strings.ReplaceAll(path, "{task_id}", gc.TaskID)
+
+	if !filepath.IsAbs(path) {
+		path = filepath.Join(gc.ProjectRoot, path)
+	}
+
+	if _, err := os.Stat(path); err == nil {
+		r.Passed = true
+		r.Message = path
+		return r
+	}
+	r.Passed = false
+	r.Message = fmt.Sprintf("not found: %s", path)
+	return r
+}
+
+func (gc *GateChecker) checkEvidencePinchTab(item ChecklistEvidence) EvidenceResult {
+	r := EvidenceResult{Desc: item.Desc, Evidence: "pinchtab"}
+	if gc.ExplicitlyTargeted {
+		r.Passed = true
+		r.Message = "AI confirmed via explicit targeting"
+		return r
+	}
+	r.Passed = false
+	r.Message = "requires PinchTab session — run explicitly to confirm"
+	return r
+}
+
+func (gc *GateChecker) checkEvidenceAIJudgment(item ChecklistEvidence) EvidenceResult {
+	r := EvidenceResult{Desc: item.Desc, Evidence: "ai_judgment"}
+	if gc.ExplicitlyTargeted {
+		r.Passed = true
+		r.Message = "AI confirmed"
+		return r
+	}
+	r.Passed = false
+	r.Message = "requires AI judgment — run explicitly to confirm"
+	return r
+}
+
+func (gc *GateChecker) checkEvidenceLegacy(item ChecklistEvidence) EvidenceResult {
+	r := EvidenceResult{Desc: item.Desc, Evidence: "legacy"}
+	docsRoot := ResolveDocsPath(gc.ProjectRoot)
+	desc := strings.ToLower(item.Desc)
+
+	if strings.Contains(desc, "spec.md") {
+		path := filepath.Join(docsRoot, "requirements", fmt.Sprintf("%s-spec.md", gc.TaskID))
+		if _, err := os.Stat(path); err == nil {
+			r.Passed = true
+			r.Message = path
+			return r
+		}
+	}
+	if strings.Contains(desc, "ac.md") {
+		path := filepath.Join(docsRoot, "requirements", fmt.Sprintf("%s-ac.md", gc.TaskID))
+		if _, err := os.Stat(path); err == nil {
+			r.Passed = true
+			r.Message = path
+			return r
+		}
+	}
+	r.Passed = false
+	r.Message = "no evidence type specified, cannot verify"
+	return r
+}
+
+// ParseChecklistEvidence parses checklist.md content with evidence markers.
+// Marker syntax: `[evidence: command]` `[cmd: go test ./...]` `[path: _docs/xxx.md]` `[domain: xxx]` `[module: xxx]`
+func ParseChecklistEvidence(content string) []ChecklistEvidence {
+	var items []ChecklistEvidence
+	for _, line := range strings.Split(content, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "## ") || strings.HasPrefix(line, "# ") {
+			continue
+		}
+		if !strings.HasPrefix(line, "- [ ] ") && !strings.HasPrefix(line, "- [x] ") {
+			continue
+		}
+
+		desc := strings.TrimPrefix(line, "- [ ] ")
+		desc = strings.TrimPrefix(desc, "- [x] ")
+		desc = strings.TrimSpace(desc)
+
+		item := ChecklistEvidence{Desc: desc, Required: true}
+
+		remain := desc
+		for {
+			start := strings.Index(remain, "[")
+			if start == -1 {
+				break
+			}
+			end := strings.Index(remain[start:], "]")
+			if end == -1 {
+				break
+			}
+			marker := remain[start+1 : start+end]
+			colon := strings.Index(marker, ":")
+			if colon == -1 {
+				remain = remain[start+end+1:]
+				continue
+			}
+			key := strings.TrimSpace(marker[:colon])
+			val := strings.TrimSpace(marker[colon+1:])
+
+			switch key {
+			case "evidence":
+				item.EvidenceType = val
+			case "cmd":
+				item.Cmd = val
+			case "path":
+				item.Path = val
+			case "url":
+				item.URL = val
+			case "steps":
+				item.Steps = val
+			case "auth":
+				item.Auth = val
+			case "domain":
+				item.Domain = val
+			case "module":
+				item.Module = val
+			}
+			remain = remain[start+end+1:]
+		}
+
+		cleanDesc := desc
+		for {
+			start := strings.Index(cleanDesc, "[evidence:")
+			if start == -1 {
+				start = strings.Index(cleanDesc, "[cmd:")
+			}
+			if start == -1 {
+				start = strings.Index(cleanDesc, "[path:")
+			}
+			if start == -1 {
+				start = strings.Index(cleanDesc, "[url:")
+			}
+			if start == -1 {
+				start = strings.Index(cleanDesc, "[steps:")
+			}
+			if start == -1 {
+				start = strings.Index(cleanDesc, "[auth:")
+			}
+			if start == -1 {
+				start = strings.Index(cleanDesc, "[domain:")
+			}
+			if start == -1 {
+				start = strings.Index(cleanDesc, "[module:")
+			}
+			if start == -1 {
+				break
+			}
+			// Remove surrounding backticks if present
+			end := strings.Index(cleanDesc[start:], "]")
+			if end == -1 {
+				break
+			}
+			end += start + 1 // absolute end position of ']'
+			cutStart, cutEnd := start, end
+			if cutStart > 0 && cleanDesc[cutStart-1] == '`' {
+				cutStart--
+			}
+			if cutEnd < len(cleanDesc) && cleanDesc[cutEnd] == '`' {
+				cutEnd++
+			}
+			cleanDesc = strings.TrimSpace(cleanDesc[:cutStart] + cleanDesc[cutEnd:])
+		}
+		// Clean up leftover backtick pairs
+		cleanDesc = strings.ReplaceAll(cleanDesc, "`` ``", "")
+		cleanDesc = strings.ReplaceAll(cleanDesc, "`` ``", "")
+		cleanDesc = strings.ReplaceAll(cleanDesc, "` `", "")
+		cleanDesc = strings.ReplaceAll(cleanDesc, "  ", " ")
+		cleanDesc = strings.TrimSpace(cleanDesc)
+		item.Desc = cleanDesc
+
+		if item.Desc == "" {
+			continue
+		}
+		items = append(items, item)
+	}
+	return items
 }

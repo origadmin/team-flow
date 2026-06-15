@@ -74,6 +74,14 @@ var currentCmd = &cobra.Command{
 	RunE:  runCurrent,
 }
 
+var activeCmd = &cobra.Command{
+	Use:   "active [project-name|project-path]",
+	Short: "Get or set the active project in workspace",
+	Long:  `Get or set the active project in the workspace. When setting, you can use project name or relative path.`,
+	Args:  cobra.MaximumNArgs(1),
+	RunE:  runActive,
+}
+
 func init() {
 	addCmd.Flags().StringVar(&projectNameOverride, "name", "", "Override project name (default: directory basename)")
 	detectCmd.Flags().Bool("json", false, "Output in JSON format")
@@ -86,6 +94,7 @@ func init() {
 	Cmd.AddCommand(depsCmd)
 	Cmd.AddCommand(detectCmd)
 	Cmd.AddCommand(currentCmd)
+	Cmd.AddCommand(activeCmd)
 }
 
 func runList(cmd *cobra.Command, args []string) error {
@@ -112,7 +121,7 @@ func runList(cmd *cobra.Command, args []string) error {
 			}
 		}
 		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",
-			p.Name, truncateStr(p.Path, 40), p.Team, p.DefaultFlow, nodeDisplay, p.LastActive.Format("2006-01-02 15:04"))
+			p.Name, truncateStr(p.Path, 40), p.Team, p.ActiveFlow, nodeDisplay, p.LastActive.Format("2006-01-02 15:04"))
 	}
 	w.Flush()
 	return nil
@@ -355,16 +364,11 @@ func runCurrent(cmd *cobra.Command, args []string) error {
 	}
 
 	projectRoot := config.ResolveProjectRoot(cwd)
-	teamRoot := config.FindTeamRoot(cwd)
-	if projectRoot == "" && teamRoot == "" {
+	if projectRoot == "" {
 		fmt.Println("Not in any project directory")
 		fmt.Println("\nUse 'flow project list' to see available projects")
 		fmt.Println("Use 'flow project add <path>' to register a project")
 		return nil
-	}
-
-	if projectRoot == "" {
-		projectRoot = teamRoot
 	}
 
 	name := getProjectName(projectRoot)
@@ -376,14 +380,64 @@ func runCurrent(cmd *cobra.Command, args []string) error {
 	}
 	fmt.Printf("PROJECT_ROOT: %s\n", projectRoot)
 
-	if teamRoot != "" && teamRoot != projectRoot {
-		fmt.Printf("TEAM_ROOT:    %s\n", teamRoot)
-	}
-
 	workspace := config.FindWorkspaceRoot(cwd)
 	if workspace != "" {
 		fmt.Printf("Workspace:    %s\n", workspace)
 	}
 
+	return nil
+}
+
+func runActive(cmd *cobra.Command, args []string) error {
+	workspace := config.FindWorkspaceRoot(".")
+	if workspace == "" {
+		cwd, _ := os.Getwd()
+		workspace = cwd
+	}
+
+	if len(args) == 0 {
+		cfg, err := config.LoadProjectConfig(workspace)
+		if err != nil {
+			return fmt.Errorf("load workspace config: %w", err)
+		}
+		if cfg.ActiveProject == "" {
+			fmt.Println("No active project set")
+		} else {
+			fmt.Printf("Active project: %s\n", cfg.ActiveProject)
+		}
+		return nil
+	}
+
+	target := args[0]
+	discovered := config.DiscoverProjects(workspace)
+
+	var targetPath string
+	for _, p := range discovered {
+		if p.Name == target || p.Path == target || p.RelPath == target {
+			targetPath = p.Path
+			break
+		}
+	}
+
+	if targetPath == "" {
+		return fmt.Errorf("project '%s' not found in workspace", target)
+	}
+
+	relPath, err := filepath.Rel(workspace, targetPath)
+	if err != nil {
+		relPath = targetPath
+	}
+
+	cfg, err := config.LoadProjectConfig(workspace)
+	if err != nil {
+		cfg = &config.ProjectConfig{}
+	}
+	cfg.ActiveProject = relPath
+
+	if err := config.SaveProjectConfig(workspace, cfg); err != nil {
+		return fmt.Errorf("save config: %w", err)
+	}
+
+	fmt.Printf("✓ Active project set to: %s\n", relPath)
 	return nil
 }

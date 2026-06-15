@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 )
 
 var defaultVariables = map[string]string{
@@ -148,19 +149,60 @@ func ParseFlowWithVars(data []byte, vars map[string]string) (*Flow, error) {
 }
 
 func ParseFlowFile(path string) (*Flow, error) {
-	data, err := os.ReadFile(path)
+	data, err := readFlowBytes(path)
 	if err != nil {
-		return nil, fmt.Errorf("read flow file %s: %w", path, err)
+		return nil, err
 	}
 	return ParseFlow(data)
 }
 
+// ParseFlowFileWithVars reads the flow file (disk or template) and applies vars.
 func ParseFlowFileWithVars(path string, vars map[string]string) (*Flow, error) {
-	data, err := os.ReadFile(path)
+	data, err := readFlowBytes(path)
 	if err != nil {
-		return nil, fmt.Errorf("read flow file %s: %w", path, err)
+		return nil, err
 	}
-	return ParseFlowWithVars(data, vars)
+	resolved := resolveVariablesInJSON(data, vars)
+	return ParseFlow(resolved)
+}
+
+func readFlowBytes(path string) ([]byte, error) {
+	if strings.HasPrefix(path, "embed://templates/") {
+		id := strings.TrimPrefix(path, "embed://templates/")
+		id = strings.TrimSuffix(id, ".json")
+		loader := getTemplateLoader()
+		if loader == nil {
+			return nil, fmt.Errorf("template %q requested but no template loader registered; path=%s", id, path)
+		}
+		return loader(id)
+	}
+	return os.ReadFile(path)
+}
+
+// TemplateLoader is the contract between the flow parser and the
+// embedded template store. The flow package itself does not depend on
+// the templates package; instead, the proc package registers a loader
+// at init() time.
+type TemplateLoader func(id string) ([]byte, error)
+
+var (
+	globalTemplateLoader   TemplateLoader
+	globalTemplateLoaderMu sync.RWMutex
+)
+
+// RegisterTemplateLoader sets the function used to resolve template ids
+// when the flow parser encounters an embed://templates/<id>.json path.
+// Pass nil to clear the loader (mainly for tests).
+func RegisterTemplateLoader(loader TemplateLoader) {
+	globalTemplateLoaderMu.Lock()
+	defer globalTemplateLoaderMu.Unlock()
+	globalTemplateLoader = loader
+}
+
+func getTemplateLoader() TemplateLoader {
+	globalTemplateLoaderMu.RLock()
+	defer globalTemplateLoaderMu.RUnlock()
+	return globalTemplateLoader
 }
 
 func ApplyOverrides(base *Flow, overrides FlowOverrides) *Flow {
