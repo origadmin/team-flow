@@ -13,6 +13,7 @@ import (
 	"github.com/origadmin/team-flow/internal/eventlog"
 	"github.com/origadmin/team-flow/internal/flow"
 	"github.com/origadmin/team-flow/internal/idgen"
+	"github.com/origadmin/team-flow/internal/templates"
 	"github.com/origadmin/team-flow/internal/updater"
 	"github.com/origadmin/team-flow/internal/version"
 	"github.com/spf13/cobra"
@@ -25,8 +26,12 @@ var (
 	procFormat   string
 	procTaskID   string
 	procRunGate  bool
-	procInput    string
-	procAnalysis string
+	procInput      string
+	procAnalysis   string
+	procAnalysisFile string
+	procConclusion string
+	procConclusionFile string
+	procNewSession bool
 
 	// node subcommand
 	nodeAddID    string
@@ -231,6 +236,23 @@ This single command replaces the multi-step gate traversal pattern.`,
 	RunE: runNext,
 }
 
+var roundPathCmd = &cobra.Command{
+	Use:   "round-path",
+	Short: "Output the next round analysis directory path",
+	Long: `Output the path where AI should write analysis.md and conclusion.md files
+for the next round. The directory is created if it does not exist.
+
+Expected files:
+  <output>/analysis.md   — AI writes: Root Cause, Evidence, Solution, Trade-offs, Verification
+  <output>/conclusion.md — AI writes: Decision, Next Action, Blockers
+
+Usage:
+  flow proc round-path              # Output next round directory path
+  flow proc round-path --json       # Output as JSON with analysis_dir field`,
+	Args: cobra.NoArgs,
+	RunE: runRoundPath,
+}
+
 var (
 	gatePassCondition string
 	gatePassMessage   string
@@ -320,6 +342,7 @@ Examples:
 func init() {
 	Cmd.AddCommand(runCmd)
 	Cmd.AddCommand(nextCmd)
+	Cmd.AddCommand(roundPathCmd)
 	Cmd.AddCommand(listCmd)
 	Cmd.AddCommand(showCmd)
 	Cmd.AddCommand(validateCmd)
@@ -346,8 +369,12 @@ func init() {
 	runCmd.Flags().StringVar(&procFormat, "format", "json", "Output format: json or text")
 	runCmd.Flags().StringVar(&procTaskID, "task", "", "Task ID for variable substitution")
 	runCmd.Flags().StringVar(&procInput, "input", "", "User input for this round (recorded in context.md)")
-	runCmd.Flags().StringVar(&procAnalysis, "analysis", "", "AI analysis/conclusion for this round (recorded in events + context.md)")
+	runCmd.Flags().StringVar(&procAnalysis, "analysis", "", "AI analysis section (Root Cause/Evidence/Solution/Trade-offs) for this round")
+	runCmd.Flags().StringVar(&procAnalysisFile, "analysis-file", "", "Path to file containing detailed AI analysis (read from file, overrides --analysis)")
+	runCmd.Flags().StringVar(&procConclusion, "conclusion", "", "AI conclusion section (Decision/Next Action/Blockers) for this round")
+	runCmd.Flags().StringVar(&procConclusionFile, "conclusion-file", "", "Path to file containing detailed AI conclusion (read from file, overrides --conclusion)")
 	runCmd.Flags().BoolVar(&procRunGate, "gate", true, "Run automated gate checks when encountering a gate node")
+	runCmd.Flags().BoolVar(&procNewSession, "new", false, "Create a new session (only on first call of a conversation)")
 	ruleCmd.Flags().StringVar(&procFormat, "format", "text", "Output format: json or text")
 	gateCmd.Flags().StringVar(&procFormat, "format", "text", "Output format: json or text")
 	gatePassCmd.Flags().StringVar(&gatePassCondition, "condition", "", "Condition type to mark as passed (e.g., context_sufficient, type_identified)")
@@ -355,6 +382,12 @@ func init() {
 	gatePassCmd.Flags().BoolVar(&gatePassAll, "all", false, "Mark all AI judgment conditions as passed for this gate node")
 	nextCmd.Flags().StringVar(&procFormat, "format", "json", "Output format: json or text")
 	nextCmd.Flags().StringVar(&procTaskID, "task", "", "Task ID for variable substitution")
+	nextCmd.Flags().StringVar(&procInput, "input", "", "User input for this round (recorded in context.md)")
+	nextCmd.Flags().StringVar(&procAnalysis, "analysis", "", "AI analysis section (Root Cause/Evidence/Solution/Trade-offs) for this round")
+	nextCmd.Flags().StringVar(&procAnalysisFile, "analysis-file", "", "Path to file containing detailed AI analysis (read from file, overrides --analysis)")
+	nextCmd.Flags().StringVar(&procConclusion, "conclusion", "", "AI conclusion section (Decision/Next Action/Blockers) for this round")
+	nextCmd.Flags().StringVar(&procConclusionFile, "conclusion-file", "", "Path to file containing detailed AI conclusion (read from file, overrides --conclusion)")
+	roundPathCmd.Flags().StringVar(&procFormat, "format", "json", "Output format: json or text")
 	createCmd.Flags().StringVar(&procTemplate, "template", "", "Template process name from assets/flows/ to base the new process on")
 
 	// node flags
@@ -422,17 +455,18 @@ func init() {
 	ruleRemoveCmd.Flags().StringVar(&procFlowName, "flow", "", "Flow name (required when --target=flow)")
 }
 
-func getRootDir() string {
+// getProjectRootDir 获取项目根目录，优先使用 workspace 配置的 active_project
+func getProjectRootDir() string {
 	if procRootDir != "" {
 		return procRootDir
 	}
 	dir, _ := os.Getwd()
-	return config.FindTeamRoot(dir)
+	return config.ResolveProjectRootWithActive(dir)
 }
 
-func getProjectRootDir() string {
-	dir, _ := os.Getwd()
-	return config.ResolveProjectRoot(dir)
+// getRootDir 获取项目根目录（alias for getProjectRootDir）
+func getRootDir() string {
+	return getProjectRootDir()
 }
 
 // getWorkspaceRoot 获取 workspace 根目录
@@ -446,13 +480,8 @@ func getWorkspaceRoot() string {
 }
 
 func runRun(cmd *cobra.Command, args []string) error {
-	teamRoot := getRootDir()
 	projectRoot := getProjectRootDir()
 	workspace := getWorkspaceRoot()
-
-	if projectRoot == "" {
-		projectRoot = teamRoot
-	}
 
 	if workspace != "" && projectRoot == workspace {
 		if config.IsMonorepoWorkspace(workspace) {
@@ -486,20 +515,50 @@ func runRun(cmd *cobra.Command, args []string) error {
 		nodeID = args[0]
 	}
 
+	// Read analysis/conclusion from files if specified (overrides inline flags)
+	analysis := procAnalysis
+	if procAnalysisFile != "" {
+		data, err := os.ReadFile(procAnalysisFile)
+		if err != nil {
+			return fmt.Errorf("read analysis file %s: %w", procAnalysisFile, err)
+		}
+		analysis = string(data)
+	}
+	conclusion := procConclusion
+	if procConclusionFile != "" {
+		data, err := os.ReadFile(procConclusionFile)
+		if err != nil {
+			return fmt.Errorf("read conclusion file %s: %w", procConclusionFile, err)
+		}
+		conclusion = string(data)
+	}
+
+	// Mandatory validation: analysis and conclusion are required when advancing
+	// Exempt --new (new session creation) as there is no prior context to analyze
+	if !procNewSession {
+		if analysis == "" {
+			return fmt.Errorf("--analysis is required when advancing nodes. Use --analysis or --analysis-file to provide the AI analysis for this round")
+		}
+		if conclusion == "" {
+			return fmt.Errorf("--conclusion is required when advancing nodes. Use --conclusion or --conclusion-file to provide the AI conclusion for this round")
+		}
+	}
+
 	req := ProcRunRequest{
 		FlowName:    procFlowName,
 		NodeID:      nodeID,
 		TaskID:      procTaskID,
 		ProjectRoot: projectRoot,
-		TeamRoot:    teamRoot,
 		Workspace:   workspace,
 		Format:      procFormat,
 		RunGate:     procRunGate,
 		Input:       procInput,
-		Analysis:    procAnalysis,
+		Analysis:    analysis,
+		Conclusion:  conclusion,
+		NewSession:  procNewSession,
 	}
 
-	engine := NewProcRunEngine(teamRoot)
+	engine := NewProcRunEngine(projectRoot)
 	result, err := engine.Run(context.Background(), req)
 	if err != nil {
 		return err
@@ -514,13 +573,8 @@ func runRun(cmd *cobra.Command, args []string) error {
 }
 
 func runNext(cmd *cobra.Command, args []string) error {
-	teamRoot := getRootDir()
 	projectRoot := getProjectRootDir()
 	workspace := getWorkspaceRoot()
-
-	if projectRoot == "" {
-		projectRoot = teamRoot
-	}
 
 	if workspace != "" && projectRoot == workspace {
 		if config.IsMonorepoWorkspace(workspace) {
@@ -542,20 +596,47 @@ func runNext(cmd *cobra.Command, args []string) error {
 		nodeID = args[0]
 	}
 
+	// Read analysis/conclusion from files if specified (overrides inline flags)
+	analysis := procAnalysis
+	if procAnalysisFile != "" {
+		data, err := os.ReadFile(procAnalysisFile)
+		if err != nil {
+			return fmt.Errorf("read analysis file %s: %w", procAnalysisFile, err)
+		}
+		analysis = string(data)
+	}
+	conclusion := procConclusion
+	if procConclusionFile != "" {
+		data, err := os.ReadFile(procConclusionFile)
+		if err != nil {
+			return fmt.Errorf("read conclusion file %s: %w", procConclusionFile, err)
+		}
+		conclusion = string(data)
+	}
+
+	// Mandatory validation: analysis and conclusion are required when advancing
+	if analysis == "" {
+		return fmt.Errorf("--analysis is required when advancing nodes. Use --analysis or --analysis-file to provide the AI analysis for this round")
+	}
+	if conclusion == "" {
+		return fmt.Errorf("--conclusion is required when advancing nodes. Use --conclusion or --conclusion-file to provide the AI conclusion for this round")
+	}
+
 	req := ProcRunRequest{
 		FlowName:    procFlowName,
 		NodeID:      nodeID,
 		TaskID:      procTaskID,
 		ProjectRoot: projectRoot,
-		TeamRoot:    teamRoot,
 		Workspace:   workspace,
 		Format:      procFormat,
 		RunGate:     true,
 		Input:       procInput,
-		Analysis:    procAnalysis,
+		Analysis:    analysis,
+		Conclusion:  conclusion,
+		NewSession:  procNewSession,
 	}
 
-	engine := NewProcRunEngine(teamRoot)
+	engine := NewProcRunEngine(projectRoot)
 	tracer := engine.Trace
 	result, err := engine.Run(context.Background(), req)
 	if err != nil {
@@ -654,13 +735,51 @@ func runNext(cmd *cobra.Command, args []string) error {
 	}
 }
 
+// runRoundPath outputs the path where AI should write per-round analysis files.
+func runRoundPath(cmd *cobra.Command, args []string) error {
+	projectRoot := getProjectRootDir()
+	if projectRoot == "" {
+		return fmt.Errorf("not in a project directory")
+	}
+
+	lgr, err := eventlog.NewLogger(projectRoot)
+	if err != nil {
+		return fmt.Errorf("eventlog init: %w", err)
+	}
+
+	sessionName, err := lgr.LastSessionName()
+	if err != nil {
+		return fmt.Errorf("no active session: %w", err)
+	}
+
+	dir, round, err := lgr.NextRoundDir(sessionName)
+	if err != nil {
+		return fmt.Errorf("create round dir: %w", err)
+	}
+
+	if procFormat == "json" {
+		data, err := json.MarshalIndent(struct {
+			AnalysisDir string `json:"analysis_dir"`
+			Round       int    `json:"round"`
+			Session     string `json:"session"`
+		}{AnalysisDir: dir, Round: round, Session: sessionName}, "", "  ")
+		if err != nil {
+			return fmt.Errorf("marshal round-path: %w", err)
+		}
+		fmt.Fprintln(cmd.OutOrStdout(), string(data))
+		return nil
+	}
+	fmt.Fprintln(cmd.OutOrStdout(), dir)
+	return nil
+}
+
 type ProcEntry struct {
 	Name        string
 	ID          string
 	Path        string
 	Source      string
 	Description string
-	IsDefault   bool
+	IsActive    bool
 	Registered  bool
 }
 
@@ -668,7 +787,7 @@ func listProcs(root string) []ProcEntry {
 	var entries []ProcEntry
 
 	regMap := readFlowRegistry(root)
-	defaultFlow := readDefaultFlow(root)
+	activeFlow := readActiveFlow(root)
 
 	// Read metadata.id from each flow JSON
 	getFlowID := func(flowPath string) string {
@@ -693,7 +812,7 @@ func listProcs(root string) []ProcEntry {
 				Path:        f,
 				Source:      "preset",
 				Description: desc,
-				IsDefault:   name == defaultFlow,
+				IsActive:    name == activeFlow,
 				Registered:  ok(regMap, name),
 			})
 		}
@@ -713,7 +832,7 @@ func listProcs(root string) []ProcEntry {
 				Path:        f,
 				Source:      "project",
 				Description: desc,
-				IsDefault:   name == defaultFlow,
+				IsActive:    name == activeFlow,
 				Registered:  ok(regMap, name),
 			})
 		}
@@ -760,20 +879,16 @@ func readFlowRegistry(root string) map[string]string {
 	return result
 }
 
-func readDefaultFlow(root string) string {
+func readActiveFlow(root string) string {
 	projectMd := filepath.Join(root, ".team", "project.md")
 	data, err := os.ReadFile(projectMd)
 	if err != nil {
 		return ""
 	}
-	// Prefer active_flow over default_flow (v4#17: rename)
 	for _, line := range strings.Split(string(data), "\n") {
 		trimmed := strings.TrimSpace(line)
 		if strings.HasPrefix(trimmed, "active_flow:") {
 			return strings.TrimSpace(strings.TrimPrefix(trimmed, "active_flow:"))
-		}
-		if strings.HasPrefix(trimmed, "default_flow:") {
-			return strings.TrimSpace(strings.TrimPrefix(trimmed, "default_flow:"))
 		}
 	}
 	return ""
@@ -792,15 +907,15 @@ func printProcs(w io.Writer, entries []ProcEntry) {
 		if e.Registered {
 			regMark = "✓ "
 		}
-		defaultMark := ""
-		if e.IsDefault {
-			defaultMark = "⭐"
+		activeMark := ""
+		if e.IsActive {
+			activeMark = "⭐"
 		}
 		desc := e.Description
 		if len(desc) > 30 {
 			desc = desc[:27] + "..."
 		}
-		fmt.Fprintf(w, "%-25s %-8s %-10s %-6s %-10s %s\n", e.Name, e.ID, e.Source, regMark, defaultMark, desc)
+		fmt.Fprintf(w, "%-25s %-8s %-10s %-6s %-10s %s\n", e.Name, e.ID, e.Source, regMark, activeMark, desc)
 	}
 	fmt.Fprintf(w, "\nTotal: %d flow(s)", len(entries))
 
@@ -973,11 +1088,11 @@ func runShow(cmd *cobra.Command, args []string) error {
 
 	procPath := ResolveProcPath(root, args[0])
 	if procPath == "" {
-		defaultFlow, _ := ResolveActiveFlow(root)
-		if defaultFlow == "" {
+		activeFlow := ResolveActiveFlow(root)
+		if activeFlow == "" {
 			return fmt.Errorf("process not found: %s", args[0])
 		}
-		procPath = ResolveProcPath(root, defaultFlow)
+		procPath = ResolveProcPath(root, activeFlow)
 		if procPath == "" {
 			return fmt.Errorf("process not found: %s", args[0])
 		}
@@ -993,7 +1108,7 @@ func runShow(cmd *cobra.Command, args []string) error {
 				return nil
 			}
 		}
-		return fmt.Errorf("node not found: %s in flow %s", nodeID, defaultFlow)
+		return fmt.Errorf("node not found: %s in flow %s", nodeID, activeFlow)
 	}
 
 	f, err := flow.ParseFlowFile(procPath)
@@ -1190,10 +1305,7 @@ func runRule(cmd *cobra.Command, args []string) error {
 	ruleID := args[0]
 	root := getRootDir()
 
-	flowName, err := ResolveActiveFlow(root)
-	if err != nil {
-		return fmt.Errorf("resolve default flow: %w", err)
-	}
+	flowName := ResolveActiveFlow(root)
 
 	procPath := ResolveProcPath(root, flowName)
 	if procPath == "" {
@@ -1370,11 +1482,7 @@ func resolveRuleTargetPath(root, target string) (string, error) {
 	case "flow":
 		flowName := procFlowName
 		if flowName == "" {
-			var err error
-			flowName, err = ResolveActiveFlow(root)
-			if err != nil {
-				return "", fmt.Errorf("--flow is required when --target=flow: %w", err)
-			}
+			flowName = ResolveActiveFlow(root)
 		}
 		return resolveFlowPath(root, flowName)
 	default:
@@ -1530,25 +1638,42 @@ func removeRuleFromFlow(path string, ruleID string) error {
 }
 
 func ResolveProcPath(root, id string) string {
+	// 1. Absolute path / explicit .json - bypass
 	if filepath.IsAbs(id) {
 		if _, err := os.Stat(id); err == nil {
 			return id
 		}
 	}
-
 	if filepath.Ext(id) == ".json" {
 		if _, err := os.Stat(id); err == nil {
 			return id
 		}
 	}
-
 	if idx := strings.Index(id, ":"); idx != -1 {
 		id = id[idx+1:]
 	}
 
+	// 2. Tool-level template (read-only, embedded). Inherited verbatim by any
+	//    team that doesn't override it via a "file" key in team.json. A team
+	//    with a "file" key is a fork and gets resolved in step 3 instead.
+	if templates.Has(id) {
+		// Mark this id as a template; downstream code can detect template
+		// flows via the side-band after they are parsed. We return a special
+		// sentinel path that LoadTemplateFlow recognises.
+		return templates.SentinelPath(id)
+	}
+
+	// 3. Disk lookup: project-level + team-level flow files
+	// v3.2 directory layout: <root>/{v3,.team}/flows/<flow-id>/flow.json
+	// v3.2 sub-flow:           <root>/{v3,.team}/flows/<main-id>/subs/<sub-id>/flow.json
+	// v3.1 flat layout fallback: <root>/{v3,.team}/flows/<flow-id>.json
+	// v3 content library:       <root>/assets/flows/<flow-id>.json
 	candidates := []string{
+		filepath.Join(root, "v3", "flows", id, "flow.json"),
+		filepath.Join(root, ".team", "flows", id, "flow.json"),
 		filepath.Join(root, "v3", "flows", id+".json"),
 		filepath.Join(root, ".team", "flows", id+".json"),
+		filepath.Join(root, "assets", "flows", id+".json"),
 	}
 
 	for _, c := range candidates {
@@ -1557,9 +1682,34 @@ func ResolveProcPath(root, id string) string {
 		}
 	}
 
+	// v3.2: search sub-flows under all <main-flow>/subs/<id>/
+	// (resolves via parent metadata; this is a best-effort flat scan)
+	flowDirs := []string{
+		filepath.Join(root, ".team", "flows"),
+		filepath.Join(root, "v3", "flows"),
+		filepath.Join(root, "assets", "flows"),
+	}
+	for _, d := range flowDirs {
+		if !pathExists(d) {
+			continue
+		}
+		entries, _ := os.ReadDir(d)
+		for _, e := range entries {
+			if !e.IsDir() {
+				continue
+			}
+			sub := filepath.Join(d, e.Name(), "subs", id, "flow.json")
+			if _, err := os.Stat(sub); err == nil {
+				return sub
+			}
+		}
+	}
+
 	workspace := config.FindWorkspaceRoot(root)
 	if workspace != "" && workspace != root {
 		workspaceCandidates := []string{
+			filepath.Join(workspace, ".team", "flows", id, "flow.json"),
+			filepath.Join(workspace, "v3", "flows", id, "flow.json"),
 			filepath.Join(workspace, ".team", "flows", id+".json"),
 			filepath.Join(workspace, "v3", "flows", id+".json"),
 		}
@@ -1568,9 +1718,30 @@ func ResolveProcPath(root, id string) string {
 				return c
 			}
 		}
+		// workspace sub-flow search
+		for _, d := range []string{filepath.Join(workspace, ".team", "flows"), filepath.Join(workspace, "v3", "flows")} {
+			if !pathExists(d) {
+				continue
+			}
+			entries, _ := os.ReadDir(d)
+			for _, e := range entries {
+				if !e.IsDir() {
+					continue
+				}
+				sub := filepath.Join(d, e.Name(), "subs", id, "flow.json")
+				if _, err := os.Stat(sub); err == nil {
+					return sub
+				}
+			}
+		}
 	}
 
 	return ""
+}
+
+func pathExists(p string) bool {
+	_, err := os.Stat(p)
+	return err == nil
 }
 
 func runGate(cmd *cobra.Command, args []string) error {
@@ -1581,10 +1752,7 @@ func runGate(cmd *cobra.Command, args []string) error {
 		nodeID = args[0]
 	}
 
-	flowName, err := ResolveActiveFlow(projectRoot)
-	if err != nil {
-		return fmt.Errorf("resolve default flow: %w", err)
-	}
+	flowName := ResolveActiveFlow(projectRoot)
 
 	procPath := ResolveProcPath(projectRoot, flowName)
 	if procPath == "" {
@@ -1631,7 +1799,11 @@ func runGate(cmd *cobra.Command, args []string) error {
 
 	team, _ := LoadTeam(projectRoot)
 	docsInternal := config.ResolveInternalDocs(projectRoot)
-	results := RunGateCheckWithFlow(projectRoot, conditions, team, docsInternal, flowName, true)
+	sessionName := ""
+	if lgr, err := eventlog.NewLogger(projectRoot); err == nil {
+		sessionName, _ = lgr.LastSessionName()
+	}
+	results := RunGateCheckWithFlow(projectRoot, conditions, team, docsInternal, flowName, true, sessionName, "")
 	passed, summary := GateOverallResult(results)
 
 	switch procFormat {
@@ -1697,57 +1869,17 @@ func printGateResults(w io.Writer, nodeName string, passed bool, summary string,
 func runGatePass(cmd *cobra.Command, args []string) error {
 	nodeID := args[0]
 
-	projectRoot := getRootDir()
-
-	// Load session state to persist the gate confirmation
-	lgr, lgrErr := eventlog.NewLogger(projectRoot)
-	if lgrErr != nil {
-		fmt.Fprintf(cmd.OutOrStdout(), "⚠ Cannot access event log: %v\n", lgrErr)
-		fmt.Fprintf(cmd.OutOrStdout(), "  Falling back to stateless mode.\n")
-		fmt.Fprintf(cmd.OutOrStdout(), "  Gate conditions will be auto-confirmed when you explicitly target the node.\n")
-		fmt.Fprintf(cmd.OutOrStdout(), "  Run 'flow proc run %s' to evaluate the gate with AI confirmation.\n", nodeID)
-		return nil
-	}
-
-	sessionName, _ := lgr.LastSessionName()
-	if sessionName == "" {
-		sessionName = "auto"
-		var err error
-		sessionName, err = lgr.CreateSession(1, "", "auto")
-		if err != nil {
-			fmt.Fprintf(cmd.OutOrStdout(), "⚠ Cannot create session: %v\n", err)
-			fmt.Fprintf(cmd.OutOrStdout(), "  Falling back to stateless mode.\n")
-			fmt.Fprintf(cmd.OutOrStdout(), "  Run 'flow proc run %s' to evaluate the gate with AI confirmation.\n", nodeID)
-			return nil
-		}
-	}
-
-	state, _ := LoadSessionState(lgr.SessionsDir(), sessionName)
-	if state == nil {
-		state = &SessionState{}
-	}
-	state.ConfirmGate(nodeID)
-	if err := SaveSessionState(lgr.SessionsDir(), sessionName, state); err != nil {
-		fmt.Fprintf(cmd.OutOrStdout(), "⚠ Cannot persist gate confirmation: %v\n", err)
-		fmt.Fprintf(cmd.OutOrStdout(), "  Falling back to stateless mode.\n")
-		fmt.Fprintf(cmd.OutOrStdout(), "  Run 'flow proc run %s' to evaluate the gate with AI confirmation.\n", nodeID)
-		return nil
-	}
-
-	fmt.Fprintf(cmd.OutOrStdout(), "✓ Gate %s confirmed for AI judgment.\n", nodeID)
-	fmt.Fprintf(cmd.OutOrStdout(), "  Confirmation persisted in session state (%s/state.json).\n", sessionName)
-	fmt.Fprintf(cmd.OutOrStdout(), "  Run 'flow proc run %s' to evaluate the gate with AI confirmation.\n", nodeID)
+	// Gate confirmation is now implicit: when AI explicitly targets a gate node
+	// via 'flow proc run <node-id>', the gate is auto-confirmed.
+	fmt.Fprintf(cmd.OutOrStdout(), "✓ To confirm gate %s, run: flow proc run %s\n", nodeID, nodeID)
+	fmt.Fprintf(cmd.OutOrStdout(), "  (Gate is auto-confirmed when explicitly targeted.)\n")
 	return nil
 }
 
 // resolveFlowPath resolves a flow name to its file path.
 func resolveFlowPath(root, name string) (string, error) {
 	if name == "" {
-		var err error
-		name, err = ResolveActiveFlow(root)
-		if err != nil {
-			return "", fmt.Errorf("resolve default flow: %w", err)
-		}
+		name = ResolveActiveFlow(root)
 	}
 	p := ResolveProcPath(root, name)
 	if p == "" {

@@ -8,8 +8,30 @@
       "id": "a26c80",
       "type": "start",
       "name": "Session Start",
-      "description": "Session start",
-      "entry": true
+      "description": "User entry point — receive input, analyze intent, create task",
+      "entry": true,
+      "on_enter": [
+        {
+          "action": "record_context",
+          "phase": "start"
+        },
+        {
+          "action": "analyze_intent",
+          "phase": "start"
+        },
+        {
+          "action": "create_task_if_needed",
+          "phase": "task"
+        }
+      ],
+      "components": {
+        "rules": [
+          {
+            "ref": "qg4",
+            "source": "builtin"
+          }
+        ]
+      }
     },
     {
       "id": "7837a8",
@@ -21,38 +43,24 @@
     {
       "id": "2ef533",
       "type": "gate",
-      "name": "Triage Gate",
-      "description": "Validation gate: verify task context and determine dispatch",
+      "name": "Entry Gate",
+      "description": "Mechanical check: verify PM has set task_type and the task has sufficient context",
       "config": {
         "conditions": [
           {
             "type": "task_exists",
             "required": true,
-            "check": "Verify a task exists or intent is clear enough to proceed"
+            "check": "A task exists or intent is clear enough to proceed"
           },
           {
             "type": "custom",
-            "required": false,
-            "check": "Determine if this is a skill-dev task (analysis/design/implement) rather than a generic dispatch"
+            "required": true,
+            "check": "task_type was set by PM (one of: skill, go-backend, frontend, integration)"
           }
         ]
       },
       "components": {
-        "roles": [
-          {
-            "ref": "triage",
-            "source": "builtin"
-          }
-        ],
         "rules": [
-          {
-            "ref": "s1a",
-            "source": "builtin"
-          },
-          {
-            "ref": "qg2",
-            "source": "builtin"
-          },
           {
             "ref": "qg4",
             "source": "builtin"
@@ -63,25 +71,21 @@
     {
       "id": "c3d4e5",
       "type": "phase",
-      "name": "Triage Analysis",
-      "description": "Classify incoming task and execute analysis if applicable (no dispatch-only guard)",
+      "name": "Project Assessment",
+      "description": "PM evaluates task scope, feasibility, risk, and priority before dispatch",
       "config": {
-        "role": "triage"
+        "role": "pm"
       },
       "components": {
         "roles": [
           {
-            "ref": "triage",
-            "source": "builtin"
+            "ref": "pm",
+            "source": "team"
           }
         ],
         "rules": [
           {
-            "ref": "s1a",
-            "source": "builtin"
-          },
-          {
-            "ref": "qg2",
+            "ref": "qg1",
             "source": "builtin"
           },
           {
@@ -97,13 +101,13 @@
       "name": "SKILL Architecture",
       "description": "Design SKILL structure",
       "config": {
-        "role": "skill-architect"
+        "role": "tech-lead"
       },
       "components": {
         "roles": [
           {
-            "ref": "skill-architect",
-            "source": "builtin"
+            "ref": "tech-lead",
+            "source": "team"
           }
         ],
         "rules": [
@@ -136,13 +140,13 @@
       "name": "SKILL Implementation",
       "description": "Implement SKILL.md and flow JSON",
       "config": {
-        "role": "skill-dev"
+        "role": "dev"
       },
       "components": {
         "roles": [
           {
-            "ref": "skill-dev",
-            "source": "builtin"
+            "ref": "dev",
+            "source": "team"
           }
         ],
         "rules": [
@@ -193,13 +197,13 @@
       "name": "Go Backend Implementation",
       "description": "Implement Go backend",
       "config": {
-        "role": "go-dev"
+        "role": "dev"
       },
       "components": {
         "roles": [
           {
-            "ref": "go-dev",
-            "source": "builtin"
+            "ref": "dev",
+            "source": "team"
           }
         ],
         "rules": [
@@ -232,13 +236,13 @@
       "name": "Frontend Implementation",
       "description": "Implement frontend",
       "config": {
-        "role": "frontend-dev"
+        "role": "dev"
       },
       "components": {
         "roles": [
           {
-            "ref": "frontend-dev",
-            "source": "builtin"
+            "ref": "dev",
+            "source": "team"
           }
         ],
         "rules": [
@@ -271,13 +275,13 @@
       "name": "Integration",
       "description": "Integrate all changes",
       "config": {
-        "role": "integrator"
+        "role": "tech-lead"
       },
       "components": {
         "roles": [
           {
-            "ref": "integrator",
-            "source": "builtin"
+            "ref": "tech-lead",
+            "source": "team"
           }
         ],
         "rules": [
@@ -310,7 +314,16 @@
       "name": "Quality Gate",
       "description": "Independent final verification",
       "config": {
-        "role": "qa"
+        "role": "qa",
+        "docs": [
+          {
+            "name": "Quality Gates Checklist",
+            "path": "v3/assets/checklists/quality-gates.md",
+            "format": "markdown",
+            "required": true,
+            "description": "Mandatory QG-1 to QG-4 checks for quality gate approval"
+          }
+        ]
       },
       "components": {
         "roles": [
@@ -363,6 +376,23 @@
       "status": "success"
     },
     {
+      "id": "off0",
+      "type": "phase",
+      "name": "General Task",
+      "description": "Bypass/other task type — direct execution",
+      "config": {
+        "role": "pm"
+      },
+      "components": {
+        "roles": [
+          {
+            "ref": "pm",
+            "source": "team"
+          }
+        ]
+      }
+    },
+    {
       "id": "931a06",
       "type": "terminal",
       "name": "Rejected",
@@ -374,7 +404,7 @@
     {
       "id": "e_c2b046",
       "from": "a26c80",
-      "to": "2ef533",
+      "to": "c3d4e5",
       "type": "conditional",
       "conditions": [
         {
@@ -394,15 +424,11 @@
       ]
     },
     {
-      "id": "e_gate_to_triage",
-      "from": "2ef533",
-      "to": "c3d4e5",
-      "type": "conditional",
-      "conditions": [
-        {
-          "expression": "gate.passed"
-        }
-      ]
+      "id": "e_c3d4e5_to_gate",
+      "from": "c3d4e5",
+      "to": "2ef533",
+      "type": "default",
+      "description": "PM completes assessment → gate validates task_type"
     },
     {
       "id": "e_gate_to_reject",
@@ -416,57 +442,73 @@
       ]
     },
     {
-      "id": "e_eff98a",
-      "from": "c3d4e5",
-      "to": "19267a",
+      "id": "e_gate_to_off0",
+      "from": "2ef533",
+      "to": "off0",
       "type": "conditional",
       "conditions": [
         {
-          "expression": "skill"
+          "expression": "task_type=bypass OR task_type=other"
         }
       ]
     },
     {
-      "id": "e_4c250c",
-      "from": "c3d4e5",
-      "to": "f0204b",
-      "type": "conditional",
-      "conditions": [
-        {
-          "expression": "go-backend"
-        }
-      ]
+      "id": "e_off0_to_success",
+      "from": "off0",
+      "to": "aa1641"
     },
     {
-      "id": "e_62ce8e",
-      "from": "c3d4e5",
-      "to": "403d83",
-      "type": "conditional",
-      "conditions": [
-        {
-          "expression": "frontend"
-        }
-      ]
-    },
-    {
-      "id": "e_ff7b70",
-      "from": "c3d4e5",
-      "to": "b4a98b",
-      "type": "conditional",
-      "conditions": [
-        {
-          "expression": "integration"
-        }
-      ]
-    },
-    {
-      "id": "e_768cc1",
+      "id": "e_c3d4e5_to_reject",
       "from": "c3d4e5",
       "to": "931a06",
       "type": "conditional",
       "conditions": [
         {
           "expression": "rejected"
+        }
+      ]
+    },
+    {
+      "id": "e_gate_to_skill",
+      "from": "2ef533",
+      "to": "19267a",
+      "type": "conditional",
+      "conditions": [
+        {
+          "expression": "task_type=skill"
+        }
+      ]
+    },
+    {
+      "id": "e_gate_to_go-backend",
+      "from": "2ef533",
+      "to": "f0204b",
+      "type": "conditional",
+      "conditions": [
+        {
+          "expression": "task_type=go-backend"
+        }
+      ]
+    },
+    {
+      "id": "e_gate_to_frontend",
+      "from": "2ef533",
+      "to": "403d83",
+      "type": "conditional",
+      "conditions": [
+        {
+          "expression": "task_type=frontend"
+        }
+      ]
+    },
+    {
+      "id": "e_gate_to_integration",
+      "from": "2ef533",
+      "to": "b4a98b",
+      "type": "conditional",
+      "conditions": [
+        {
+          "expression": "task_type=integration"
         }
       ]
     },

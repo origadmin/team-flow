@@ -18,8 +18,8 @@ type ProjectDecl struct {
 type ProjectConfig struct {
 	Name         string             `yaml:"name"`
 	Version      string             `yaml:"version"`
-	DefaultFlow  string             `yaml:"default_flow"`
 	ActiveFlow   string             `yaml:"active_flow"`
+	ActiveProject string             `yaml:"active_project,omitempty"`
 	Paths        ProjectPaths       `yaml:"paths"`
 	Toolchain    ProjectToolchain   `yaml:"toolchain"`
 	Flows        []ProjectFlow      `yaml:"flows"`
@@ -44,9 +44,10 @@ type FlowConfig struct {
 }
 
 type ProjectPaths struct {
-	ProjectsPath  string `yaml:"projects_path"`
+	ProjectsPath string `yaml:"projects_path"`
 	DocsInternal string `yaml:"docs_internal"`
 	DocsExternal string `yaml:"docs_external"`
+	BackupPath   string `yaml:"backup_path"`
 }
 
 type ProjectToolchain struct {
@@ -89,10 +90,6 @@ func LoadProjectConfig(root string) (*ProjectConfig, error) {
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return nil, fmt.Errorf("parse project.yaml: %w", err)
 	}
-	// Normalize: active_flow takes priority, fallback to default_flow
-	if cfg.ActiveFlow != "" && cfg.DefaultFlow == "" {
-		cfg.DefaultFlow = cfg.ActiveFlow
-	}
 	return &cfg, nil
 }
 
@@ -103,6 +100,28 @@ func SaveProjectConfig(root string, cfg *ProjectConfig) error {
 		return fmt.Errorf("marshal project.yaml: %w", err)
 	}
 	return os.WriteFile(yamlPath, data, 0644)
+}
+
+// ResolveProjectRootWithActive resolves the project root directory,
+// preferring the workspace-level active_project config over CWD-based resolution.
+func ResolveProjectRootWithActive(cwd string) string {
+	workspace := FindWorkspaceRoot(cwd)
+	if workspace == "" {
+		return ResolveProjectRoot(cwd)
+	}
+	cfg, err := LoadProjectConfig(workspace)
+	if err != nil || cfg.ActiveProject == "" {
+		return ResolveProjectRoot(cwd)
+	}
+	// Resolve active_project path: relative to workspace, or absolute
+	activePath := cfg.ActiveProject
+	if !filepath.IsAbs(activePath) {
+		activePath = filepath.Join(workspace, activePath)
+	}
+	if _, err := os.Stat(activePath); err != nil {
+		return ResolveProjectRoot(cwd)
+	}
+	return activePath
 }
 
 func ResolveInternalDocs(root string) string {
@@ -148,12 +167,9 @@ func parseProjectMD(data []byte) (*ProjectConfig, error) {
 			cfg.Paths.DocsInternal = extractValue(trimmed)
 		} else if contains(trimmed, "docs_external:") {
 			cfg.Paths.DocsExternal = extractValue(trimmed)
-		} else if contains(trimmed, "default_flow:") {
-			cfg.DefaultFlow = extractValue(trimmed)
 		} else if contains(trimmed, "active_flow:") {
-			cfg.ActiveFlow = extractValue(trimmed)
-			if cfg.DefaultFlow == "" {
-				cfg.DefaultFlow = cfg.ActiveFlow
+			if v := extractValue(trimmed); v != "" {
+				cfg.ActiveFlow = v
 			}
 		}
 	}

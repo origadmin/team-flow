@@ -23,12 +23,24 @@ type ProcRunRequest struct {
 	NodeID      string
 	TaskID      string
 	ProjectRoot string
-	TeamRoot    string
 	Workspace   string
 	Format      string
 	RunGate     bool
 	Input       string // User input for this round (written to context.md)
-	Analysis    string // AI analysis/conclusion for this round (written to events.mdl + context.md)
+	Analysis    string // AI analysis section (Root Cause/Evidence/Solution/Trade-offs)
+	Conclusion  string // AI conclusion section (Decision/Next Action/Blockers)
+	NewSession  bool   // Force create new session (--new flag)
+}
+
+// StatusLineData holds the raw fields for status line formatting.
+// The template defines how these fields are combined into a display string.
+type StatusLineData struct {
+	Alias    string `json:"alias"`
+	NodeName string `json:"node_name"`
+	NodeID   string `json:"node_id"`
+	Flow     string `json:"flow"`
+	Ref      string `json:"ref"`
+	Phase    string `json:"phase"`
 }
 
 type ProcRunResult struct {
@@ -36,10 +48,11 @@ type ProcRunResult struct {
 	Current          CurrentNode       `json:"current"`
 	NextOptions      []NextOption      `json:"next_options"`
 	StatusLine       string            `json:"status_line"`
+	StatusLineFields *StatusLineData   `json:"status_line_fields,omitempty"`
+	StatusLineFmt    string            `json:"status_line_format,omitempty"`
 	Task             *TaskInfo         `json:"task,omitempty"`
 	TeamIntro        *TeamIntroData    `json:"team_intro,omitempty"`
 	ProjectRoot      string            `json:"project_root,omitempty"`
-	TeamRoot         string            `json:"team_root,omitempty"`
 	Workspace        string            `json:"workspace,omitempty"`
 	ResumedFrom      string            `json:"resumed_from,omitempty"`
 	FlowRevision     string            `json:"flow_revision,omitempty"`
@@ -47,6 +60,17 @@ type ProcRunResult struct {
 	Skills           *SkillContext     `json:"skills,omitempty"`
 	GateCheckResults []GateCheckResult `json:"gate_check_results,omitempty"`
 	SessionName      string            `json:"-"`
+	RescueContext    string            `json:"rescue_context,omitempty"`
+	AnalysisSchema   *AnalysisSchema   `json:"analysis_schema,omitempty"`
+	CriticalReminders []string         `json:"critical_reminders,omitempty"`
+}
+
+// AnalysisSchema tells AI the structured output contract for the current node.
+type AnalysisSchema struct {
+	Required  bool     `json:"required"`
+	Analysis  string   `json:"analysis_prompt"`
+	Conclusion string  `json:"conclusion_prompt"`
+	ExampleFlags []string `json:"example_flags,omitempty"`
 }
 
 type PathValidation struct {
@@ -107,9 +131,11 @@ type TaskInfo struct {
 }
 
 type FlowMeta struct {
-	Name    string `json:"name"`
-	Version string `json:"version"`
-	Domain  string `json:"domain"`
+	Name       string `json:"name"`
+	Version    string `json:"version"`
+	Domain     string `json:"domain"`
+	Type       string `json:"type"`
+	ParentFlow string `json:"parent_flow,omitempty"`
 }
 
 type ParallelBranchOutput struct {
@@ -237,7 +263,7 @@ type ProcRunEngine struct {
 func NewProcRunEngine(root string) *ProcRunEngine {
 	teamDir := filepath.Join(root, ".team")
 	return &ProcRunEngine{
-		FlowResolver:   &DefaultFlowResolver{Root: root},
+		FlowResolver:   &ActiveFlowResolver{Root: root},
 		NodeResolver:   &DefaultNodeResolver{},
 		VarSubstitutor: &DefaultVarSubstitutor{},
 		TeamLoader:     &DefaultTeamLoader{},
@@ -249,10 +275,8 @@ func (e *ProcRunEngine) Run(ctx context.Context, req ProcRunRequest) (*ProcRunRe
 	// --- Load session state for node progress tracking (v4#24) ---
 	lgr, lgrErr := eventlog.NewLogger(req.ProjectRoot)
 	var sessionName string
-	var state *SessionState
 	if lgrErr == nil {
-		sessionName = ensureSessionName(lgr)
-		state, _ = LoadSessionState(lgr.SessionsDir(), sessionName)
+		sessionName = ensureSessionName(lgr, req.NewSession, req.Input)
 	}
 	if sessionName == "" {
 		s, _ := lgr.LastSessionName()
@@ -262,27 +286,52 @@ func (e *ProcRunEngine) Run(ctx context.Context, req ProcRunRequest) (*ProcRunRe
 		}
 	}
 
-	// v1#2: --flow context persistence — restore from session state if not explicitly provided
-	if req.FlowName == "" && state != nil && state.FlowName != "" {
-		req.FlowName = state.FlowName
-	}
-
 	fl, err := e.FlowResolver.Resolve(ctx, req.FlowName, req.ProjectRoot)
 	if err != nil {
 		return nil, fmt.Errorf("resolve flow: %w", err)
 	}
 
-	// Node resolution with session state awareness (v4#24)
+	// Node resolution: use explicit node-id, or start from root.
+	// Rescue: when no node-id and not --new, return latest session context.
 	resolvedNodeID := req.NodeID
 	if resolvedNodeID == "" {
-		if state != nil && state.CurrentNodeID != "" {
-			// Resume from last saved position
-			resolvedNodeID = state.CurrentNodeID
-		} else {
-			// First run: find root node
-			if root, err := FindRootNode(fl); err == nil && root != nil {
-				resolvedNodeID = root.ID
+		// Rescue mode: no explicit node, not --new → return latest session state
+		if !req.NewSession && sessionName != "" && sessionName != "unknown" {
+			sessionCtx, _ := lgr.ReadContext(sessionName)
+			if sessionCtx != "" {
+				// Use the actual current node from events, not the root/start node
+				currentNodeID := lgr.CurrentNode(sessionName)
+				if currentNodeID == "" {
+					if rootNode, rerr := FindRootNode(fl); rerr == nil && rootNode != nil {
+						currentNodeID = rootNode.ID
+					}
+				}
+				node, err := e.NodeResolver.Resolve(ctx, fl, currentNodeID)
+				if err == nil && node != nil {
+					vars := e.VarSubstitutor.CollectVars(ctx, fl, req, node.ID)
+					result := generateResult(fl, node, vars, nil, true, req.ProjectRoot, req.Workspace, req.RunGate)
+					condCtx := buildConditionContext(fl, node, req, result)
+					result.NextOptions = buildNextOptions(fl, node.ID, condCtx)
+					result.RescueContext = sessionCtx
+					result.SessionName = sessionName
+					if lgrErr == nil {
+						phase := resolvePhaseFromNode(node)
+						_ = lgr.UpdateContextSnapshot(sessionName, req.TaskID, fl.Metadata.Name,
+							node.Name, phase, result.StatusLine, req.Input, req.Analysis, req.Conclusion)
+						if req.Analysis != "" {
+							_ = lgr.RecordNodeAnalysis(sessionName, req.TaskID, req.Analysis, fl.Metadata.Name, node.ID)
+						}
+						if req.Conclusion != "" {
+							_ = lgr.RecordNodeConclusion(sessionName, req.TaskID, req.Conclusion, fl.Metadata.Name, node.ID)
+						}
+					}
+					return result, nil
+				}
 			}
+		}
+		// Fallback: start from root
+		if rootNode, rerr := FindRootNode(fl); rerr == nil && rootNode != nil {
+			resolvedNodeID = rootNode.ID
 		}
 	}
 
@@ -311,7 +360,7 @@ func (e *ProcRunEngine) Run(ctx context.Context, req ProcRunRequest) (*ProcRunRe
 		}
 	}
 
-	result := generateResult(fl, node, vars, team, resolvedNodeID == "", req.ProjectRoot, req.TeamRoot, req.Workspace, req.RunGate)
+	result := generateResult(fl, node, vars, team, resolvedNodeID == "", req.ProjectRoot, req.Workspace, req.RunGate)
 	result.FlowRevision = ComputeFlowRevision(req.ProjectRoot, fl.Metadata.Name)
 
 	condCtx := buildConditionContext(fl, node, req, result)
@@ -334,14 +383,54 @@ func (e *ProcRunEngine) Run(ctx context.Context, req ProcRunRequest) (*ProcRunRe
 
 	if req.RunGate && node.Type == flow.NodeTypeGate && len(result.Current.GateConditions) > 0 {
 		explicitlyTargeted := req.NodeID != ""
-		// Also treat as explicitly targeted if gate was confirmed via session state
-		if !explicitlyTargeted && state != nil && state.IsGateConfirmed(node.ID) {
-			explicitlyTargeted = true
-		}
 		substitutedConds := SubstituteGateConditions(result.Current.GateConditions, vars)
 		docsInternal := config.ResolveInternalDocs(req.ProjectRoot)
-		gateResults := RunGateCheckWithFlow(req.ProjectRoot, substitutedConds, team, docsInternal, fl.Metadata.Name, explicitlyTargeted)
+		gateResults := RunGateCheckWithFlow(req.ProjectRoot, substitutedConds, team, docsInternal, fl.Metadata.Name, explicitlyTargeted, sessionName, req.TaskID)
 		result.GateCheckResults = gateResults
+
+		// Gate analysis file validation: verify AI wrote proper analysis.md + conclusion.md
+		// to the latest round directory (方案B: round-path → AI writes → run --analysis-file).
+		if lgrErr == nil && sessionName != "" {
+			analysisContent, conclusionContent, round, err := lgr.ReadLatestAnalysis(sessionName)
+			if err != nil {
+				// Missing or unreadable analysis files → gate failure
+				gateResults = append(gateResults, GateCheckResult{
+					Type:     "analysis_file_validation",
+					Required: true,
+					Auto:     true,
+					Passed:   false,
+					Message:  fmt.Sprintf("Gate check: failed to read analysis files for round %d: %v", round, err),
+				})
+			} else {
+				// Content quality checks
+				analysisMinLen := 50
+				conclusionMinLen := 20
+
+				hasRootCause := strings.Contains(analysisContent, "Root Cause")
+				hasEvidence := strings.Contains(analysisContent, "Evidence")
+				analysisLenOK := len(analysisContent) >= analysisMinLen
+				conclusionLenOK := len(conclusionContent) >= conclusionMinLen
+
+				passed := analysisLenOK && conclusionLenOK && hasRootCause && hasEvidence
+				detail := fmt.Sprintf("analysis=%d chars (min %d), conclusion=%d chars (min %d)",
+					len(analysisContent), analysisMinLen, len(conclusionContent), conclusionMinLen)
+				if !hasRootCause {
+					detail += " | MISSING: Root Cause"
+				}
+				if !hasEvidence {
+					detail += " | MISSING: Evidence"
+				}
+
+				gateResults = append(gateResults, GateCheckResult{
+					Type:     "analysis_file_validation",
+					Required: true,
+					Auto:     true,
+					Passed:   passed,
+					Message:  fmt.Sprintf("Round %d: %s", round, detail),
+				})
+			}
+			result.GateCheckResults = gateResults
+		}
 
 		// Trace: each gate check result
 		if e.Trace != nil && sessionName != "" {
@@ -352,7 +441,7 @@ func (e *ProcRunEngine) Run(ctx context.Context, req ProcRunRequest) (*ProcRunRe
 
 		if req.TaskID != "" {
 			passed, _ := GateOverallResult(gateResults)
-			appendSessionLog(req.ProjectRoot, req.TaskID, node, gateResults, passed)
+			appendSessionLog(req.ProjectRoot, req.TaskID, node, gateResults, passed, req.Input, req.Analysis, req.Conclusion)
 		}
 	}
 
@@ -360,6 +449,8 @@ func (e *ProcRunEngine) Run(ctx context.Context, req ProcRunRequest) (*ProcRunRe
 		result.Task = taskInfo
 		if taskInfo.TaskID != "" {
 			result.StatusLine = buildStatusLineWithRef(fl, node, result.Current, taskInfo.TaskID)
+			sld := buildStatusLineData(fl, node, result.Current, taskInfo.TaskID)
+			result.StatusLineFields = &sld
 		}
 	}
 
@@ -371,52 +462,35 @@ func (e *ProcRunEngine) Run(ctx context.Context, req ProcRunRequest) (*ProcRunRe
 		}
 		if lgrErr == nil {
 			_ = lgr.FlowEnded(sessionName, req.TaskID, fl.Metadata.Name, status)
+			_ = lgr.MarkSessionCompleted(sessionName)
 		}
 	}
 
-	// --- Persist session state for next call (v4#24) ---
+	// Auto-update context.md with current node/task snapshot
 	if lgrErr == nil && sessionName != "" && sessionName != "unknown" {
-		nextNodeID := ""
 		nextNodeName := ""
 		if len(result.NextOptions) > 0 {
 			for _, opt := range result.NextOptions {
 				if opt.IsDefault {
-					nextNodeID = opt.NodeID
 					nextNodeName = opt.Name
 					break
 				}
 			}
-			if nextNodeID == "" {
-				nextNodeID = result.NextOptions[0].NodeID
+			if nextNodeName == "" {
 				nextNodeName = result.NextOptions[0].Name
 			}
 		}
 
-		if state == nil {
-			state = &SessionState{}
-		}
-		state.FlowName = fl.Metadata.Name
-		// Only persist TaskID when explicitly provided (v4#26: don't overwrite with empty)
-		if req.TaskID != "" {
-			state.TaskID = req.TaskID
-		}
-		state.CurrentNodeID = nextNodeID
-		state.CurrentNode = nextNodeName
-		state.VisitedNodes = append(state.VisitedNodes, node.ID)
-		// Track visit count for each node (detects backtracking)
-		if state.VisitCount == nil {
-			state.VisitCount = make(map[string]int)
-		}
-		state.VisitCount[node.ID]++
-		_ = SaveSessionState(lgr.SessionsDir(), sessionName, state)
-
-		// v4#23: auto-update context.md with current node/task snapshot
-		_ = lgr.UpdateContextSnapshot(sessionName, state.TaskID, fl.Metadata.Name,
-			nextNodeName, string(node.Type), result.StatusLine, req.Input, req.Analysis)
+		phase := resolvePhaseFromNode(node)
+		_ = lgr.UpdateContextSnapshot(sessionName, req.TaskID, fl.Metadata.Name,
+			node.Name, phase, result.StatusLine, req.Input, req.Analysis, req.Conclusion)
 
 		// Record AI analysis to events.mdl if provided
-		if req.Analysis != "" && lgrErr == nil {
+		if req.Analysis != "" {
 			_ = lgr.RecordNodeAnalysis(sessionName, req.TaskID, req.Analysis, fl.Metadata.Name, node.ID)
+		}
+		if req.Conclusion != "" {
+			_ = lgr.RecordNodeConclusion(sessionName, req.TaskID, req.Conclusion, fl.Metadata.Name, node.ID)
 		}
 	}
 
@@ -424,28 +498,102 @@ func (e *ProcRunEngine) Run(ctx context.Context, req ProcRunRequest) (*ProcRunRe
 }
 
 func resolveTaskInfo(taskID string) *TaskInfo {
-	if !bd.IsAvailable() {
-		return &TaskInfo{
-			Phase:  "unknown",
-			Status: "beads_unavailable",
+	root, _ := os.Getwd()
+
+	if taskID != "" {
+		if info := resolveTaskInfoFromLocal(root, taskID); info != nil {
+			return info
 		}
+		if bd.IsAvailable() {
+			if info := resolveTaskInfoFromBeads(taskID); info != nil {
+				return info
+			}
+		}
+		return &TaskInfo{TaskID: taskID, Phase: "task-bound", Status: "open"}
 	}
 
+	if bd.IsAvailable() {
+		if info := resolveTaskInfoFromBeads(""); info != nil {
+			return info
+		}
+	}
+	return resolveTaskInfoFromLocal(root, "")
+}
+
+func resolveTaskInfoFromLocal(root, taskID string) *TaskInfo {
+	if taskID == "" {
+		tasksDir := filepath.Join(root, ".team", "tasks")
+		entries, err := os.ReadDir(tasksDir)
+		if err != nil || len(entries) == 0 {
+			return nil
+		}
+		var latest os.DirEntry
+		var latestMod time.Time
+		for _, e := range entries {
+			if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
+				continue
+			}
+			fi, err := e.Info()
+			if err != nil {
+				continue
+			}
+			if latest == nil || fi.ModTime().After(latestMod) {
+				latest = e
+				latestMod = fi.ModTime()
+			}
+		}
+		if latest == nil {
+			return nil
+		}
+		taskID = strings.TrimSuffix(latest.Name(), ".json")
+	}
+	if taskID == "" {
+		return nil
+	}
+
+	data, err := os.ReadFile(filepath.Join(root, ".team", "tasks", taskID+".json"))
+	if err != nil {
+		return nil
+	}
+	var raw map[string]interface{}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return nil
+	}
+	info := &TaskInfo{}
+	if id, ok := raw["id"].(string); ok {
+		info.TaskID = id
+	}
+	if t, ok := raw["type"].(string); ok {
+		info.Type = t
+	}
+	if status, ok := raw["status"].(string); ok {
+		info.Status = status
+	}
+	if info.TaskID == "" && info.Type == "" {
+		return nil
+	}
+
+	if labels, ok := raw["labels"].(map[string]interface{}); ok {
+		if phase, ok := labels["phase"].(string); ok {
+			info.Phase = phase
+		}
+	}
+	return info
+}
+
+func resolveTaskInfoFromBeads(taskID string) *TaskInfo {
 	args := []string{"show", "--current", "--json"}
 	if taskID != "" {
 		args = []string{"show", taskID, "--json"}
 	}
-
 	output, err := bd.RunQuiet(args...)
 	if err != nil || output == "" {
 		return nil
 	}
-
 	var raw map[string]interface{}
 	if err := json.Unmarshal([]byte(output), &raw); err != nil {
 		return nil
 	}
-
 	info := &TaskInfo{}
 	if id, ok := raw["id"].(string); ok {
 		info.TaskID = id
@@ -459,7 +607,6 @@ func resolveTaskInfo(taskID string) *TaskInfo {
 	if url, ok := raw["url"].(string); ok {
 		info.URL = url
 	}
-
 	if labels, ok := raw["labels"].([]interface{}); ok {
 		for _, l := range labels {
 			if s, ok := l.(string); ok && len(s) > 6 && s[:6] == "phase:" {
@@ -468,18 +615,18 @@ func resolveTaskInfo(taskID string) *TaskInfo {
 			}
 		}
 	}
-
 	if info.TaskID == "" && info.Phase == "" {
 		return nil
 	}
-
 	return info
 }
 
-func generateResult(fl *flow.Flow, node *flow.FlowNode, vars map[string]string, team *flow.TeamDefinition, isFirstNode bool, projectRoot string, teamRoot string, workspace string, runGate bool) *ProcRunResult {
-	domain := ""
+func generateResult(fl *flow.Flow, node *flow.FlowNode, vars map[string]string, team *flow.TeamDefinition, isFirstNode bool, projectRoot string, workspace string, runGate bool) *ProcRunResult {
+	domain := fl.Metadata.Domain
 	if fl.Config != nil {
-		domain = fl.Config.Domain
+		if domain == "" {
+			domain = fl.Config.Domain
+		}
 		if domain == "" {
 			domain = string(fl.Config.TaskType)
 		}
@@ -487,23 +634,28 @@ func generateResult(fl *flow.Flow, node *flow.FlowNode, vars map[string]string, 
 
 	current := buildCurrentNode(node, fl, vars, team, projectRoot)
 
-	configRoot := teamRoot
-	if configRoot == "" {
-		configRoot = projectRoot
-	}
-
 	result := &ProcRunResult{
 		Flow: FlowMeta{
-			Name:    fl.Metadata.Name,
-			Version: fl.Version,
-			Domain:  domain,
+			Name:       fl.Metadata.Name,
+			Version:    fl.Version,
+			Domain:     domain,
+			Type:       fl.Metadata.Type,
+			ParentFlow: fl.Metadata.ParentFlow,
 		},
 		Current:     current,
 		StatusLine:  buildStatusLine(fl, node, current, vars),
 		ProjectRoot: projectRoot,
-		TeamRoot:    configRoot,
 		Workspace:   workspace,
+		StatusLineFmt: DefaultStatusLineFmt,
+		AnalysisSchema: &AnalysisSchema{
+			Required: true,
+			Analysis:  "Detailed analysis: Files Examined + Key Findings + Reasoning + Root Cause + Evidence + Solution + Trade-offs",
+			Conclusion: "Decision (proceed|block|require-info) + Next Action + Blockers",
+			ExampleFlags: []string{"--analysis", "--analysis-file", "--conclusion", "--conclusion-file"},
+		},
 	}
+	sld := buildStatusLineData(fl, node, current, "")
+	result.StatusLineFields = &sld
 
 	if runGate && node.Type == flow.NodeTypeGate && len(current.GateConditions) > 0 {
 		substitutedConds := SubstituteGateConditions(current.GateConditions, vars)
@@ -519,10 +671,10 @@ func generateResult(fl *flow.Flow, node *flow.FlowNode, vars map[string]string, 
 		result.NextOptions = []NextOption{}
 	}
 
-	result.PathValidation = validatePath(projectRoot, teamRoot)
+	result.PathValidation = validatePath(projectRoot)
 
 	if projectRoot != "" {
-		skillMgr := skill.NewSkillManager(projectRoot, "", "")
+		skillMgr := skill.NewSkillManager(projectRoot)
 		roleID := current.Role
 		if skillsFile, err := skillMgr.Resolve(roleID); err == nil {
 			skillCtx := &SkillContext{
@@ -544,10 +696,25 @@ func generateResult(fl *flow.Flow, node *flow.FlowNode, vars map[string]string, 
 		}
 	}
 
+	result.CriticalReminders = buildCriticalReminders(current)
+
 	return result
 }
 
-func validatePath(projectRoot string, teamRoot string) *PathValidation {
+func buildCriticalReminders(current CurrentNode) []string {
+	var reminders []string
+	if current.PromptSource != "" {
+		reminders = append(reminders, fmt.Sprintf("🚨 MANDATORY: You MUST read the persona prompt at '%s' before acting.", current.PromptSource))
+	}
+	for _, doc := range current.Docs {
+		if doc.Required {
+			reminders = append(reminders, fmt.Sprintf("🚨 REQUIRED: You MUST read the reference document '%s' at '%s' before acting.", doc.Name, doc.Path))
+		}
+	}
+	return reminders
+}
+
+func validatePath(projectRoot string) *PathValidation {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return nil
@@ -587,11 +754,9 @@ func buildCurrentNode(node *flow.FlowNode, fl *flow.Flow, vars map[string]string
 	switch node.Type {
 	case flow.NodeTypeStart:
 		ri := resolveRoleInfo(node, fl, team, root)
-		if ri.alias == "" {
-			ri = findPrincipalRole(fl, team)
-		}
+		// Start node is mechanical — no role assigned. Do NOT fall back to principal.
 		current.Role = extractRole(node)
-		if current.Role == "" {
+		if current.Role == "" && ri.roleID != "" {
 			current.Role = ri.roleID
 		}
 		current.RoleName = ri.roleName
@@ -600,8 +765,9 @@ func buildCurrentNode(node *flow.FlowNode, fl *flow.Flow, vars map[string]string
 		current.Principal = ri.principal
 		current.Persona = ri.persona
 		current.Traits = ri.traits
-		current.Guidance = ri.guidance
-		if ri.guidance == "" {
+		if ri.guidance != "" {
+			current.Guidance = ri.guidance
+		} else {
 			current.Guidance = "Record and analyze user intent. Determine if a task should be created or if this is a continuation of an existing conversation. For new requests, create a task via 'flow task create'. For continuations, identify the existing task and proceed."
 		}
 		current.PromptSource = substituteVars(ri.promptSource, vars)
@@ -645,6 +811,7 @@ func buildCurrentNode(node *flow.FlowNode, fl *flow.Flow, vars map[string]string
 		current.Role = ""
 		current.GateConditions = ExtractGateConditions(node)
 		current.OnEnter = extractOnEnter(node)
+		current.Rules = extractRules(node, fl, team, nil, root)
 
 	case flow.NodeTypeSubflow:
 		current.GateConditions = nil
@@ -659,11 +826,24 @@ func buildCurrentNode(node *flow.FlowNode, fl *flow.Flow, vars map[string]string
 			}
 		}
 		current.OnEnter = extractOnEnter(node)
+		current.Rules = extractRules(node, fl, team, nil, root)
 
 	case flow.NodeTypeTerminal:
-		current.Role = ""
+		// Terminal nodes inherit role from the predecessor for status line display.
+		// Look backward through edges to find the node that led here.
+		var terminalRoleRules []string
+		if predecessor := findPredecessor(fl, node); predecessor != nil {
+			ri := resolveRoleInfo(predecessor, fl, team, root)
+			current.Role = extractRole(predecessor)
+			current.RoleName = ri.roleName
+			current.Alias = ri.alias
+			current.AliasEn = ri.aliasEn
+			current.Principal = ri.principal
+			terminalRoleRules = ri.roleRules
+		}
 		current.IsTerminal = true
 		current.GateConditions = nil
+		current.Rules = extractRules(node, fl, team, terminalRoleRules, root)
 		if node.Config != nil {
 			var termCfg flow.TerminalConfig
 			if err := json.Unmarshal(node.Config, &termCfg); err == nil {
@@ -737,8 +917,8 @@ func buildConditionContext(fl *flow.Flow, node *flow.FlowNode, req ProcRunReques
 	if req.TaskID != "" {
 		ctx["status"] = "task_created"
 		if result.Task != nil {
-			if result.Task.Status != "" {
-				ctx["task_type"] = result.Task.Status
+			if result.Task.Type != "" {
+				ctx["task_type"] = result.Task.Type
 			}
 		}
 	} else {
@@ -784,45 +964,139 @@ type roleInfo struct {
 
 func resolveRoleInfo(node *flow.FlowNode, fl *flow.Flow, team *flow.TeamDefinition, root string) roleInfo {
 	info := roleInfo{}
-	if node.Config == nil {
-		return info
+	
+	// Phase 1: Try node config + component roles (normal path)
+	if node.Config != nil {
+		var phaseCfg flow.PhaseConfig
+		if err := json.Unmarshal(node.Config, &phaseCfg); err == nil {
+			if node.Components != nil && len(node.Components.Roles) > 0 {
+				roleRef := node.Components.Roles[0].Ref
+				return resolveRoleByRef(roleRef, fl, team, root)
+			}
+		}
 	}
-	var phaseCfg flow.PhaseConfig
-	if err := json.Unmarshal(node.Config, &phaseCfg); err != nil {
-		return info
+	
+	// Phase 2: Try flow-level components roles
+	if fl.Components != nil {
+		for _, r := range fl.Components.Roles {
+			if r.Principal != nil && *r.Principal {
+				return resolveRoleByRef(r.ID, fl, team, root)
+			}
+		}
 	}
-	if node.Components == nil || len(node.Components.Roles) == 0 {
-		return info
+	
+	// Phase 3: Fallback to team's principal role
+	if team != nil {
+		for _, r := range team.Roles {
+			if r.Principal != nil && *r.Principal {
+				return resolveRoleByRef(r.ID, fl, team, root)
+			}
+		}
 	}
-	roleRef := node.Components.Roles[0].Ref
+	
+	// Phase 4: Zero config fallback - derive org and find principal role
+	if team == nil && fl != nil {
+		org := deriveOrg(fl.Metadata.Name)
+		// Look for principal role in org's team.json (embedded)
+		teamDef, err := loadTeamFromEmbed(org)
+		if err == nil && teamDef != nil {
+			for _, r := range teamDef.Roles {
+				if r.Principal != nil && *r.Principal {
+					return resolveRoleByRef(r.ID, fl, teamDef, root)
+				}
+			}
+		}
+	}
+	
+	return info
+}
 
+// resolveRoleByRef 解析指定角色引用，按优先级从 team → flow → org 查找
+func resolveRoleByRef(roleRef string, fl *flow.Flow, team *flow.TeamDefinition, root string) roleInfo {
+	// Phase 1: Check team-level roles
 	if team != nil {
 		for _, r := range team.Roles {
 			if r.ID == roleRef {
-				info = fillRoleInfo(r)
-				return info
+				// v3 架构: 如果 team.json 角色没有内联内容但有 prompt_source,
+				// 从 prompts/*.md 解析角色内容
+				if isReferenceOnlyRole(r) && r.PromptSource != "" {
+					if resolved, err := loadRoleFromPromptSource(r.ID, r.PromptSource, root); err == nil && resolved != nil {
+						// 合并：从 prompt_source 解析出内容后, 保留 team.json 的 id 和 prompt_source
+						resolved.ID = r.ID
+						resolved.PromptSource = r.PromptSource
+						resolved.StandardsSource = r.StandardsSource
+						if r.Principal != nil {
+							resolved.Principal = r.Principal
+						}
+						return fillRoleInfo(*resolved)
+					}
+				}
+				// 回退: 旧格式（有内联内容）或 prompt_source 加载失败
+				return fillRoleInfo(r)
 			}
 		}
 	}
 
+	// Phase 2: Check flow-level roles
 	if fl.Components != nil {
 		for _, r := range fl.Components.Roles {
 			if r.ID == roleRef {
-				info = fillRoleInfo(r)
-				return info
+				// v3 同样处理 flow-level 角色引用
+				if isReferenceOnlyRole(r) && r.PromptSource != "" {
+					if resolved, err := loadRoleFromPromptSource(r.ID, r.PromptSource, root); err == nil && resolved != nil {
+						resolved.ID = r.ID
+						resolved.PromptSource = r.PromptSource
+						resolved.StandardsSource = r.StandardsSource
+						if r.Principal != nil {
+							resolved.Principal = r.Principal
+						}
+						return fillRoleInfo(*resolved)
+					}
+				}
+				return fillRoleInfo(r)
 			}
 		}
 	}
 
-	if team != nil && team.Org != "" {
-		r, err := loadRole(roleRef, team.Org, root)
-		if err == nil && r != nil {
-			info = fillRoleInfo(*r)
-			return info
+	// Phase 3: Load from org roles (v1/v2 legacy format)
+	var org string
+	if team != nil {
+		org = team.Org
+		if org == "" {
+			org = team.ID
 		}
+	} else {
+		org = deriveOrg(fl.Metadata.Name)
 	}
+	
+	r, err := loadRole(roleRef, org, root)
+	if err == nil && r != nil {
+		if isReferenceOnlyRole(*r) && r.PromptSource != "" {
+			if resolved, err := loadRoleFromPromptSource(r.ID, r.PromptSource, root); err == nil && resolved != nil {
+				resolved.ID = r.ID
+				resolved.PromptSource = r.PromptSource
+				resolved.StandardsSource = r.StandardsSource
+				if r.Principal != nil {
+					resolved.Principal = r.Principal
+				}
+				return fillRoleInfo(*resolved)
+			}
+		}
+		return fillRoleInfo(*r)
+	}
+	
+	return roleInfo{}
+}
 
-	return info
+// isReferenceOnlyRole 判断角色是否为 v3 引用格式（只有 id/prompt_source/principal, 无内联内容）。
+// 是 v3 引用格式则返回 true。
+func isReferenceOnlyRole(r flow.RoleDefinition) bool {
+	return r.Persona == "" &&
+		r.Guidance == "" &&
+		len(r.Traits) == 0 &&
+		len(r.Capabilities) == 0 &&
+		r.Name == "" &&
+		r.Alias == ""
 }
 
 func fillRoleInfo(r flow.RoleDefinition) roleInfo {
@@ -861,9 +1135,6 @@ func extractPrompts(node *flow.FlowNode, vars map[string]string) []PromptOutput 
 }
 
 func extractRules(node *flow.FlowNode, fl *flow.Flow, team *flow.TeamDefinition, roleRules []string, root string) []RuleOutput {
-	if node.Components == nil && len(roleRules) == 0 {
-		return nil
-	}
 	ruleDefs := make(map[string]flow.RuleDefinition)
 	if team != nil {
 		for _, r := range team.Rules {
@@ -896,6 +1167,45 @@ func extractRules(node *flow.FlowNode, fl *flow.Flow, team *flow.TeamDefinition,
 		out := buildRuleOutput(ref, "role", ruleDefs, team, root)
 		rules = append(rules, out)
 	}
+	// 默认规则回退: 任何节点都必须加载 sl1 (StatusLine 最高规则)，
+	// 没有其他规则时至少应用 qg4 (output-guard)
+	if team != nil {
+		// sl1 (StatusLine) 是最高规则，无条件加入
+		if _, ok := ruleDefs["sl1"]; ok {
+			hasSL1 := false
+			for _, r := range rules {
+				if r.Ref == "sl1" {
+					hasSL1 = true
+					break
+				}
+			}
+			if !hasSL1 {
+				out := buildRuleOutput("sl1", "builtin", ruleDefs, team, root)
+				// sl1 插在最前面，因为是最高优先级
+				rules = append([]RuleOutput{out}, rules...)
+			}
+		}
+		// 其他规则为空时，至少补充 qg4 / output-guard；或者对于 start/gate/terminal 节点，必须包含 qg4 / output-guard
+		isSpecialNode := node != nil && (node.Type == flow.NodeTypeStart || node.Type == flow.NodeTypeTerminal || node.Type == flow.NodeTypeGate)
+		if len(rules) <= 1 || isSpecialNode {
+			defaultRuleIDs := []string{"qg4", "output-guard"}
+			for _, ruleID := range defaultRuleIDs {
+				if _, ok := ruleDefs[ruleID]; ok {
+					has := false
+					for _, r := range rules {
+						if r.Ref == ruleID {
+							has = true
+							break
+						}
+					}
+					if !has {
+						out := buildRuleOutput(ruleID, "builtin", ruleDefs, team, root)
+						rules = append(rules, out)
+					}
+				}
+			}
+		}
+	}
 	if len(rules) == 0 {
 		return nil
 	}
@@ -914,13 +1224,19 @@ func buildRuleOutput(ref string, source string, ruleDefs map[string]flow.RuleDef
 		out.RuleRef = fmt.Sprintf("flow proc rule %s", def.ID)
 		return out
 	}
-	if team != nil && team.Org != "" {
-		r, err := loadRule(ref, team.Org, root)
-		if err == nil && r != nil {
-			out.Name = r.Name
-			out.Instruction = r.Instruction
-			out.Enforcement = string(r.Enforcement)
-			out.RuleRef = fmt.Sprintf("flow proc rule %s", r.ID)
+	if team != nil {
+		org := team.Org
+		if org == "" {
+			org = team.ID
+		}
+		if org != "" {
+			r, err := loadRule(ref, org, root)
+			if err == nil && r != nil {
+				out.Name = r.Name
+				out.Instruction = r.Instruction
+				out.Enforcement = string(r.Enforcement)
+				out.RuleRef = fmt.Sprintf("flow proc rule %s", r.ID)
+			}
 		}
 	}
 	return out
@@ -1181,12 +1497,12 @@ func buildTeamIntro(fl *flow.Flow, team *flow.TeamDefinition, projectRoot string
 	return intro
 }
 
-func loadAvailableFlows(defaultFlow, projectRoot string) []TeamIntroFlow {
+func loadAvailableFlows(activeFlow, projectRoot string) []TeamIntroFlow {
 	var flows []TeamIntroFlow
 	flowsDir := filepath.Join(projectRoot, ".team", "flows")
 	entries, err := os.ReadDir(flowsDir)
 	if err != nil {
-		flows = append(flows, TeamIntroFlow{ID: defaultFlow, IsDefault: true})
+		flows = append(flows, TeamIntroFlow{ID: activeFlow, IsDefault: true})
 		return flows
 	}
 	for _, entry := range entries {
@@ -1196,20 +1512,31 @@ func loadAvailableFlows(defaultFlow, projectRoot string) []TeamIntroFlow {
 		flowID := strings.TrimSuffix(entry.Name(), ".json")
 		flows = append(flows, TeamIntroFlow{
 			ID:        flowID,
-			IsDefault: flowID == defaultFlow,
+			IsDefault: flowID == activeFlow,
 		})
 	}
 	if len(flows) == 0 {
-		flows = append(flows, TeamIntroFlow{ID: defaultFlow, IsDefault: true})
+		flows = append(flows, TeamIntroFlow{ID: activeFlow, IsDefault: true})
 	}
 	return flows
 }
+
+// DefaultStatusLineFmt is the built-in template for status line formatting.
+// Variables: {alias}, {node_name}, {node_id}, {flow}, {ref}, {phase}
+// Override via .team/project.yaml → status_line_format
+const DefaultStatusLineFmt = "[{alias} | {node_name}({node_id}:{flow}) | {ref} | {phase}]"
 
 func buildStatusLine(fl *flow.Flow, node *flow.FlowNode, current CurrentNode, vars map[string]string) string {
 	return buildStatusLineWithRef(fl, node, current, "")
 }
 
 func buildStatusLineWithRef(fl *flow.Flow, node *flow.FlowNode, current CurrentNode, ref string) string {
+	data := buildStatusLineData(fl, node, current, ref)
+	return formatStatusLine(data, DefaultStatusLineFmt)
+}
+
+// buildStatusLineData extracts raw fields for status line formatting.
+func buildStatusLineData(fl *flow.Flow, node *flow.FlowNode, current CurrentNode, ref string) StatusLineData {
 	alias := current.Alias
 	if alias == "" {
 		alias = current.Role
@@ -1231,10 +1558,35 @@ func buildStatusLineWithRef(fl *flow.Flow, node *flow.FlowNode, current CurrentN
 		}
 	}
 	if phase == "" {
-		phase = current.Name
+		for _, a := range current.OnEnter {
+			if a.Phase != "" {
+				phase = a.Phase
+				break
+			}
+		}
 	}
 
-	return fmt.Sprintf("[%s | (%s:%s) | %s | %s]", alias, current.Name, flowPart, ref, phase)
+	return StatusLineData{
+		Alias:    alias,
+		NodeName: current.Name,
+		NodeID:   node.ID,
+		Flow:     flowPart,
+		Ref:      ref,
+		Phase:    phase,
+	}
+}
+
+// formatStatusLine applies a template to StatusLineData fields.
+// Template variables: {alias}, {node_name}, {node_id}, {flow}, {ref}, {phase}
+func formatStatusLine(data StatusLineData, tmpl string) string {
+	s := tmpl
+	s = strings.ReplaceAll(s, "{alias}", data.Alias)
+	s = strings.ReplaceAll(s, "{node_name}", data.NodeName)
+	s = strings.ReplaceAll(s, "{node_id}", data.NodeID)
+	s = strings.ReplaceAll(s, "{flow}", data.Flow)
+	s = strings.ReplaceAll(s, "{ref}", data.Ref)
+	s = strings.ReplaceAll(s, "{phase}", data.Phase)
+	return s
 }
 
 func substituteVars(path string, vars map[string]string) string {
@@ -1317,7 +1669,7 @@ func findPrincipalRole(fl *flow.Flow, team *flow.TeamDefinition) roleInfo {
 	return info
 }
 
-func appendSessionLog(projectRoot string, taskID string, node *flow.FlowNode, gateResults []GateCheckResult, passed bool) {
+func appendSessionLog(projectRoot string, taskID string, node *flow.FlowNode, gateResults []GateCheckResult, passed bool, input, analysis, conclusion string) {
 	docsInternal := config.ResolveInternalDocs(projectRoot)
 	logDir := filepath.Join(docsInternal, "task", taskID)
 	if err := os.MkdirAll(logDir, 0755); err != nil {
@@ -1346,6 +1698,16 @@ func appendSessionLog(projectRoot string, taskID string, node *flow.FlowNode, ga
 	}
 
 	sb.WriteString(fmt.Sprintf("## [%s] Gate: %s (%s) — %s\n\n", now, node.Name, node.ID, status))
+
+	if input != "" {
+		sb.WriteString(fmt.Sprintf("**User Input**: %s\n\n", input))
+	}
+	if analysis != "" {
+		sb.WriteString(fmt.Sprintf("**AI Analysis**: %s\n\n", analysis))
+	}
+	if conclusion != "" {
+		sb.WriteString(fmt.Sprintf("**Conclusion**: %s\n\n", conclusion))
+	}
 
 	for _, gr := range gateResults {
 		icon := "✅"
@@ -1386,12 +1748,14 @@ func resolvePhaseFromNode(node *flow.FlowNode) string {
 	return ""
 }
 
-func ensureSessionName(lgr *eventlog.Logger) string {
-	name, _ := lgr.LastSessionName()
-	if name != "" {
-		return name
+func ensureSessionName(lgr *eventlog.Logger, newSession bool, input string) string {
+	if !newSession {
+		name, _ := lgr.LastSessionName()
+		if name != "" {
+			return name
+		}
 	}
-	name, err := lgr.CreateSession(1, "", "auto")
+	name, err := lgr.CreateSession(1, "", input)
 	if err != nil {
 		return ""
 	}

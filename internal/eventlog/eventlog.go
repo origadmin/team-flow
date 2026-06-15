@@ -5,14 +5,11 @@
 //
 //	.team/
 //	  state/
-//	    events.mdl                <- single event log (JSONL inside .mdl, one event per line)
+//	    events.mdl                <- single event log (JSONL, one event per line)
 //	  sessions/
 //	    2026-05-29-2230-a1b2c3/    <- conversation directory
 //	      context.md                <- structured summary (AI recovery)
-//	      active_flow               <- persisted flow context
-//	    2026-05-29-2245-d4e5f6/
-//	      context.md
-//	      active_flow
+//	      trace.jsonl               <- per-session operational tracing
 //
 // Directory naming: YYYY-MM-DD-HHMM-<6 random hex chars>.
 // Sorting by name = sorting by creation time.
@@ -31,6 +28,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -215,13 +213,9 @@ func (l *Logger) CreateSession(round int, topic, input string) (string, error) {
 - **Started**: %s
 - **Status**: active
 
-## Latest Analysis
+## Current State
 
-_Awaiting first analysis..._
-
-## Round History
-
-_No rounds yet_
+_Awaiting first node..._
 `, name, round, topic, ts)
 	if err := os.WriteFile(ctxPath, []byte(ctx), 0644); err != nil {
 		return "", fmt.Errorf("eventlog: write context.md: %w", err)
@@ -260,6 +254,9 @@ func (l *Logger) RecordAnalysis(sessionName string, round int, status, taskType,
 
 // RecordNodeAnalysis records AI analysis for a specific node (simplified API).
 func (l *Logger) RecordNodeAnalysis(sessionName, taskID, analysis, flowName, nodeID string) error {
+	if l.Trace != nil {
+		l.Trace.NodeAnalysis(sessionName, taskID, flowName, nodeID, analysis)
+	}
 	return l.writeEvent(map[string]interface{}{
 		"event":    "node.analysis",
 		"ts":       now(),
@@ -268,6 +265,22 @@ func (l *Logger) RecordNodeAnalysis(sessionName, taskID, analysis, flowName, nod
 		"flow":     flowName,
 		"node":     nodeID,
 		"analysis": analysis,
+	})
+}
+
+// RecordNodeConclusion records AI conclusion for a specific node.
+func (l *Logger) RecordNodeConclusion(sessionName, taskID, conclusion, flowName, nodeID string) error {
+	if l.Trace != nil {
+		l.Trace.NodeAnalysis(sessionName, taskID, flowName, nodeID, "CONCLUSION: "+conclusion)
+	}
+	return l.writeEvent(map[string]interface{}{
+		"event":      "node.conclusion",
+		"ts":         now(),
+		"session":    sessionName,
+		"task":       taskID,
+		"flow":       flowName,
+		"node":       nodeID,
+		"conclusion": conclusion,
 	})
 }
 
@@ -305,6 +318,9 @@ func (l *Logger) TaskStatusChange(sessionName, taskID, from, to string) error {
 
 // FlowStarted writes a flow.started event to the global events.mdl.
 func (l *Logger) FlowStarted(sessionName, taskID, flowName, nodeID string) error {
+	if l.Trace != nil {
+		l.Trace.NodeEnter(sessionName, taskID, nodeID, "Flow Started", flowName)
+	}
 	return l.writeEvent(FlowStarted{
 		Event:   EventFlowStarted,
 		TS:      now(),
@@ -317,6 +333,9 @@ func (l *Logger) FlowStarted(sessionName, taskID, flowName, nodeID string) error
 
 // FlowNodeAdvance writes a flow.node event to the global events.mdl.
 func (l *Logger) FlowNodeAdvance(sessionName, taskID, nodeID, nodeName, phase, flowName string) error {
+	if l.Trace != nil {
+		l.Trace.NodeExit(sessionName, taskID, nodeID, nodeName, flowName, 0, "", "")
+	}
 	return l.writeEvent(FlowNode{
 		Event:    EventFlowNode,
 		TS:       now(),
@@ -352,6 +371,19 @@ func (l *Logger) Error(sessionName, taskID, errMsg string) error {
 	})
 }
 
+// MarkSessionCompleted updates the session status in context.md to "completed".
+func (l *Logger) MarkSessionCompleted(sessionName string) error {
+	existing, err := l.ReadContext(sessionName)
+	if err != nil {
+		return err
+	}
+	if existing == "" {
+		return nil
+	}
+	updated := strings.Replace(existing, "- **Status**: active", "- **Status**: completed", 1)
+	return l.WriteContext(sessionName, updated)
+}
+
 // ─── context.md ──────────────────────────────────────────────────────────────
 
 // WriteContext writes or updates the session's context.md with a structured
@@ -365,96 +397,153 @@ func (l *Logger) WriteContext(sessionName string, content string) error {
 
 // UpdateContextSnapshot writes a lightweight context.md snapshot for v4#23:
 // auto-updates on every node advance so AI can recover session context.
-func (l *Logger) UpdateContextSnapshot(sessionName, taskID, flowName, nodeName, phase, statusLine, userInput, analysis string) error {
-	// Read existing context.md to preserve Round/Topic/Started/Round History
+// Analysis/conclusion are accumulative: each new round is prepended to the
+// existing Current State (newest first), so the full task analysis trail is
+// visible at the top level.
+func (l *Logger) UpdateContextSnapshot(sessionName, taskID, flowName, nodeName, phase, statusLine, userInput, analysis, conclusion string) error {
 	existing, _ := l.ReadContext(sessionName)
 
-	var b strings.Builder
-
-	// Preserve header section (everything before "## Current State" or "## Latest Analysis")
-	// If no existing content, create a minimal header
+	// Extract old Current State before any modification
+	oldState := ""
 	if existing != "" {
-		// Find the first "## Current State" or "## Latest Analysis" marker
-		cutIdx := -1
-		for _, marker := range []string{"## Current State", "## Latest Analysis"} {
-			idx := strings.Index(existing, marker)
-			if idx >= 0 && (cutIdx < 0 || idx < cutIdx) {
-				cutIdx = idx
-			}
-		}
-		if cutIdx > 0 {
-			b.WriteString(existing[:cutIdx])
-		} else {
-			// No markers found — keep the header (everything before last _Last updated_)
-			lastUpdatedIdx := strings.LastIndex(existing, "_Last updated:")
-			if lastUpdatedIdx > 0 {
-				// Walk back to start of line
-				lineStart := strings.LastIndex(existing[:lastUpdatedIdx], "\n")
-				if lineStart > 0 {
-					b.WriteString(existing[:lineStart+1])
-				} else {
-					b.WriteString(existing)
-				}
-			} else {
-				b.WriteString(existing)
-			}
-		}
-	} else {
-		// No existing content — write a fresh header
-		b.WriteString(fmt.Sprintf("# Session: %s\n\n", sessionName))
-		b.WriteString("- **Status**: active\n")
-		if flowName != "" {
-			b.WriteString(fmt.Sprintf("- **Flow**: %s\n", flowName))
-		}
-		b.WriteString("\n")
+		oldState = extractCurrentState(existing)
 	}
 
-	// Write current state section
-	b.WriteString("## Current State\n\n")
+	// Increment round counter and capture topic from first user input
+	round, topic := extractHeader(existing)
+	if topic == "" && userInput != "" {
+		topic = userInput
+		if len([]rune(topic)) > 80 {
+			topic = string([]rune(topic)[:80]) + "..."
+		}
+	}
+	round++
+
+	var history strings.Builder
+	newState := buildRound(round, flowName, nodeName, phase, statusLine, userInput, analysis, conclusion)
+
+	// Move old Current State into Round History (full snapshot)
+	hasOldContent := oldState != "" && !strings.Contains(oldState, "_Awaiting first node..._")
+	if hasOldContent {
+		history.WriteString("\n## Round History\n\n")
+		history.WriteString(fmt.Sprintf("### %s\n\n", roundTimestamp(existing)))
+		history.WriteString(oldState)
+		history.WriteString("\n")
+	}
+
+	// Accumulate: prepend new round's content before old Current State
+	// so the full analysis trail is visible (newest first)
+	currentState := newState
+	if hasOldContent {
+		currentState = newState + "\n\n---\n\n" + oldState
+	}
+
+	// Build fresh header (always overwrite placeholders)
+	header := fmt.Sprintf(`# Session: %s
+
+- **Round**: R%d
+- **Topic**: %s
+- **Started**: %s
+- **Status**: active
+`, sessionName, round, topic, startedTime(existing))
+
+	body := header + "\n## Current State\n\n" + currentState + history.String()
+	return l.WriteContext(sessionName, body)
+}
+
+// extractHeader parses the existing header for round and topic.
+func extractHeader(existing string) (round int, topic string) {
+	if existing == "" {
+		return 0, ""
+	}
+	for _, line := range strings.Split(existing, "\n") {
+		line = strings.TrimSpace(line)
+		switch {
+		case strings.HasPrefix(line, "- **Round**: R"):
+			n, err := strconv.Atoi(strings.TrimPrefix(line, "- **Round**: R"))
+			if err == nil {
+				round = n
+			}
+		case strings.HasPrefix(line, "- **Topic**: "):
+			topic = strings.TrimPrefix(line, "- **Topic**: ")
+		}
+	}
+	return round, topic
+}
+
+// extractCurrentState pulls the "## Current State" block out of existing content.
+func extractCurrentState(existing string) string {
+	const marker = "## Current State"
+	idx := strings.Index(existing, marker)
+	if idx < 0 {
+		return ""
+	}
+	rest := existing[idx+len(marker):]
+	// Trim until next top-level "## " heading or end
+	if endIdx := strings.Index(rest, "\n## "); endIdx >= 0 {
+		return strings.TrimSpace(rest[:endIdx+1])
+	}
+	return strings.TrimSpace(rest)
+}
+
+func roundTimestamp(existing string) string {
+	for _, line := range strings.Split(existing, "\n") {
+		if strings.HasPrefix(strings.TrimSpace(line), "_Last updated:") {
+			return strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(line), "_Last updated:"))
+		}
+	}
+	return time.Now().UTC().Format(time.RFC3339)
+}
+
+func startedTime(existing string) string {
+	for _, line := range strings.Split(existing, "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "- **Started**: ") {
+			return strings.TrimPrefix(line, "- **Started**: ")
+		}
+	}
+	return time.Now().UTC().Format(time.RFC3339)
+}
+
+func buildRound(round int, flowName, nodeName, phase, statusLine, userInput, analysis, conclusion string) string {
+	var b strings.Builder
+	b.WriteString(fmt.Sprintf("- **Node**: %s", nodeName))
+	if phase != "" {
+		b.WriteString(fmt.Sprintf(" (%s)", phase))
+	}
+	b.WriteString("\n")
 	if flowName != "" {
 		b.WriteString(fmt.Sprintf("- **Flow**: %s\n", flowName))
-	}
-	if nodeName != "" {
-		b.WriteString(fmt.Sprintf("- **Current Node**: %s\n", nodeName))
-	}
-	if phase != "" {
-		b.WriteString(fmt.Sprintf("- **Phase**: %s\n", phase))
-	}
-	if taskID != "" {
-		b.WriteString(fmt.Sprintf("- **Task**: %s\n", taskID))
 	}
 	if statusLine != "" {
 		b.WriteString(fmt.Sprintf("- **StatusLine**: `%s`\n", statusLine))
 	}
 	if userInput != "" {
-		// Truncate long input for context.md readability
-		displayInput := userInput
-		if len([]rune(displayInput)) > 200 {
-			displayInput = string([]rune(displayInput)[:200]) + "..."
+		input := userInput
+		if len([]rune(input)) > 200 {
+			input = string([]rune(input)[:200]) + "..."
 		}
-		b.WriteString(fmt.Sprintf("- **User Input**: %s\n", displayInput))
-	} else if existing != "" {
-		// Preserve existing User Input if no new input provided (auto-advance case)
-		if idx := strings.Index(existing, "- **User Input**:"); idx >= 0 {
-			endIdx := strings.Index(existing[idx:], "\n")
-			if endIdx >= 0 {
-				b.WriteString(existing[idx : idx+endIdx+1])
-			} else {
-				b.WriteString(existing[idx:])
-			}
-		}
+		b.WriteString(fmt.Sprintf("- **User Input**: %s\n", input))
 	}
-	if analysis != "" {
-		// Truncate long analysis for context.md readability
-		displayAnalysis := analysis
-		if len([]rune(displayAnalysis)) > 500 {
-			displayAnalysis = string([]rune(displayAnalysis)[:500]) + "..."
-		}
-		b.WriteString(fmt.Sprintf("- **Analysis**: %s\n", displayAnalysis))
-	}
-	b.WriteString(fmt.Sprintf("\n_Last updated: %s_\n", now()))
 
-	return l.WriteContext(sessionName, b.String())
+	b.WriteString("\n### Analysis\n\n")
+	if analysis != "" {
+		b.WriteString(analysis)
+		b.WriteString("\n")
+	} else {
+		b.WriteString("_No analysis recorded this round._\n")
+	}
+
+	b.WriteString("\n### Conclusion\n\n")
+	if conclusion != "" {
+		b.WriteString(conclusion)
+		b.WriteString("\n")
+	} else {
+		b.WriteString("_No conclusion recorded this round._\n")
+	}
+
+	b.WriteString(fmt.Sprintf("\n_Last updated: %s_", time.Now().UTC().Format(time.RFC3339)))
+	return b.String()
 }
 
 // ReadContext returns the context.md for the given session, or empty string.
@@ -559,6 +648,25 @@ func (l *Logger) LastSessionName() (string, error) {
 		return "", nil
 	}
 	return names[0], nil
+}
+
+// CurrentNode reads events.mdl and returns the node ID of the most recent
+// flow.node event for the given session. Returns empty string if no node
+// has been advanced yet.
+func (l *Logger) CurrentNode(sessionName string) string {
+	events, err := l.ReadEvents(sessionName)
+	if err != nil || len(events) == 0 {
+		return ""
+	}
+	for i := len(events) - 1; i >= 0; i-- {
+		evt := events[i]
+		if ev, ok := evt["event"].(string); ok && (ev == EventFlowNode || ev == EventFlowStarted) {
+			if n, ok := evt["node"].(string); ok && n != "" {
+				return n
+			}
+		}
+	}
+	return ""
 }
 
 // ReadEvents reads all events from the global events.mdl file.
@@ -739,4 +847,77 @@ func (l *Logger) writeLocked(dir string, fn func() error) error {
 
 func now() string {
 	return time.Now().UTC().Format("2006-01-02T15:04:05Z")
+}
+
+// ─── round directory (per-round analysis artifacts) ─────────────────────────
+
+// SessionDir returns the full path to a session directory.
+func (l *Logger) SessionDir(sessionName string) string {
+	return filepath.Join(l.sessionsDir, sessionName)
+}
+
+// LatestRoundDir scans the session directory for r{N}/ subdirectories,
+// returns the latest one and its round number N.
+func (l *Logger) LatestRoundDir(sessionName string) (string, int, error) {
+	dir := l.SessionDir(sessionName)
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return "", 0, fmt.Errorf("eventlog: read session dir %s: %w", dir, err)
+	}
+	var maxN int
+	var maxDir string
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		name := e.Name()
+		if !strings.HasPrefix(name, "r") {
+			continue
+		}
+		n, err := strconv.Atoi(name[1:])
+		if err != nil {
+			continue
+		}
+		if n > maxN {
+			maxN = n
+			maxDir = name
+		}
+	}
+	if maxDir == "" {
+		return "", 0, fmt.Errorf("eventlog: no round directory found in %s", dir)
+	}
+	return filepath.Join(dir, maxDir), maxN, nil
+}
+
+// NextRoundDir creates the next r{N+1}/ directory under the session dir.
+// Returns the full path and the round number.
+func (l *Logger) NextRoundDir(sessionName string) (string, int, error) {
+	_, prevN, err := l.LatestRoundDir(sessionName)
+	if err != nil {
+		prevN = 0 // first round: no previous dir found
+	}
+	nextN := prevN + 1
+	dir := filepath.Join(l.SessionDir(sessionName), fmt.Sprintf("r%d", nextN))
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return "", 0, fmt.Errorf("eventlog: create round dir %s: %w", dir, err)
+	}
+	return dir, nextN, nil
+}
+
+// ReadLatestAnalysis reads analysis.md and conclusion.md from the latest round
+// directory. Returns analysis content, conclusion content, round number, and error.
+func (l *Logger) ReadLatestAnalysis(sessionName string) (analysis, conclusion string, round int, err error) {
+	dir, n, err := l.LatestRoundDir(sessionName)
+	if err != nil {
+		return "", "", 0, err
+	}
+	analysisBytes, err := os.ReadFile(filepath.Join(dir, "analysis.md"))
+	if err != nil {
+		return "", "", n, fmt.Errorf("eventlog: read analysis.md from %s: %w", dir, err)
+	}
+	conclusionBytes, err := os.ReadFile(filepath.Join(dir, "conclusion.md"))
+	if err != nil {
+		return "", "", n, fmt.Errorf("eventlog: read conclusion.md from %s: %w", dir, err)
+	}
+	return string(analysisBytes), string(conclusionBytes), n, nil
 }
