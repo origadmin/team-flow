@@ -1,0 +1,358 @@
+{
+  "components": {
+    "roles": [],
+    "rules": [],
+    "skills": [],
+    "tools": [
+      {
+        "commands": [
+          "create",
+          "update",
+          "close",
+          "show",
+          "list",
+          "ready",
+          "append",
+          "dep"
+        ],
+        "id": "task",
+        "name": "Task CLI",
+        "type": "cli"
+      },
+      {
+        "id": "search",
+        "name": "Code Search",
+        "type": "builtin"
+      },
+      {
+        "id": "file-ops",
+        "name": "File Operations",
+        "type": "builtin"
+      }
+    ]
+  },
+  "config": {
+    "auto_dispatch": true,
+    "parallel_limit": 1,
+    "task_type": "analysis",
+    "timeout_minutes": 180
+  },
+  "edges": [
+    {
+      "from": "phase-triage",
+      "id": "e-triage-gate",
+      "to": "gate-entry"
+    },
+    {
+      "conditions": [
+        {
+          "expression": "gate.passed"
+        }
+      ],
+      "from": "gate-entry",
+      "id": "e-gate-analyze",
+      "to": "phase-analyze",
+      "type": "conditional"
+    },
+    {
+      "conditions": [
+        {
+          "expression": "!gate.passed"
+        }
+      ],
+      "from": "gate-entry",
+      "id": "e-gate-reject",
+      "to": "terminal-reject",
+      "type": "conditional"
+    },
+    {
+      "from": "phase-analyze",
+      "id": "e-analyze-report",
+      "to": "phase-report"
+    },
+    {
+      "from": "phase-report",
+      "id": "e-report-completion",
+      "to": "gate-completion"
+    },
+    {
+      "conditions": [
+        {
+          "expression": "gate.passed"
+        }
+      ],
+      "from": "gate-completion",
+      "id": "e-completion-success",
+      "to": "terminal-success",
+      "type": "conditional"
+    },
+    {
+      "conditions": [
+        {
+          "expression": "!gate.passed"
+        }
+      ],
+      "from": "gate-completion",
+      "id": "e-completion-report",
+      "to": "phase-report",
+      "type": "conditional"
+    }
+  ],
+  "metadata": {
+    "author": "team-flow",
+    "description": "Analysis flow: Triage → Gate → Analyze → Report → Completion Gate → Terminal",
+    "name": "analysis-flow",
+    "tags": [
+      "analysis",
+      "research",
+      "investigation"
+    ]
+  },
+  "nodes": [
+    {
+      "components": {
+        "prompts": [
+          {
+            "path": "{TEAM_PATH}/prompts/triage.md",
+            "ref": "triage",
+            "source": "file"
+          }
+        ],
+        "roles": [
+          {
+            "ref": "triage",
+            "source": "team"
+          }
+        ],
+        "rules": [
+          {
+            "ref": "d1a",
+            "source": "builtin"
+          }
+        ]
+      },
+      "config": {
+        "auto_dispatch": true,
+        "role": "Triage"
+      },
+      "description": "Classify and validate the analysis request",
+      "docs": [
+        {
+          "description": "Analysis triage record with research question, scope, and dispatch decision",
+          "format": "markdown",
+          "name": "TRIAGE.md",
+          "path": "{DOCS_INTERNAL}/{task_id}/TRIAGE.md",
+          "required": true
+        }
+      ],
+      "id": "phase-triage",
+      "name": "Analysis Triage",
+      "on_enter": [
+        {
+          "action": "update_task_phase",
+          "phase": "ready"
+        }
+      ],
+      "type": "phase"
+    },
+    {
+      "config": {
+        "conditions": [
+          {
+            "type": "task_exists"
+          },
+          {
+            "expected": "analysis",
+            "type": "type_matches"
+          }
+        ],
+        "on_fail": "terminal-reject",
+        "on_pass": "phase-analyze"
+      },
+      "description": "Validate analysis request has clear research question",
+      "id": "gate-entry",
+      "name": "Entry Gate",
+      "type": "gate"
+    },
+    {
+      "components": {
+        "prompts": [
+          {
+            "path": "{TEAM_PATH}/prompts/analysis.md",
+            "ref": "analysis",
+            "source": "file"
+          }
+        ],
+        "roles": [
+          {
+            "ref": "analysis",
+            "source": "team"
+          }
+        ],
+        "rules": [
+          {
+            "ref": "d2b",
+            "source": "framework"
+          }
+        ],
+        "tools": [
+          {
+            "commands": [
+              "show",
+              "update",
+              "append"
+            ],
+            "ref": "task"
+          },
+          {
+            "ref": "search"
+          }
+        ]
+      },
+      "config": {
+        "auto_dispatch": true,
+        "deliverables": [
+          "FINDINGS.md"
+        ],
+        "role": "Analysis"
+      },
+      "description": "Perform deep analysis and gather findings",
+      "docs": [
+        {
+          "description": "Analysis findings: investigation results, evidence, patterns, technical insights",
+          "format": "markdown",
+          "name": "FINDINGS.md",
+          "path": "{DOCS_INTERNAL}/{task_id}/FINDINGS.md",
+          "required": true
+        }
+      ],
+      "id": "phase-analyze",
+      "name": "Deep Analysis",
+      "on_enter": [
+        {
+          "action": "update_task_phase",
+          "phase": "analyze"
+        }
+      ],
+      "type": "phase"
+    },
+    {
+      "components": {
+        "prompts": [
+          {
+            "path": "{TEAM_PATH}/prompts/analysis.md",
+            "ref": "analysis",
+            "source": "file"
+          }
+        ],
+        "roles": [
+          {
+            "ref": "analysis",
+            "source": "team"
+          }
+        ],
+        "rules": [
+          {
+            "ref": "d2b",
+            "source": "framework"
+          }
+        ]
+      },
+      "config": {
+        "auto_dispatch": true,
+        "deliverables": [
+          "REPORT.md"
+        ],
+        "role": "Analysis"
+      },
+      "description": "Compile analysis results into a structured report",
+      "docs": [
+        {
+          "description": "Final analysis report: conclusions, recommendations, action items, risk assessment",
+          "format": "markdown",
+          "name": "REPORT.md",
+          "path": "{DOCS_INTERNAL}/{task_id}/REPORT.md",
+          "required": true
+        }
+      ],
+      "id": "phase-report",
+      "name": "Analysis Report",
+      "on_enter": [
+        {
+          "action": "update_task_phase",
+          "phase": "review"
+        }
+      ],
+      "on_exit": [
+        {
+          "action": "custom",
+          "message": "Verify Output Guard 5-step protocol completed",
+          "name": "output-guard-check"
+        }
+      ],
+      "type": "phase"
+    },
+    {
+      "config": {
+        "conditions": [
+          {
+            "deliverables": [
+              "FINDINGS.md",
+              "REPORT.md"
+            ],
+            "type": "deliverables_complete"
+          },
+          {
+            "check": "Output Guard Summary all passed",
+            "required": true,
+            "type": "custom"
+          },
+          {
+            "check": "User confirmation received",
+            "required": true,
+            "type": "custom"
+          }
+        ],
+        "on_fail": "phase-report",
+        "on_pass": "terminal-success"
+      },
+      "description": "Final gate verifying all deliverables exist and user confirmation received",
+      "id": "gate-completion",
+      "name": "Completion Gate",
+      "type": "gate"
+    },
+    {
+      "config": {
+        "message": "Analysis flow completed successfully",
+        "status": "success"
+      },
+      "description": "Analysis completed and report delivered",
+      "id": "terminal-success",
+      "name": "Analysis Complete",
+      "on_exit": [
+        {
+          "action": "custom",
+          "message": "Generate handoff document at session end",
+          "name": "handoff-doc"
+        }
+      ],
+      "type": "terminal"
+    },
+    {
+      "config": {
+        "message": "Analysis request does not meet requirements",
+        "status": "rejected"
+      },
+      "description": "Analysis request rejected at entry gate",
+      "id": "terminal-reject",
+      "name": "Rejected",
+      "type": "terminal"
+    }
+  ],
+  "variables": {
+    "DOCS_INTERNAL": "",
+    "TEAM_PATH": "",
+    "task_id": ""
+  },
+  "version": "v3"
+}

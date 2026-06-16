@@ -1,0 +1,428 @@
+{
+  "components": {
+    "roles": [],
+    "rules": [],
+    "skills": [],
+    "tools": [
+      {
+        "commands": [
+          "create",
+          "update",
+          "close",
+          "show",
+          "list",
+          "ready",
+          "append",
+          "dep"
+        ],
+        "id": "task",
+        "name": "Task CLI",
+        "type": "cli"
+      },
+      {
+        "id": "search",
+        "name": "Code Search",
+        "type": "builtin"
+      },
+      {
+        "id": "file-ops",
+        "name": "File Operations",
+        "type": "builtin"
+      }
+    ]
+  },
+  "config": {
+    "auto_dispatch": true,
+    "parallel_limit": 3,
+    "task_type": "batch",
+    "timeout_minutes": 360
+  },
+  "edges": [
+    {
+      "from": "phase-triage",
+      "id": "e-triage-gate",
+      "to": "gate-entry"
+    },
+    {
+      "conditions": [
+        {
+          "expression": "gate.passed"
+        }
+      ],
+      "from": "gate-entry",
+      "id": "e-gate-execute",
+      "to": "phase-execute",
+      "type": "conditional"
+    },
+    {
+      "conditions": [
+        {
+          "expression": "!gate.passed"
+        }
+      ],
+      "from": "gate-entry",
+      "id": "e-gate-reject",
+      "to": "terminal-reject",
+      "type": "conditional"
+    },
+    {
+      "from": "phase-execute",
+      "id": "e-execute-gate",
+      "to": "gate-quality"
+    },
+    {
+      "conditions": [
+        {
+          "expression": "gate.passed"
+        }
+      ],
+      "from": "gate-quality",
+      "id": "e-gate-verify",
+      "to": "phase-verify",
+      "type": "conditional"
+    },
+    {
+      "conditions": [
+        {
+          "expression": "!gate.passed"
+        }
+      ],
+      "from": "gate-quality",
+      "id": "e-gate-execute-retry",
+      "to": "phase-execute",
+      "type": "conditional"
+    },
+    {
+      "from": "phase-verify",
+      "id": "e-verify-completion",
+      "to": "gate-completion"
+    },
+    {
+      "conditions": [
+        {
+          "expression": "gate.passed"
+        }
+      ],
+      "from": "gate-completion",
+      "id": "e-completion-success",
+      "to": "terminal-success",
+      "type": "conditional"
+    },
+    {
+      "conditions": [
+        {
+          "expression": "!gate.passed"
+        }
+      ],
+      "from": "gate-completion",
+      "id": "e-completion-verify",
+      "to": "phase-verify",
+      "type": "conditional"
+    }
+  ],
+  "metadata": {
+    "author": "team-flow",
+    "description": "Batch task flow: Triage → Gate → Execute → Quality Gate → Verify → Completion Gate → Terminal",
+    "name": "batch-flow",
+    "tags": [
+      "batch",
+      "bulk",
+      "software"
+    ]
+  },
+  "nodes": [
+    {
+      "components": {
+        "prompts": [
+          {
+            "path": "{TEAM_PATH}/prompts/triage.md",
+            "ref": "triage",
+            "source": "file"
+          }
+        ],
+        "roles": [
+          {
+            "ref": "triage",
+            "source": "team"
+          }
+        ],
+        "rules": [
+          {
+            "ref": "d1a",
+            "source": "builtin"
+          }
+        ]
+      },
+      "config": {
+        "auto_dispatch": true,
+        "role": "Triage"
+      },
+      "description": "Classify and validate the batch task",
+      "docs": [
+        {
+          "description": "Batch triage record with task list, scope, and dispatch decision",
+          "format": "markdown",
+          "name": "TRIAGE.md",
+          "path": "{DOCS_INTERNAL}/{task_id}/TRIAGE.md",
+          "required": true
+        }
+      ],
+      "id": "phase-triage",
+      "name": "Batch Triage",
+      "on_enter": [
+        {
+          "action": "update_task_phase",
+          "phase": "ready"
+        }
+      ],
+      "type": "phase"
+    },
+    {
+      "config": {
+        "conditions": [
+          {
+            "type": "task_exists"
+          },
+          {
+            "expected": "batch",
+            "type": "type_matches"
+          }
+        ],
+        "on_fail": "terminal-reject",
+        "on_pass": "phase-execute"
+      },
+      "description": "Validate batch task has clear scope and task list",
+      "id": "gate-entry",
+      "name": "Entry Gate",
+      "type": "gate"
+    },
+    {
+      "components": {
+        "prompts": [
+          {
+            "path": "{TEAM_PATH}/prompts/dev.md",
+            "ref": "dev",
+            "source": "file"
+          }
+        ],
+        "roles": [
+          {
+            "ref": "dev",
+            "source": "team"
+          }
+        ],
+        "rules": [
+          {
+            "ref": "d5f",
+            "source": "builtin"
+          },
+          {
+            "ref": "d4e",
+            "source": "builtin"
+          }
+        ],
+        "tools": [
+          {
+            "ref": "task"
+          },
+          {
+            "ref": "search"
+          },
+          {
+            "ref": "file-ops"
+          }
+        ]
+      },
+      "config": {
+        "auto_dispatch": true,
+        "deliverables": [
+          "code",
+          "tests"
+        ],
+        "role": "Dev"
+      },
+      "description": "Execute the batch task items",
+      "docs": [
+        {
+          "description": "Batch execution notes: items processed, changes made, test results",
+          "format": "markdown",
+          "name": "EXEC.md",
+          "path": "{DOCS_INTERNAL}/{task_id}/EXEC.md",
+          "required": true
+        }
+      ],
+      "id": "phase-execute",
+      "name": "Batch Execution",
+      "on_enter": [
+        {
+          "action": "update_task_phase",
+          "phase": "implement"
+        }
+      ],
+      "type": "phase"
+    },
+    {
+      "config": {
+        "auto_retry": {
+          "delay_minutes": 5,
+          "max_attempts": 2
+        },
+        "conditions": [
+          {
+            "threshold": "100%",
+            "type": "tests_pass"
+          },
+          {
+            "threshold": "0 errors",
+            "type": "lint_pass"
+          },
+          {
+            "type": "no_regressions"
+          },
+          {
+            "check": "No Chinese comments in code",
+            "required": true,
+            "type": "custom"
+          }
+        ],
+        "on_fail": "phase-execute",
+        "on_pass": "phase-verify"
+      },
+      "description": "Verify batch execution passes all tests",
+      "id": "gate-quality",
+      "name": "Quality Gate",
+      "type": "gate"
+    },
+    {
+      "components": {
+        "prompts": [
+          {
+            "path": "{TEAM_PATH}/prompts/dev.md",
+            "ref": "dev",
+            "source": "file"
+          }
+        ],
+        "roles": [
+          {
+            "ref": "dev",
+            "source": "team"
+          }
+        ],
+        "rules": [
+          {
+            "ref": "d2b",
+            "source": "framework"
+          }
+        ]
+      },
+      "config": {
+        "auto_dispatch": true,
+        "deliverables": [
+          "SCOPE.md"
+        ],
+        "role": "Dev"
+      },
+      "description": "Verify batch results and produce scope document",
+      "docs": [
+        {
+          "content_rules": [
+            "Must contain: changed files, added files, deleted files, risk assessment"
+          ],
+          "description": "Batch scope: what was processed, changed, and any known issues",
+          "format": "markdown",
+          "name": "SCOPE.md",
+          "path": "{DOCS_INTERNAL}/{task_id}/SCOPE.md",
+          "required": true,
+          "template": "{TEAM_PATH}/templates/scope-template.md"
+        }
+      ],
+      "id": "phase-verify",
+      "name": "Batch Verification",
+      "on_enter": [
+        {
+          "action": "update_task_phase",
+          "phase": "verify"
+        }
+      ],
+      "on_exit": [
+        {
+          "action": "custom",
+          "message": "Verify Output Guard 5-step protocol completed",
+          "name": "output-guard-check"
+        }
+      ],
+      "type": "phase"
+    },
+    {
+      "config": {
+        "conditions": [
+          {
+            "deliverables": [
+              "EXEC.md",
+              "SCOPE.md"
+            ],
+            "type": "deliverables_complete"
+          },
+          {
+            "threshold": "100%",
+            "type": "tests_pass"
+          },
+          {
+            "check": "Output Guard Summary all passed",
+            "required": true,
+            "type": "custom"
+          },
+          {
+            "check": "User confirmation received",
+            "required": true,
+            "type": "custom"
+          },
+          {
+            "check": "SCOPE.md generated",
+            "required": true,
+            "type": "custom"
+          }
+        ],
+        "on_fail": "phase-verify",
+        "on_pass": "terminal-success"
+      },
+      "description": "Final gate verifying all deliverables exist and user confirmation received",
+      "id": "gate-completion",
+      "name": "Completion Gate",
+      "type": "gate"
+    },
+    {
+      "config": {
+        "message": "Batch flow completed successfully",
+        "status": "success"
+      },
+      "description": "Batch task completed successfully",
+      "id": "terminal-success",
+      "name": "Batch Complete",
+      "on_exit": [
+        {
+          "action": "custom",
+          "message": "Generate handoff document at session end",
+          "name": "handoff-doc"
+        }
+      ],
+      "type": "terminal"
+    },
+    {
+      "config": {
+        "message": "Batch task does not meet requirements",
+        "status": "rejected"
+      },
+      "description": "Batch task rejected at entry gate",
+      "id": "terminal-reject",
+      "name": "Rejected",
+      "type": "terminal"
+    }
+  ],
+  "variables": {
+    "DOCS_INTERNAL": "",
+    "TEAM_PATH": "",
+    "task_id": ""
+  },
+  "version": "v3"
+}
