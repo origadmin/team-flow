@@ -30,6 +30,11 @@
   ],
   "roles": [
     {
+      "id": "triage",
+      "prompt_source": "assets/skill/v3/prompts/triage.md",
+      "principal": false
+    },
+    {
       "id": "pm",
       "prompt_source": "assets/skill/v3/prompts/pm.md",
       "principal": true

@@ -17,7 +17,6 @@ import (
 	"time"
 
 	skillfs "github.com/origadmin/team-flow"
-	"github.com/origadmin/team-flow/internal/bd"
 	"github.com/origadmin/team-flow/internal/config"
 	"github.com/origadmin/team-flow/internal/flow"
 	"github.com/origadmin/team-flow/internal/ide"
@@ -305,16 +304,10 @@ pipeline: bun run test | bun run build
 		if _, err := os.Stat(beadsDir); err == nil {
 			fmt.Println("  ✓ Task database already exists")
 		} else {
-			if bd.IsAvailable() {
-				if _, err := bd.Run("init"); err != nil {
-					fmt.Printf("  ⚠ Task database init failed: %v\n", err)
-					fmt.Println("  You can init later: flow task init")
-				} else {
-					fmt.Println("  ✓ Task database initialized")
-				}
+			if err := os.MkdirAll(filepath.Join(projectPath, ".team", "tasks"), 0755); err != nil {
+				fmt.Printf("  ⚠ Tasks directory failed: %v\n", err)
 			} else {
-				fmt.Println("  ⏭ Task database not available, skip init")
-				fmt.Println("    Restart your terminal and run: flow task init")
+				fmt.Println("  ✓ Tasks directory created")
 			}
 		}
 
@@ -441,14 +434,12 @@ pipeline: bun run test | bun run build
 		beadsDir := filepath.Join(projectPath, ".beads")
 		if _, err := os.Stat(beadsDir); err == nil {
 			fmt.Println("  ✓ Task database already exists")
-		} else if bd.IsAvailable() {
-			if _, err := bd.Run("init"); err != nil {
-				fmt.Printf("  ⚠ Task database init failed: %v\n", err)
-			} else {
-				fmt.Println("  ✓ Task database initialized")
-			}
 		} else {
-			fmt.Println("  ⏭ Task database not available, skip init")
+			if err := os.MkdirAll(filepath.Join(projectPath, ".team", "tasks"), 0755); err != nil {
+				fmt.Printf("  ⚠ Tasks directory failed: %v\n", err)
+			} else {
+				fmt.Println("  ✓ Tasks directory created")
+			}
 		}
 	}
 
@@ -605,36 +596,7 @@ func ensureCodeReviewGraph(pyPath string) {
 }
 
 func ensureBeads() {
-	if bd.IsAvailable() {
-		version, _ := exec.Command(bd.FindPath(), "--version").CombinedOutput()
-		fmt.Printf("  ✓ Task database found: %s (%s)\n", bd.FindPath(), strings.TrimSpace(string(version)))
-
-		if err := bd.EnsureOnPath(); err != nil {
-			fmt.Printf("  ⚠ Could not add to persistent PATH. Current session updated.\n")
-			fmt.Printf("    Manual: Add %s to your PATH\n", filepath.Dir(bd.FindPath()))
-		} else {
-			fmt.Printf("  ✓ Added %s to PATH\n", filepath.Dir(bd.FindPath()))
-		}
-		return
-	}
-
-	fmt.Println("  Task database not found.")
-	if autoYes || confirm("  Install task database?") {
-		if err := bd.Install(); err != nil {
-			fmt.Println("  ⚠ Auto install failed.")
-			fmt.Println("    Manual: https://github.com/steveyegge/beads")
-		} else {
-			fmt.Println("  ✓ Task database installed")
-			if err := bd.EnsureOnPath(); err != nil {
-				fmt.Println("  ⚠ Installed but could not be located.")
-				fmt.Println("    Restart your terminal and run: flow init")
-			} else {
-				fmt.Printf("  ✓ Added %s to PATH\n", filepath.Dir(bd.FindPath()))
-			}
-		}
-	} else {
-		fmt.Println("  ⏭ Skipped. Task tracking will use file-based fallback.")
-	}
+	fmt.Println("  ✓ Task management: local .team/tasks/ directory")
 }
 
 func ensureFlowBinary(projectPath string) {
@@ -750,7 +712,7 @@ func printVerify(projectPath, version string) {
 	} else {
 		fmt.Println("  ✗ python")
 	}
-	if bd.IsAvailable() {
+	if false {
 		fmt.Println("  ✓ flow task (task database)")
 	} else {
 		fmt.Println("  ✗ flow task (task database)")
@@ -1180,16 +1142,11 @@ Every response MUST start with the ` + "`status_line`" + ` from ` + "`flow proc 
 
 func installMCPConfig(projectPath string) {
 	pyPath := toolchain.FindPythonPath()
-	bdPath := bd.FindPath()
-
 	mcpPythonCmd := "python"
 	if pyPath != "" {
 		mcpPythonCmd = pyPath
 	}
 	mcpBdCmd := "bd"
-	if bdPath != "" {
-		mcpBdCmd = bdPath
-	}
 
 	mcpConfig := fmt.Sprintf(`{
   "mcpServers": {

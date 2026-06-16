@@ -8,11 +8,13 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/origadmin/team-flow/internal/config"
 	"github.com/origadmin/team-flow/internal/eventlog"
 	"github.com/origadmin/team-flow/internal/flow"
 	"github.com/origadmin/team-flow/internal/idgen"
+	"github.com/origadmin/team-flow/internal/task"
 	"github.com/origadmin/team-flow/internal/templates"
 	"github.com/origadmin/team-flow/internal/updater"
 	"github.com/origadmin/team-flow/internal/version"
@@ -253,6 +255,20 @@ Usage:
 	RunE: runRoundPath,
 }
 
+var autoAdvanceCmd = &cobra.Command{
+	Use:   "auto-advance [node-id]",
+	Short: "Auto-advance by reading analysis/conclusion from round files",
+	Long: `Automatically read analysis.md and conclusion.md from the current round directory
+and advance to the specified node. This command eliminates the need to manually specify
+--analysis-file and --conclusion-file flags.
+
+Usage:
+  flow proc auto-advance <node-id>      # Auto-read round files and advance
+  flow proc auto-advance                # Show help`,
+	Args: cobra.MaximumNArgs(1),
+	RunE: runAutoAdvance,
+}
+
 var (
 	gatePassCondition string
 	gatePassMessage   string
@@ -343,6 +359,7 @@ func init() {
 	Cmd.AddCommand(runCmd)
 	Cmd.AddCommand(nextCmd)
 	Cmd.AddCommand(roundPathCmd)
+	Cmd.AddCommand(autoAdvanceCmd)
 	Cmd.AddCommand(listCmd)
 	Cmd.AddCommand(showCmd)
 	Cmd.AddCommand(validateCmd)
@@ -515,8 +532,10 @@ func runRun(cmd *cobra.Command, args []string) error {
 		nodeID = args[0]
 	}
 
-	// Read analysis/conclusion from files if specified (overrides inline flags)
-	analysis := procAnalysis
+	// Read analysis/conclusion from files ONLY - inline flags are NOT allowed
+	// Standard workflow: AI writes analysis.md and conclusion.md to round directory,
+	// then flow proc run reads from those files via --analysis-file and --conclusion-file
+	analysis := ""
 	if procAnalysisFile != "" {
 		data, err := os.ReadFile(procAnalysisFile)
 		if err != nil {
@@ -524,7 +543,7 @@ func runRun(cmd *cobra.Command, args []string) error {
 		}
 		analysis = string(data)
 	}
-	conclusion := procConclusion
+	conclusion := ""
 	if procConclusionFile != "" {
 		data, err := os.ReadFile(procConclusionFile)
 		if err != nil {
@@ -533,14 +552,27 @@ func runRun(cmd *cobra.Command, args []string) error {
 		conclusion = string(data)
 	}
 
-	// Mandatory validation: analysis and conclusion are required when advancing
+	// Mandatory validation: analysis and conclusion files are required when advancing
 	// Exempt --new (new session creation) and rescue mode (no node-id provided)
 	if !procNewSession && nodeID != "" {
+		if procAnalysisFile == "" {
+			return fmt.Errorf("--analysis-file is required when advancing nodes. Use 'flow proc round-path' to get the directory, write analysis.md and conclusion.md, then use --analysis-file and --conclusion-file")
+		}
+		if procConclusionFile == "" {
+			return fmt.Errorf("--conclusion-file is required when advancing nodes. Use 'flow proc round-path' to get the directory, write analysis.md and conclusion.md, then use --analysis-file and --conclusion-file")
+		}
 		if analysis == "" {
-			return fmt.Errorf("--analysis is required when advancing nodes. Use --analysis or --analysis-file to provide the AI analysis for this round")
+			return fmt.Errorf("analysis file %s is empty", procAnalysisFile)
 		}
 		if conclusion == "" {
-			return fmt.Errorf("--conclusion is required when advancing nodes. Use --conclusion or --conclusion-file to provide the AI conclusion for this round")
+			return fmt.Errorf("conclusion file %s is empty", procConclusionFile)
+		}
+	}
+
+	// Restore task ID from session when --task is not explicitly provided
+	if procTaskID == "" && !procNewSession {
+		if lgr, err := eventlog.NewLogger(projectRoot); err == nil {
+			procTaskID = lgr.LastTask()
 		}
 	}
 
@@ -572,6 +604,34 @@ func runRun(cmd *cobra.Command, args []string) error {
 	}
 }
 
+func autoCreateTask(projectRoot string) (string, error) {
+	projectName := filepath.Base(projectRoot)
+	taskID := task.GenerateLocalTaskID(projectName)
+
+	t := &task.Task{
+		ID:          taskID,
+		Title:       "Auto-created task for new session",
+		Type:        "auto-task",
+		Status:      "open",
+		Description: "",
+		CreatedAt:   time.Now().UTC(),
+		UpdatedAt:   time.Now().UTC(),
+		Labels:      map[string]string{},
+		Notes:       []string{},
+	}
+
+	if err := task.SaveTask(projectRoot, t); err != nil {
+		return "", err
+	}
+
+	if lgr, err := eventlog.NewLogger(projectRoot); err == nil {
+		sessionName, _ := lgr.LastSessionName()
+		_ = lgr.TaskCreated(sessionName, taskID, "auto-task", "Auto-created task for new session")
+	}
+
+	return taskID, nil
+}
+
 func runNext(cmd *cobra.Command, args []string) error {
 	projectRoot := getProjectRootDir()
 	workspace := getWorkspaceRoot()
@@ -596,8 +656,10 @@ func runNext(cmd *cobra.Command, args []string) error {
 		nodeID = args[0]
 	}
 
-	// Read analysis/conclusion from files if specified (overrides inline flags)
-	analysis := procAnalysis
+	// Read analysis/conclusion from files ONLY - inline flags are NOT allowed
+	// Standard workflow: AI writes analysis.md and conclusion.md to round directory,
+	// then flow proc run reads from those files via --analysis-file and --conclusion-file
+	analysis := ""
 	if procAnalysisFile != "" {
 		data, err := os.ReadFile(procAnalysisFile)
 		if err != nil {
@@ -605,7 +667,7 @@ func runNext(cmd *cobra.Command, args []string) error {
 		}
 		analysis = string(data)
 	}
-	conclusion := procConclusion
+	conclusion := ""
 	if procConclusionFile != "" {
 		data, err := os.ReadFile(procConclusionFile)
 		if err != nil {
@@ -614,12 +676,18 @@ func runNext(cmd *cobra.Command, args []string) error {
 		conclusion = string(data)
 	}
 
-	// Mandatory validation: analysis and conclusion are required when advancing
+	// Mandatory validation: analysis and conclusion files are required when advancing
+	if procAnalysisFile == "" {
+		return fmt.Errorf("--analysis-file is required when advancing nodes. Use 'flow proc round-path' to get the directory, write analysis.md and conclusion.md, then use --analysis-file and --conclusion-file")
+	}
+	if procConclusionFile == "" {
+		return fmt.Errorf("--conclusion-file is required when advancing nodes. Use 'flow proc round-path' to get the directory, write analysis.md and conclusion.md, then use --analysis-file and --conclusion-file")
+	}
 	if analysis == "" {
-		return fmt.Errorf("--analysis is required when advancing nodes. Use --analysis or --analysis-file to provide the AI analysis for this round")
+		return fmt.Errorf("analysis file %s is empty", procAnalysisFile)
 	}
 	if conclusion == "" {
-		return fmt.Errorf("--conclusion is required when advancing nodes. Use --conclusion or --conclusion-file to provide the AI conclusion for this round")
+		return fmt.Errorf("conclusion file %s is empty", procConclusionFile)
 	}
 
 	req := ProcRunRequest{
@@ -735,6 +803,95 @@ func runNext(cmd *cobra.Command, args []string) error {
 	}
 }
 
+func runAutoAdvance(cmd *cobra.Command, args []string) error {
+	projectRoot := getProjectRootDir()
+	workspace := getWorkspaceRoot()
+
+	if workspace != "" && projectRoot == workspace {
+		if config.IsMonorepoWorkspace(workspace) {
+			projects := config.DiscoverProjects(workspace)
+			if len(projects) > 0 {
+				fmt.Fprintln(cmd.OutOrStdout(), "⛔ WORKSPACE ROOT DETECTED")
+				fmt.Fprintln(cmd.OutOrStdout(), "  Current directory is a monorepo workspace, not a project.")
+				return fmt.Errorf("workspace root is not a project directory")
+			}
+		}
+	}
+
+	nodeID := ""
+	if len(args) > 0 {
+		nodeID = args[0]
+	}
+	if nodeID == "" {
+		return fmt.Errorf("node-id is required. Usage: flow proc auto-advance <node-id>")
+	}
+
+	lgr, err := eventlog.NewLogger(projectRoot)
+	if err != nil {
+		return fmt.Errorf("eventlog init: %w", err)
+	}
+
+	sessionName, err := lgr.LastSessionName()
+	if err != nil {
+		return fmt.Errorf("no active session: %w", err)
+	}
+
+	dir, round, err := lgr.NextRoundDir(sessionName)
+	if err != nil {
+		return fmt.Errorf("get round dir: %w", err)
+	}
+
+	analysisPath := filepath.Join(dir, "analysis.md")
+	conclusionPath := filepath.Join(dir, "conclusion.md")
+
+	if _, err := os.Stat(analysisPath); os.IsNotExist(err) {
+		return fmt.Errorf("analysis file not found: %s. Run 'flow proc round-path' to get the directory, write analysis.md and conclusion.md, then try again", analysisPath)
+	}
+	if _, err := os.Stat(conclusionPath); os.IsNotExist(err) {
+		return fmt.Errorf("conclusion file not found: %s. Run 'flow proc round-path' to get the directory, write analysis.md and conclusion.md, then try again", conclusionPath)
+	}
+
+	fmt.Fprintf(cmd.ErrOrStderr(), "  Reading round %d files:\n", round)
+	fmt.Fprintf(cmd.ErrOrStderr(), "    analysis: %s\n", analysisPath)
+	fmt.Fprintf(cmd.ErrOrStderr(), "    conclusion: %s\n", conclusionPath)
+
+	analysis, err := os.ReadFile(analysisPath)
+	if err != nil {
+		return fmt.Errorf("read analysis file: %w", err)
+	}
+	conclusion, err := os.ReadFile(conclusionPath)
+	if err != nil {
+		return fmt.Errorf("read conclusion file: %w", err)
+	}
+
+	req := ProcRunRequest{
+		FlowName:    procFlowName,
+		NodeID:      nodeID,
+		TaskID:      procTaskID,
+		ProjectRoot: projectRoot,
+		Workspace:   workspace,
+		Format:      procFormat,
+		RunGate:     procRunGate,
+		Input:       procInput,
+		Analysis:    string(analysis),
+		Conclusion:  string(conclusion),
+		NewSession:  false,
+	}
+
+	engine := NewProcRunEngine(projectRoot)
+	result, err := engine.Run(context.Background(), req)
+	if err != nil {
+		return err
+	}
+
+	switch procFormat {
+	case "text":
+		return FormatText(cmd.OutOrStdout(), result)
+	default:
+		return FormatJSON(cmd.OutOrStdout(), result)
+	}
+}
+
 // runRoundPath outputs the path where AI should write per-round analysis files.
 func runRoundPath(cmd *cobra.Command, args []string) error {
 	projectRoot := getProjectRootDir()
@@ -757,19 +914,35 @@ func runRoundPath(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("create round dir: %w", err)
 	}
 
+	analysisPath := filepath.Join(dir, "analysis.md")
+	conclusionPath := filepath.Join(dir, "conclusion.md")
+
 	if procFormat == "json" {
 		data, err := json.MarshalIndent(struct {
-			AnalysisDir string `json:"analysis_dir"`
-			Round       int    `json:"round"`
-			Session     string `json:"session"`
-		}{AnalysisDir: dir, Round: round, Session: sessionName}, "", "  ")
+			AnalysisDir      string `json:"analysis_dir"`
+			AnalysisFile     string `json:"analysis_file"`
+			ConclusionFile   string `json:"conclusion_file"`
+			Round            int    `json:"round"`
+			Session          string `json:"session"`
+		}{AnalysisDir: dir, AnalysisFile: analysisPath, ConclusionFile: conclusionPath, Round: round, Session: sessionName}, "", "  ")
 		if err != nil {
 			return fmt.Errorf("marshal round-path: %w", err)
 		}
 		fmt.Fprintln(cmd.OutOrStdout(), string(data))
 		return nil
 	}
-	fmt.Fprintln(cmd.OutOrStdout(), dir)
+
+	fmt.Fprintf(cmd.OutOrStdout(), "Round %d Analysis Directory:\n", round)
+	fmt.Fprintf(cmd.OutOrStdout(), "  %s\n", dir)
+	fmt.Fprintln(cmd.OutOrStdout())
+	fmt.Fprintln(cmd.OutOrStdout(), "AI must write these files:")
+	fmt.Fprintf(cmd.OutOrStdout(), "  %s\n", analysisPath)
+	fmt.Fprintf(cmd.OutOrStdout(), "    → Content: Root Cause, Evidence, Solution, Trade-offs, Verification\n")
+	fmt.Fprintf(cmd.OutOrStdout(), "  %s\n", conclusionPath)
+	fmt.Fprintf(cmd.OutOrStdout(), "    → Content: Decision, Next Action, Blockers\n")
+	fmt.Fprintln(cmd.OutOrStdout())
+	fmt.Fprintln(cmd.OutOrStdout(), "After writing files, advance flow with:")
+	fmt.Fprintf(cmd.OutOrStdout(), "  flow proc run <node-id> --analysis-file %s --conclusion-file %s\n", analysisPath, conclusionPath)
 	return nil
 }
 

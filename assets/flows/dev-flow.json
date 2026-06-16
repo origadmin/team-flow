@@ -69,14 +69,29 @@
       "id": "sta0",
       "type": "start",
       "name": "Session Start",
-      "description": "Session start: record context, analyze user intent, create task if needed",
+      "description": "理解用户意图，确定任务范围。此阶段不创建 Task，产出 CONTEXT.md。",
       "entry": true,
       "components": {
+        "roles": [
+          {
+            "ref": "pm",
+            "source": "team"
+          }
+        ],
+        "rules": [
+          {
+            "ref": "d1a",
+            "source": "builtin"
+          },
+          {
+            "ref": "project-enforcement",
+            "source": "role"
+          }
+        ],
         "tools": [
           {
             "ref": "task",
             "commands": [
-              "create",
               "show"
             ]
           },
@@ -85,20 +100,19 @@
           }
         ]
       },
-      "on_enter": [
+      "docs": [
         {
-          "action": "exec",
-          "command": "flow session start --input \"{{user_input}}\""
-        },
-        {
-          "action": "exec",
-          "command": "flow session last --for-ai"
+          "name": "CONTEXT.md",
+          "format": "markdown",
+          "path": "{DOCS_INTERNAL}/tasks/CONTEXT.md",
+          "required": true,
+          "description": "需求初步理解：用户意图摘要、任务类型初步判断（feature|bug|hotfix|analysis|change）、需要澄清的问题"
         }
       ],
-      "on_exit": [
+      "on_enter": [
         {
-          "action": "exec",
-          "command": "flow session analysis --status {{analysis_status}} --task-type {{task_type}} --task {{task_id}}"
+          "action": "set_status",
+          "status": "discussing"
         }
       ]
     },
@@ -106,10 +120,7 @@
       "id": "tri3",
       "type": "phase",
       "name": "Task Triage",
-      "description": "PM classifies incoming task by type, scope, and priority, then dispatches to the appropriate branch",
-      "config": {
-        "role": "pm"
-      },
+      "description": "分类任务类型、评估范围和优先级，创建 Task 并确定分发分支。基于 CONTEXT.md 做正式分类。",
       "components": {
         "roles": [
           {
@@ -127,9 +138,9 @@
           {
             "ref": "task",
             "commands": [
+              "create",
               "show",
-              "update",
-              "append"
+              "update"
             ]
           },
           {
@@ -139,14 +150,17 @@
       },
       "docs": [
         {
-          "name": "ASSESSMENT.md",
+          "name": "TRIAGE.md",
           "format": "markdown",
-          "path": "{DOCS_INTERNAL}/{task_id}/ASSESSMENT.md",
+          "path": "{DOCS_INTERNAL}/tasks/TRIAGE.md",
           "required": true,
-          "description": "PM task assessment record: task type, priority, scope assessment, and dispatch decision"
+          "description": "分类记录：task_type(feature|bug|hotfix|analysis|change)、priority(high|medium|low)、scope assessment"
         }
       ],
       "on_enter": [
+        {
+          "action": "create_task_if_missing"
+        },
         {
           "action": "update_task_phase",
           "phase": "ready"
@@ -157,27 +171,25 @@
       "id": "ent7",
       "type": "gate",
       "name": "Entry Gate",
-      "description": "Validate task has sufficient context and matches a known task type",
-      "config": {
-        "conditions": [
-          {
-            "check": "Verify a beads task exists for this request",
-            "required": true,
-            "type": "task_exists"
-          },
-          {
-            "check": "Task description contains enough detail to proceed",
-            "required": true,
-            "threshold": "minimal",
-            "type": "context_sufficient"
-          },
-          {
-            "check": "Task type can be determined from context",
-            "required": false,
-            "type": "type_identified"
-          }
-        ]
-      }
+      "description": "验证任务分类产出完整，满足进入执行分支的条件",
+      "conditions": [
+        {
+          "type": "task_exists",
+          "check": "检查本地任务文件 .team/tasks/{task_id}.json 存在",
+          "required": true
+        },
+        {
+          "type": "doc_exists",
+          "check": "检查 TRIAGE.md 存在且非空",
+          "expected": "TRIAGE.md",
+          "required": true
+        },
+        {
+          "type": "task_type_valid",
+          "check": "TRIAGE.md 中声明的 task_type 是有效值(feature|bug|hotfix|analysis|change)",
+          "required": true
+        }
+      ]
     },
     {
       "id": "fa01",
@@ -1237,6 +1249,51 @@
       ]
     },
     {
+      "id": "pla9",
+      "type": "gate",
+      "name": "Plan Approval Gate",
+      "description": "方案审核确认：验证方案完整性、用户确认、资源准备情况，确保方案准备就绪后再执行",
+      "config": {
+        "conditions": [
+          {
+            "check": "方案文档已完成并包含必要内容",
+            "required": true,
+            "type": "plan_complete"
+          },
+          {
+            "check": "用户已确认方案",
+            "required": true,
+            "type": "user_approved"
+          },
+          {
+            "check": "资源和依赖已准备就绪",
+            "required": true,
+            "type": "resources_ready"
+          },
+          {
+            "check": "风险评估和回滚方案已制定",
+            "required": false,
+            "type": "risk_assessed"
+          }
+        ],
+        "docs": [
+          {
+            "name": "方案确认清单",
+            "path": "{TEAM_PATH}/templates/plan-approval-checklist.md",
+            "format": "markdown",
+            "required": true,
+            "description": "方案审核确认清单：方案内容、用户确认、资源准备、风险评估"
+          }
+        ]
+      },
+      "on_enter": [
+        {
+          "action": "update_task_phase",
+          "phase": "review"
+        }
+      ]
+    },
+    {
       "id": "suc0",
       "type": "terminal",
       "name": "Completed",
@@ -1423,9 +1480,31 @@
       "to": "rev6"
     },
     {
-      "id": "e-cp01-ce02",
+      "id": "e-cp01-pla9",
       "from": "cp01",
-      "to": "ce02"
+      "to": "pla9"
+    },
+    {
+      "id": "e-pla9-ce02",
+      "from": "pla9",
+      "to": "ce02",
+      "type": "conditional",
+      "conditions": [
+        {
+          "expression": "gate.passed"
+        }
+      ]
+    },
+    {
+      "id": "e-pla9-cp01",
+      "from": "pla9",
+      "to": "cp01",
+      "type": "conditional",
+      "conditions": [
+        {
+          "expression": "!gate.passed"
+        }
+      ]
     },
     {
       "id": "e-ce02-qua9",

@@ -328,6 +328,7 @@ type FlowNode struct {
 	Components  *NodeComponents `json:"components,omitempty"`
 	Docs        []DocSpec       `json:"docs,omitempty"`
 	Gates       []GateConfig    `json:"gates,omitempty"`
+	Conditions  []GateCondition `json:"conditions,omitempty"`
 	OnEnter     []Action        `json:"on_enter,omitempty"`
 	OnExit      []Action        `json:"on_exit,omitempty"`
 	OnError     *ErrorHandler   `json:"on_error,omitempty"`

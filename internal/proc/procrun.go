@@ -9,12 +9,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/origadmin/team-flow/internal/bd"
 	"github.com/origadmin/team-flow/internal/condition"
 	"github.com/origadmin/team-flow/internal/config"
 	"github.com/origadmin/team-flow/internal/eventlog"
 	"github.com/origadmin/team-flow/internal/flow"
 	"github.com/origadmin/team-flow/internal/skill"
+	"github.com/origadmin/team-flow/internal/task"
 	"github.com/origadmin/team-flow/internal/trace"
 )
 
@@ -47,6 +47,7 @@ type ProcRunResult struct {
 	Flow             FlowMeta          `json:"flow"`
 	Current          CurrentNode       `json:"current"`
 	NextOptions      []NextOption      `json:"next_options"`
+	BlockedOptions   []BlockedOption   `json:"blocked_options,omitempty"`
 	StatusLine       string            `json:"status_line"`
 	StatusLineFields *StatusLineData   `json:"status_line_fields,omitempty"`
 	StatusLineFmt    string            `json:"status_line_format,omitempty"`
@@ -242,6 +243,12 @@ type NextOption struct {
 	IsDefault bool    `json:"is_default"`
 }
 
+type BlockedOption struct {
+	NodeID  string   `json:"node_id"`
+	Name    string   `json:"name"`
+	Missing []string `json:"missing"`
+}
+
 type TeamLoader interface {
 	LoadTeam(root string) (*flow.TeamDefinition, error)
 }
@@ -323,7 +330,7 @@ func (e *ProcRunEngine) Run(ctx context.Context, req ProcRunRequest) (*ProcRunRe
 					result.RescueContext = sessionCtx
 					result.SessionName = sessionName
 					// Resolve task info for proper StatusLine ref
-					if taskInfo := resolveTaskInfo(req.TaskID); taskInfo != nil {
+					if taskInfo := resolveTaskInfo(req.TaskID, req.ProjectRoot); taskInfo != nil {
 						result.Task = taskInfo
 						if taskInfo.TaskID != "" {
 							result.StatusLine = buildStatusLineWithRef(fl, node, result.Current, taskInfo.TaskID)
@@ -377,6 +384,19 @@ func (e *ProcRunEngine) Run(ctx context.Context, req ProcRunRequest) (*ProcRunRe
 		}
 	}
 
+	// Pre-processing: handle on_enter actions that modify the request (e.g. create_task_if_missing)
+	// before generateResult, so the new task ID is reflected in the output.
+	if req.TaskID == "" && node != nil {
+		for _, a := range node.OnEnter {
+			if a.Action == "create_task_if_missing" {
+				newID, err := autoCreateTask(req.ProjectRoot)
+				if err == nil {
+					req.TaskID = newID
+				}
+			}
+		}
+	}
+
 	result := generateResult(fl, node, vars, team, resolvedNodeID == "", req.ProjectRoot, req.Workspace, req.RunGate)
 	result.FlowRevision = ComputeFlowRevision(req.ProjectRoot, fl.Metadata.Name)
 
@@ -419,23 +439,49 @@ func (e *ProcRunEngine) Run(ctx context.Context, req ProcRunRequest) (*ProcRunRe
 					Message:  fmt.Sprintf("Gate check: failed to read analysis files for round %d: %v", round, err),
 				})
 			} else {
-				// Content quality checks
-				analysisMinLen := 50
-				conclusionMinLen := 20
+				analysisMinLen := 100
+				conclusionMinLen := 50
 
-				hasRootCause := strings.Contains(analysisContent, "Root Cause")
-				hasEvidence := strings.Contains(analysisContent, "Evidence")
+				hasRootCause := strings.Contains(analysisContent, "Root Cause") || strings.Contains(analysisContent, "根本原因")
+				hasEvidence := strings.Contains(analysisContent, "Evidence") || strings.Contains(analysisContent, "证据")
+				hasSolution := strings.Contains(analysisContent, "Solution") || strings.Contains(analysisContent, "解决方案")
+				hasTradeOffs := strings.Contains(analysisContent, "Trade-offs") || strings.Contains(analysisContent, "权衡")
+				hasVerification := strings.Contains(analysisContent, "Verification") || strings.Contains(analysisContent, "验证")
+
+				hasDecision := strings.Contains(conclusionContent, "Decision") || strings.Contains(conclusionContent, "决策")
+				hasNextAction := strings.Contains(conclusionContent, "Next Action") || strings.Contains(conclusionContent, "下一步")
+				hasBlockers := strings.Contains(conclusionContent, "Blockers") || strings.Contains(conclusionContent, "阻塞")
+
 				analysisLenOK := len(analysisContent) >= analysisMinLen
 				conclusionLenOK := len(conclusionContent) >= conclusionMinLen
 
-				passed := analysisLenOK && conclusionLenOK && hasRootCause && hasEvidence
+				passed := analysisLenOK && conclusionLenOK && hasRootCause && hasEvidence && hasDecision && hasNextAction
+
 				detail := fmt.Sprintf("analysis=%d chars (min %d), conclusion=%d chars (min %d)",
 					len(analysisContent), analysisMinLen, len(conclusionContent), conclusionMinLen)
 				if !hasRootCause {
-					detail += " | MISSING: Root Cause"
+					detail += " | MISSING: Root Cause/根本原因"
 				}
 				if !hasEvidence {
-					detail += " | MISSING: Evidence"
+					detail += " | MISSING: Evidence/证据"
+				}
+				if !hasSolution {
+					detail += " | WARN: Solution/解决方案"
+				}
+				if !hasTradeOffs {
+					detail += " | WARN: Trade-offs/权衡"
+				}
+				if !hasVerification {
+					detail += " | WARN: Verification/验证"
+				}
+				if !hasDecision {
+					detail += " | MISSING: Decision/决策"
+				}
+				if !hasNextAction {
+					detail += " | MISSING: Next Action/下一步"
+				}
+				if !hasBlockers {
+					detail += " | WARN: Blockers/阻塞"
 				}
 
 				gateResults = append(gateResults, GateCheckResult{
@@ -462,12 +508,27 @@ func (e *ProcRunEngine) Run(ctx context.Context, req ProcRunRequest) (*ProcRunRe
 		}
 	}
 
-	if taskInfo := resolveTaskInfo(req.TaskID); taskInfo != nil {
+	if taskInfo := resolveTaskInfo(req.TaskID, req.ProjectRoot); taskInfo != nil {
 		result.Task = taskInfo
 		if taskInfo.TaskID != "" {
 			result.StatusLine = buildStatusLineWithRef(fl, node, result.Current, taskInfo.TaskID)
 			sld := buildStatusLineData(fl, node, result.Current, taskInfo.TaskID)
 			result.StatusLineFields = &sld
+		}
+	}
+
+	// Re-compute next options with full context (task info + gate results now available)
+	// and apply blocked_options / filter when gate failed.
+	if node.Type == flow.NodeTypeGate && len(result.GateCheckResults) > 0 {
+		condCtx := buildConditionContext(fl, node, req, result)
+		fullOptions := buildNextOptions(fl, node.ID, condCtx)
+
+		passed, _ := GateOverallResult(result.GateCheckResults)
+		if !passed {
+			result.BlockedOptions = buildBlockedOptions(fullOptions, result.GateCheckResults)
+			result.NextOptions = filterRejectedOptions(fullOptions)
+		} else {
+			result.NextOptions = fullOptions
 		}
 	}
 
@@ -511,30 +572,64 @@ func (e *ProcRunEngine) Run(ctx context.Context, req ProcRunRequest) (*ProcRunRe
 		}
 	}
 
+	if req.TaskID != "" && req.ProjectRoot != "" {
+		executeOnEnterActions(req.ProjectRoot, req.TaskID, result.Current.OnEnter)
+	}
+
 	return result, nil
 }
 
-func resolveTaskInfo(taskID string) *TaskInfo {
-	root, _ := os.Getwd()
-
-	if taskID != "" {
-		if info := resolveTaskInfoFromLocal(root, taskID); info != nil {
-			return info
-		}
-		if bd.IsAvailable() {
-			if info := resolveTaskInfoFromBeads(taskID); info != nil {
-				return info
+func executeOnEnterActions(projectRoot, taskID string, actions []OnEnterAction) {
+	for _, a := range actions {
+		switch a.Action {
+		case "update_task_phase":
+			if a.Phase != "" {
+				updateTaskPhase(projectRoot, taskID, a.Phase)
 			}
+		case "update_task_status":
+			if a.Phase != "" {
+				updateTaskStatus(projectRoot, taskID, a.Phase)
+			}
+		}
+	}
+}
+
+func updateTaskPhase(projectRoot, taskID, phase string) {
+	t, err := task.LoadTask(projectRoot, taskID)
+	if err != nil {
+		return
+	}
+	if t.Labels == nil {
+		t.Labels = map[string]string{}
+	}
+	t.Labels["phase"] = phase
+	_ = task.SaveTask(projectRoot, t)
+}
+
+func updateTaskStatus(projectRoot, taskID, status string) {
+	t, err := task.LoadTask(projectRoot, taskID)
+	if err != nil {
+		return
+	}
+	t.Status = status
+	_ = task.SaveTask(projectRoot, t)
+}
+
+func auditLog(lgr *eventlog.Logger, sessionName, taskID, action, details string) {
+	if lgr == nil || sessionName == "" || sessionName == "unknown" {
+		return
+	}
+	_ = lgr.RecordEvent(sessionName, taskID, action, details)
+}
+
+func resolveTaskInfo(taskID string, projectRoot string) *TaskInfo {
+	if taskID != "" {
+		if info := resolveTaskInfoFromLocal(projectRoot, taskID); info != nil {
+			return info
 		}
 		return &TaskInfo{TaskID: taskID, Phase: "task-bound", Status: "open"}
 	}
-
-	if bd.IsAvailable() {
-		if info := resolveTaskInfoFromBeads(""); info != nil {
-			return info
-		}
-	}
-	return resolveTaskInfoFromLocal(root, "")
+	return resolveTaskInfoFromLocal(projectRoot, "")
 }
 
 func resolveTaskInfoFromLocal(root, taskID string) *TaskInfo {
@@ -594,46 +689,6 @@ func resolveTaskInfoFromLocal(root, taskID string) *TaskInfo {
 		if phase, ok := labels["phase"].(string); ok {
 			info.Phase = phase
 		}
-	}
-	return info
-}
-
-func resolveTaskInfoFromBeads(taskID string) *TaskInfo {
-	args := []string{"show", "--current", "--json"}
-	if taskID != "" {
-		args = []string{"show", taskID, "--json"}
-	}
-	output, err := bd.RunQuiet(args...)
-	if err != nil || output == "" {
-		return nil
-	}
-	var raw map[string]interface{}
-	if err := json.Unmarshal([]byte(output), &raw); err != nil {
-		return nil
-	}
-	info := &TaskInfo{}
-	if id, ok := raw["id"].(string); ok {
-		info.TaskID = id
-	}
-	if t, ok := raw["type"].(string); ok {
-		info.Type = t
-	}
-	if status, ok := raw["status"].(string); ok {
-		info.Status = status
-	}
-	if url, ok := raw["url"].(string); ok {
-		info.URL = url
-	}
-	if labels, ok := raw["labels"].([]interface{}); ok {
-		for _, l := range labels {
-			if s, ok := l.(string); ok && len(s) > 6 && s[:6] == "phase:" {
-				info.Phase = s[6:]
-				break
-			}
-		}
-	}
-	if info.TaskID == "" && info.Phase == "" {
-		return nil
 	}
 	return info
 }
@@ -1777,4 +1832,44 @@ func ensureSessionName(lgr *eventlog.Logger, newSession bool, input string) stri
 		return ""
 	}
 	return name
+}
+
+// buildBlockedOptions creates a list of paths that are blocked by gate failures.
+// Each blocked option shows which conditions are missing.
+func buildBlockedOptions(nextOptions []NextOption, gateResults []GateCheckResult) []BlockedOption {
+	failedTypes := make([]string, 0)
+	for _, gr := range gateResults {
+		if !gr.Passed && !gr.Skipped {
+			failedTypes = append(failedTypes, gr.Type)
+		}
+	}
+	if len(failedTypes) == 0 {
+		return nil
+	}
+
+	blocked := make([]BlockedOption, 0)
+	for _, opt := range nextOptions {
+		// Skip rejection/terminal nodes — they are not "blocked" paths
+		if strings.HasPrefix(opt.NodeID, "rej") || strings.HasPrefix(opt.NodeID, "fai") {
+			continue
+		}
+		blocked = append(blocked, BlockedOption{
+			NodeID:  opt.NodeID,
+			Name:    opt.Name,
+			Missing: failedTypes,
+		})
+	}
+	return blocked
+}
+
+// filterRejectedOptions keeps only rejection/terminal options when gate fails.
+// This ensures AI can only see the rejection path as a valid next step.
+func filterRejectedOptions(nextOptions []NextOption) []NextOption {
+	rejected := make([]NextOption, 0)
+	for _, opt := range nextOptions {
+		if strings.HasPrefix(opt.NodeID, "rej") || strings.HasPrefix(opt.NodeID, "fai") {
+			rejected = append(rejected, opt)
+		}
+	}
+	return rejected
 }

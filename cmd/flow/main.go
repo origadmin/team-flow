@@ -9,7 +9,6 @@ import (
 	"github.com/origadmin/team-flow/internal/config"
 	"github.com/origadmin/team-flow/internal/doctor"
 	"github.com/origadmin/team-flow/internal/editor"
-	"github.com/origadmin/team-flow/internal/export"
 	"github.com/origadmin/team-flow/internal/graph"
 	"github.com/origadmin/team-flow/internal/logger"
 	"github.com/origadmin/team-flow/internal/migrate"
@@ -162,7 +161,6 @@ func main() {
 	rootCmd.AddCommand(config.Cmd)
 	rootCmd.AddCommand(doctor.Cmd)
 	rootCmd.AddCommand(migrate.Cmd)
-	rootCmd.AddCommand(export.Cmd)
 	rootCmd.AddCommand(status.Cmd)
 	rootCmd.AddCommand(editor.Cmd)
 	rootCmd.AddCommand(graph.Cmd)

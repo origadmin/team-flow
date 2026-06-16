@@ -8,7 +8,6 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/origadmin/team-flow/internal/bd"
 	"github.com/origadmin/team-flow/internal/toolchain"
 	"github.com/spf13/cobra"
 )
@@ -197,36 +196,10 @@ func diagnoseCodeReviewGraph() Diagnosis {
 }
 
 func diagnoseBeads() Diagnosis {
-	d := Diagnosis{Name: "beads (bd CLI)"}
-
-	if !bd.IsAvailable() {
-		d.Status = "missing"
-		d.Detail = "not found"
-		switch runtime.GOOS {
-		case "windows":
-			d.Fix = "irm https://raw.githubusercontent.com/steveyegge/beads/main/install.ps1 | iex"
-		case "darwin":
-			d.Fix = "brew install beads"
-		default:
-			d.Fix = "curl -fsSL https://raw.githubusercontent.com/steveyegge/beads/main/install.sh | bash"
-		}
-		return d
-	}
-
-	version, _ := exec.Command(bd.FindPath(), "--version").CombinedOutput()
-	d.Detail = strings.TrimSpace(string(version))
-	d.Healthy = true
+	d := Diagnosis{Name: "task manager (flow task)"}
 	d.Status = "ok"
-
-	projectPath, _ := os.Getwd()
-	beadsDir := filepath.Join(projectPath, ".beads")
-	if _, err := os.Stat(beadsDir); os.IsNotExist(err) {
-		d.Detail += " (database not initialized)"
-		d.Fix = "bd init"
-		d.Healthy = false
-		d.Status = "incomplete"
-	}
-
+	d.Detail = "using local .team/tasks/ directory"
+	d.Healthy = true
 	return d
 }
 

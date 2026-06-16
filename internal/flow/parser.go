@@ -28,6 +28,7 @@ type flowNodeRaw struct {
 	Components  *NodeComponents `json:"components,omitempty"`
 	Docs        []DocSpec       `json:"docs,omitempty"`
 	Gates       []GateConfig    `json:"gates,omitempty"`
+	Conditions  []GateCondition `json:"conditions,omitempty"`
 	OnEnter     []Action        `json:"on_enter,omitempty"`
 	OnExit      []Action        `json:"on_exit,omitempty"`
 	OnError     *ErrorHandler   `json:"on_error,omitempty"`
@@ -89,6 +90,7 @@ func normalizeNode(rn flowNodeRaw) FlowNode {
 		Status:      rn.Status,
 		Docs:        rn.Docs,
 		Gates:       rn.Gates,
+		Conditions:  rn.Conditions,
 		OnEnter:     rn.OnEnter,
 		OnExit:      rn.OnExit,
 		OnError:     rn.OnError,

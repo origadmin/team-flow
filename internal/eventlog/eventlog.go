@@ -52,6 +52,7 @@ const (
 	EventFlowNode        = "flow.node"
 	EventFlowEnded       = "flow.ended"
 	EventError           = "error"
+	EventAudit           = "audit"
 )
 
 const (
@@ -136,6 +137,15 @@ type ErrorEvent struct {
 	Task    string `json:"task,omitempty"`
 	Error   string `json:"error"`
 	Session string `json:"session,omitempty"`
+}
+
+type AuditEvent struct {
+	Event   string `json:"event"`
+	TS      string `json:"ts"`
+	Task    string `json:"task,omitempty"`
+	Session string `json:"session,omitempty"`
+	Action  string `json:"action"`
+	Details string `json:"details,omitempty"`
 }
 
 // ─── Logger ──────────────────────────────────────────────────────────────────
@@ -368,6 +378,18 @@ func (l *Logger) Error(sessionName, taskID, errMsg string) error {
 		Task:    taskID,
 		Error:   errMsg,
 		Session: sessionName,
+	})
+}
+
+// RecordEvent writes a general audit event to the global events.mdl.
+func (l *Logger) RecordEvent(sessionName, taskID, action, details string) error {
+	return l.writeEvent(AuditEvent{
+		Event:   EventAudit,
+		TS:      now(),
+		Task:    taskID,
+		Session: sessionName,
+		Action:  action,
+		Details: details,
 	})
 }
 

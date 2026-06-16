@@ -7,6 +7,29 @@ import (
 )
 
 func ExtractGateConditions(node *flow.FlowNode) []GateCondOutput {
+	// v3 format: conditions at node level (FlatNode)
+	if len(node.Conditions) > 0 {
+		conditions := make([]GateCondOutput, 0, len(node.Conditions))
+		for _, c := range node.Conditions {
+			required := true
+			if c.Required != nil {
+				required = *c.Required
+			}
+			conditions = append(conditions, GateCondOutput{
+				Type:         string(c.Type),
+				Threshold:    c.Threshold,
+				Required:     required,
+				Check:        c.Check,
+				Expected:     c.Expected,
+				Deliverables: c.Deliverables,
+				NodeID:       node.ID,
+				NodeName:     node.Name,
+			})
+		}
+		return conditions
+	}
+
+	// v2 format: conditions inside config (GateNodeConfig)
 	if node.Config == nil {
 		return nil
 	}

@@ -10,7 +10,6 @@ import (
 	"time"
 
 	skillfs "github.com/origadmin/team-flow"
-	"github.com/origadmin/team-flow/internal/bd"
 	"github.com/origadmin/team-flow/internal/eventlog"
 	"github.com/origadmin/team-flow/internal/flow"
 )
@@ -84,6 +83,8 @@ var gateCheckerRegistry = map[flow.GateConditionType]GateCheckerFunc{
 	flow.GateCondHasActiveTasks:       func(gc *GateChecker, cond GateCondOutput) GateCheckResult { return gc.checkHasActiveTasks(cond) },
 	flow.GateCondHasSessionHistory:    func(gc *GateChecker, cond GateCondOutput) GateCheckResult { return gc.checkHasSessionHistory(cond) },
 	flow.GateCondChecklistComplete:    func(gc *GateChecker, cond GateCondOutput) GateCheckResult { return gc.checkChecklistComplete(cond) },
+	"doc_exists":                      func(gc *GateChecker, cond GateCondOutput) GateCheckResult { return gc.checkDocExists(cond) },
+	"task_type_valid":                 func(gc *GateChecker, cond GateCondOutput) GateCheckResult { return gc.checkTaskTypeValid(cond) },
 }
 
 func RegisterGateChecker(condType flow.GateConditionType, fn GateCheckerFunc) {
@@ -369,39 +370,128 @@ func (gc *GateChecker) checkTaskExists(cond GateCondOutput) GateCheckResult {
 		Auto:     true,
 	}
 
-	if !bd.IsAvailable() {
-		result.Passed = false
-		result.Message = "FAIL: beads (bd CLI) not available — run 'flow init' to install"
-		return result
+	taskID := gc.TaskID
+	if taskID == "" {
+		taskID = cond.Check
 	}
-
-	args := []string{"show", "--current", "--json"}
-	taskID := cond.Check
 	if taskID == "" {
 		taskID = cond.Expected
 	}
-	if taskID != "" {
-		args = []string{"show", taskID, "--json"}
+
+	if taskID == "" {
+		result.Passed = false
+		result.Message = "FAIL: no task ID provided — run 'flow task create --title <name>'"
+		return result
 	}
 
-	output, err := bd.RunQuiet(args...)
-	if err != nil || output == "" {
-		if taskID != "" {
-			result.Passed = false
-			result.Message = fmt.Sprintf("FAIL: task %s not found", taskID)
-		} else {
-			result.Passed = false
-			result.Message = "FAIL: no active task found — run 'flow task create --title <name>'"
-		}
+	taskFilePath := filepath.Join(gc.ProjectRoot, ".team", "tasks", taskID+".json")
+	if _, err := os.Stat(taskFilePath); err != nil {
+		result.Passed = false
+		result.Message = fmt.Sprintf("FAIL: task %s not found at %s", taskID, taskFilePath)
 		return result
 	}
 
 	result.Passed = true
-	if taskID != "" {
-		result.Message = fmt.Sprintf("PASS: task %s found", taskID)
-	} else {
-		result.Message = "PASS: active task found"
+	result.Message = fmt.Sprintf("PASS: task %s found at %s", taskID, taskFilePath)
+	return result
+}
+
+// checkDocExists verifies that the document specified in cond.Expected exists and is non-empty.
+// Searches in multiple locations under docs dir.
+func (gc *GateChecker) checkDocExists(cond GateCondOutput) GateCheckResult {
+	result := GateCheckResult{
+		Type:     "doc_exists",
+		Required: cond.Required,
+		Auto:     true,
 	}
+
+	docName := cond.Expected
+	if docName == "" {
+		docName = cond.Check
+	}
+	if docName == "" {
+		docName = "TRIAGE.md"
+	}
+
+	docsDir := gc.resolveDocsDir()
+
+	// Search in multiple locations: requirements/{task_id}/, tasks/, root of docs
+	searchPaths := []string{
+		filepath.Join(docsDir, "requirements", gc.TaskID, docName),
+		filepath.Join(docsDir, "tasks", docName),
+		filepath.Join(docsDir, docName),
+	}
+
+	for _, docPath := range searchPaths {
+		info, err := os.Stat(docPath)
+		if err == nil && !info.IsDir() {
+			if info.Size() == 0 {
+				result.Passed = false
+				result.Message = fmt.Sprintf("FAIL: %s found but empty (0 bytes)", docPath)
+				return result
+			}
+			result.Passed = true
+			result.Message = fmt.Sprintf("PASS: %s found (%d bytes) at %s", docName, info.Size(), docPath)
+			return result
+		}
+	}
+
+	result.Passed = false
+	result.Message = fmt.Sprintf("FAIL: %s not found in %s (searched: requirements/{task_id}/, tasks/, root)", docName, docsDir)
+	return result
+}
+
+// checkTaskTypeValid reads the TRIAGE.md doc and verifies that it contains a valid task_type value.
+// Valid types: feature, bug, hotfix, analysis, change
+func (gc *GateChecker) checkTaskTypeValid(cond GateCondOutput) GateCheckResult {
+	result := GateCheckResult{
+		Type:     "task_type_valid",
+		Required: cond.Required,
+		Auto:     true,
+	}
+
+	validTypes := []string{"feature", "bug", "hotfix", "analysis", "change"}
+
+	docsDir := gc.resolveDocsDir()
+
+	// Search in multiple locations: requirements/{task_id}/, tasks/, root of docs
+	searchPaths := []string{
+		filepath.Join(docsDir, "requirements", gc.TaskID, "TRIAGE.md"),
+		filepath.Join(docsDir, "tasks", "TRIAGE.md"),
+		filepath.Join(docsDir, "TRIAGE.md"),
+	}
+
+	var docPath string
+	for _, p := range searchPaths {
+		if _, err := os.Stat(p); err == nil {
+			docPath = p
+			break
+		}
+	}
+	if docPath == "" {
+		result.Passed = false
+		result.Message = "FAIL: TRIAGE.md not found — cannot verify task_type"
+		return result
+	}
+
+	data, err := os.ReadFile(docPath)
+	if err != nil {
+		result.Passed = false
+		result.Message = fmt.Sprintf("FAIL: cannot read %s: %v", docPath, err)
+		return result
+	}
+
+	content := strings.ToLower(string(data))
+	for _, vt := range validTypes {
+		if strings.Contains(content, vt) {
+			result.Passed = true
+			result.Message = fmt.Sprintf("PASS: task_type=%q found in %s", vt, docPath)
+			return result
+		}
+	}
+
+	result.Passed = false
+	result.Message = fmt.Sprintf("FAIL: no valid task_type (%s) found in %s", strings.Join(validTypes, "|"), docPath)
 	return result
 }
 
@@ -452,7 +542,7 @@ func (gc *GateChecker) checkTypeMatches(cond GateCondOutput) GateCheckResult {
 	// look up the actual task and compare its type to expected.
 	if cond.Check != "" && cond.Expected != "" {
 		// Try task lookup first: check if Check is a valid task ID
-		taskInfo := resolveTaskInfo(cond.Check)
+		taskInfo := resolveTaskInfo(cond.Check, gc.ProjectRoot)
 		if taskInfo != nil && taskInfo.Type != "" {
 			if typeMatches(taskInfo.Type, cond.Expected) {
 				result.Passed = true
@@ -477,7 +567,7 @@ func (gc *GateChecker) checkTypeMatches(cond GateCondOutput) GateCheckResult {
 
 	// v4#26: check is empty but expected is set — try current task
 	if cond.Check == "" && cond.Expected != "" {
-		taskInfo := resolveTaskInfo("")
+		taskInfo := resolveTaskInfo("", gc.ProjectRoot)
 		if taskInfo != nil && taskInfo.Type != "" {
 			if typeMatches(taskInfo.Type, cond.Expected) {
 				result.Passed = true

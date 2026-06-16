@@ -1,6 +1,8 @@
 package task
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -11,8 +13,6 @@ import (
 
 	"github.com/origadmin/team-flow/internal/config"
 	"github.com/origadmin/team-flow/internal/eventlog"
-	"github.com/origadmin/team-flow/internal/idgen"
-	taskSync "github.com/origadmin/team-flow/internal/sync"
 	"github.com/spf13/cobra"
 )
 
@@ -51,10 +51,6 @@ Subcommands:
   sync     Sync external issues (GitHub) to local tasks`,
 	DisableFlagParsing: true,
 	RunE:               runTask,
-}
-
-func init() {
-	Cmd.AddCommand(taskSync.Cmd)
 }
 
 func runTask(cmd *cobra.Command, args []string) error {
@@ -120,7 +116,7 @@ func taskPath(root, id string) string {
 	return filepath.Join(tasksDir(root), id+".json")
 }
 
-func loadTask(root, id string) (*Task, error) {
+func LoadTask(root, id string) (*Task, error) {
 	data, err := os.ReadFile(taskPath(root, id))
 	if err != nil {
 		return nil, err
@@ -132,7 +128,7 @@ func loadTask(root, id string) (*Task, error) {
 	return &t, nil
 }
 
-func saveTask(root string, t *Task) error {
+func SaveTask(root string, t *Task) error {
 	dir := tasksDir(root)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
@@ -165,6 +161,12 @@ func allTaskIDs(root string) ([]string, error) {
 		}
 	}
 	return ids, nil
+}
+
+func GenerateLocalTaskID(projectName string) string {
+	b := make([]byte, 2)
+	_, _ = rand.Read(b)
+	return fmt.Sprintf("%s-%s", projectName, hex.EncodeToString(b))
 }
 
 // ─── subcommands ───────────────────────────────────────────────────────────
@@ -203,8 +205,8 @@ func taskCreateV3(projectRoot string, args []string) error {
 		taskType = "task"
 	}
 
-	// Generate task ID using idgen (not beads — flow owns its task IDs).
-	taskID := idgen.RandHex(2)
+	projectName := filepath.Base(projectRoot)
+	taskID := GenerateLocalTaskID(projectName)
 
 	now := time.Now().UTC()
 	task := &Task{
@@ -220,7 +222,7 @@ func taskCreateV3(projectRoot string, args []string) error {
 		Notes:       []string{},
 	}
 
-	if err := saveTask(projectRoot, task); err != nil {
+	if err := SaveTask(projectRoot, task); err != nil {
 		return fmt.Errorf("save task: %w", err)
 	}
 
@@ -252,7 +254,7 @@ func taskShowV3(projectRoot string, args []string) error {
 			jsonOut = true
 		}
 	}
-	task, err := loadTask(projectRoot, taskID)
+	task, err := LoadTask(projectRoot, taskID)
 	if err != nil {
 		return fmt.Errorf("task not found: %s (%w)", taskID, err)
 	}
@@ -308,7 +310,7 @@ func taskUpdateV3(projectRoot string, args []string) error {
 		return fmt.Errorf("task_id is required")
 	}
 	taskID := args[0]
-	task, err := loadTask(projectRoot, taskID)
+	task, err := LoadTask(projectRoot, taskID)
 	if err != nil {
 		return fmt.Errorf("task not found: %s (%w)", taskID, err)
 	}
@@ -352,7 +354,7 @@ func taskUpdateV3(projectRoot string, args []string) error {
 		return nil
 	}
 
-	if err := saveTask(projectRoot, task); err != nil {
+	if err := SaveTask(projectRoot, task); err != nil {
 		return fmt.Errorf("update task: %w", err)
 	}
 	fmt.Printf("✓ Task updated: %s\n", taskID)
@@ -389,12 +391,12 @@ func taskNoteV3(projectRoot string, args []string) error {
 		return fmt.Errorf("--note is required")
 	}
 
-	task, err := loadTask(projectRoot, taskID)
+	task, err := LoadTask(projectRoot, taskID)
 	if err != nil {
 		return fmt.Errorf("task not found: %s (%w)", taskID, err)
 	}
 	task.Notes = append(task.Notes, fmt.Sprintf("[%s] %s", time.Now().UTC().Format(time.RFC3339), note))
-	if err := saveTask(projectRoot, task); err != nil {
+	if err := SaveTask(projectRoot, task); err != nil {
 		return fmt.Errorf("append note: %w", err)
 	}
 	fmt.Printf("✓ Note appended to task %s\n", taskID)
@@ -419,7 +421,7 @@ func taskListV3(projectRoot string, args []string) error {
 
 	var tasks []Task
 	for _, id := range ids {
-		if t, err := loadTask(projectRoot, id); err == nil {
+		if t, err := LoadTask(projectRoot, id); err == nil {
 			tasks = append(tasks, *t)
 		}
 	}
@@ -443,7 +445,7 @@ func taskCloseV3(projectRoot string, args []string) error {
 		return fmt.Errorf("task_id is required")
 	}
 	taskID := args[0]
-	task, err := loadTask(projectRoot, taskID)
+	task, err := LoadTask(projectRoot, taskID)
 	if err != nil {
 		return fmt.Errorf("task not found: %s (%w)", taskID, err)
 	}
@@ -452,7 +454,7 @@ func taskCloseV3(projectRoot string, args []string) error {
 	task.Status = "closed"
 	now := time.Now().UTC()
 	task.ClosedAt = &now
-	if err := saveTask(projectRoot, task); err != nil {
+	if err := SaveTask(projectRoot, task); err != nil {
 		return fmt.Errorf("close task: %w", err)
 	}
 	fmt.Printf("✓ Task closed: %s\n", taskID)
@@ -478,7 +480,7 @@ func taskLabelV3(projectRoot string, args []string) error {
 		}
 		taskID := rest[0]
 		labels := rest[1:]
-		task, err := loadTask(projectRoot, taskID)
+		task, err := LoadTask(projectRoot, taskID)
 		if err != nil {
 			return fmt.Errorf("task not found: %s (%w)", taskID, err)
 		}
@@ -492,7 +494,7 @@ func taskLabelV3(projectRoot string, args []string) error {
 				task.Labels[kv] = ""
 			}
 		}
-		if err := saveTask(projectRoot, task); err != nil {
+		if err := SaveTask(projectRoot, task); err != nil {
 			return fmt.Errorf("add label: %w", err)
 		}
 		fmt.Printf("✓ Labels added to %s: %s\n", taskID, strings.Join(labels, ", "))
@@ -502,14 +504,14 @@ func taskLabelV3(projectRoot string, args []string) error {
 		}
 		taskID := rest[0]
 		labels := rest[1:]
-		task, err := loadTask(projectRoot, taskID)
+		task, err := LoadTask(projectRoot, taskID)
 		if err != nil {
 			return fmt.Errorf("task not found: %s (%w)", taskID, err)
 		}
 		for _, k := range labels {
 			delete(task.Labels, k)
 		}
-		if err := saveTask(projectRoot, task); err != nil {
+		if err := SaveTask(projectRoot, task); err != nil {
 			return fmt.Errorf("remove label: %w", err)
 		}
 		fmt.Printf("✓ Labels removed from %s: %s\n", taskID, strings.Join(labels, ", "))
@@ -518,7 +520,7 @@ func taskLabelV3(projectRoot string, args []string) error {
 			return fmt.Errorf("usage: flow task label list <task-id>")
 		}
 		taskID := rest[0]
-		task, err := loadTask(projectRoot, taskID)
+		task, err := LoadTask(projectRoot, taskID)
 		if err != nil {
 			return fmt.Errorf("task not found: %s (%w)", taskID, err)
 		}
@@ -567,7 +569,7 @@ func childrenOf(projectRoot, parentID string) ([]Task, error) {
 	}
 	var out []Task
 	for _, id := range ids {
-		if t, err := loadTask(projectRoot, id); err == nil && t.Parent == parentID {
+		if t, err := LoadTask(projectRoot, id); err == nil && t.Parent == parentID {
 			out = append(out, *t)
 		}
 	}
@@ -577,7 +579,7 @@ func childrenOf(projectRoot, parentID string) ([]Task, error) {
 // ─── public helpers used by other packages ────────────────────────────────
 
 func GetTaskLabels(root, taskID string) (map[string]string, error) {
-	t, err := loadTask(root, taskID)
+	t, err := LoadTask(root, taskID)
 	if err != nil {
 		return nil, err
 	}
@@ -589,7 +591,7 @@ func GetTaskLabels(root, taskID string) (map[string]string, error) {
 }
 
 func GetTaskField(root, taskID, field string) (string, error) {
-	t, err := loadTask(root, taskID)
+	t, err := LoadTask(root, taskID)
 	if err != nil {
 		return "", err
 	}
